@@ -142,6 +142,29 @@ function continueBoot() {
       setTimeout(() => window.scrollTo(0, 0), 50);
     });
   });
+
+  // Enter key navigation on desktop
+  const obCard = document.querySelector('.ob-card');
+  if (obCard) {
+    obCard.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        const activeId = document.activeElement ? document.activeElement.id : '';
+        if (obStep === 0 && activeId === 'ob-usn') {
+          e.preventDefault();
+          obNext();
+        } else if (obStep === 1 && activeId === 'ob-dob') {
+          e.preventDefault();
+          obNext();
+        } else if (obStep === 2 && activeId === 'ob-code') {
+          e.preventDefault();
+          obNext();
+        } else if (obStep === 3 && (activeId === 'ob-moodle-email' || activeId === 'ob-moodle-pass')) {
+          e.preventDefault();
+          obFinish(true);
+        }
+      }
+    });
+  }
 }
 
 export function checkCmScroll() {

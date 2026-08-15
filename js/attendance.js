@@ -83,17 +83,17 @@ export function renderStudentView(data) {
   if (progEl) progEl.textContent = program;
 
   // Photo
-  const photoSlot = document.getElementById('photo-slot');
+  const photoSlot = document.getElementById('photo-slot') || document.getElementById('stu-photo-wrap');
   const initials = name.split(' ').slice(0, 2).map(w => w[0] || '').join('');
   if (photoSlot) {
     if (data.photoUri) {
       const fullPhotoUrl = data.photoUri.startsWith('http') || data.photoUri.startsWith('data:')
         ? data.photoUri
-        : CONFIG.API_BASE.replace(/\/$/, '') + (data.photoUri.startsWith('/') ? data.photoUri : '/' + data.photoUri);
+        : api.getApiUrl(data.photoUri);
       photoSlot.innerHTML = `
         <div class="photo-wrap">
           <div class="photo-skel">${escHtml(initials)}</div>
-          <img src="${fullPhotoUrl}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')"/>
+          <img src="${fullPhotoUrl}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')" onerror="this.style.display='none'"/>
         </div>`;
     } else {
       photoSlot.innerHTML = `<div class="student-photo-ph">${escHtml(initials)}</div>`;
@@ -274,11 +274,23 @@ export async function onCieItemToggle(detailEl) {
   detailEl.dataset.loading = '1';
   body.innerHTML = '<div style="text-align:center;padding:8px 0"><div class="big-spinner" style="margin:0 auto;width:20px;height:20px;border-width:2px"></div></div>';
 
+  const creds = loadCreds();
+  const sem = creds?.sem || currentStudentData?.sem || CONFIG.CURRENT_SEM;
+
   try {
-    const json = await api.getCieDetail({ cookies, courseId, secId, semId, sem: CONFIG.CURRENT_SEM });
+    const json = await api.getCieDetail({ cookies, courseId, secId, semId, sem });
     body.innerHTML = renderCieBreakdownBody(json);
     detailEl.dataset.loaded = '1';
   } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') {
+      body.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 8px;text-align:center">'
+        + '<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>'
+        + '<div style="font-weight:800;font-size:.85rem;color:var(--text)">Session expired</div>'
+        + '<button onclick="refreshData()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:.8rem;cursor:pointer">Refresh</button>'
+        + '</div>';
+      return;
+    }
     body.innerHTML = `<div class="cie-detail-placeholder">Failed to load split: ${escHtml(err.message)}</div>`;
   } finally {
     detailEl.dataset.loading = '0';
@@ -329,9 +341,14 @@ export async function showAttendanceDetail(code) {
   body.innerHTML = '<div style="text-align:center;padding:32px 0"><div class="big-spinner" style="margin:0 auto"></div></div>';
   modal.style.display = 'flex';
 
+  const creds = loadCreds();
+  const sem = creds?.sem || currentStudentData?.sem || CONFIG.CURRENT_SEM;
+
   try {
-    const json = await api.getAttendanceDetail({ cookies, courseId, secId, semId, sem: CONFIG.CURRENT_SEM });
-    if (json.error === 'SESSION_EXPIRED') {
+    const json = await api.getAttendanceDetail({ cookies, courseId, secId, semId, sem });
+    renderAttendanceModal(json);
+  } catch (err) {
+    if (err.message === 'SESSION_EXPIRED') {
       body.innerHTML =
         '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:36px 20px;text-align:center">'
         + '<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>'
@@ -341,9 +358,6 @@ export async function showAttendanceDetail(code) {
         + '</div>';
       return;
     }
-    if (json.error) throw new Error(json.error);
-    renderAttendanceModal(json);
-  } catch (err) {
     body.innerHTML = `<div style="padding:28px;text-align:center;color:var(--muted);font-size:.85rem">Failed to load details.<br><span style="font-size:.75rem">${escHtml(err.message)}</span></div>`;
   }
 }

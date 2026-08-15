@@ -337,6 +337,31 @@
     .att-tbl tr:last-child td{border-bottom:none}
     .att-tbl .mono{font-family:'DM Mono',monospace}
     .att-tbl th,.att-tbl td{text-align:center;}
+
+    /* Suggestions & Toast */
+    .sug-toast { position: fixed; top: -80px; left: 50%; transform: translateX(-50%); z-index: 10000; background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); cursor: pointer; transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); width: min(360px, calc(100% - 32px)); }
+    .sug-toast.show { top: 16px; }
+    [data-theme=dark] .sug-toast { box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .sug-toast-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(37,99,235,0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    [data-theme=dark] .sug-toast-icon { background: rgba(37,99,235,0.2); }
+    .sug-toast-text { flex: 1; font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .sug-toast-close { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; }
+    .sug-toast-close:hover { color: var(--text); }
+
+    .sug-tab-bar { display: flex; border-bottom: 1.5px solid var(--border); background: var(--bg); border-radius: 20px 20px 0 0; overflow: hidden; }
+    .sug-tab-btn { flex: 1; padding: 14px 16px; border: none; background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .sug-tab-btn.active { color: var(--accent); }
+    .sug-tab-btn.active::after { content: ''; position: absolute; bottom: -1.5px; left: 16px; right: 16px; height: 2.5px; background: var(--accent); border-radius: 2px; }
+    .sug-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; display: inline-block; }
+    .sug-history-card { padding: 14px; background: var(--bg); border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border); }
+    .sug-history-card:last-child { margin-bottom: 0; }
+    .sug-history-text { font-size: 0.85rem; line-height: 1.5; color: var(--text); margin-bottom: 8px; white-space: pre-wrap; }
+    .sug-history-date { font-size: 0.7rem; color: var(--muted); }
+    .sug-history-reply { margin-top: 10px; padding: 10px 12px; background: var(--surface); border-radius: 10px; border-left: 3px solid var(--accent); }
+    .sug-history-reply-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 4px; }
+    .sug-history-reply-text { font-size: 0.82rem; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+    .sug-history-pending { margin-top: 8px; font-size: 0.72rem; color: var(--muted); font-weight: 600; font-style: italic; }
+    .sug-history-empty { text-align: center; padding: 32px 0; color: var(--muted); font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -351,9 +376,11 @@
     <div class="flip-inner" id="flip-inner">
       <div class="card-face">
         <div class="stu-main-row">
-          <div class="photo-wrap" id="stu-photo-wrap">
-            <div class="photo-skel" id="stu-photo-skel">👤</div>
-            <img class="student-photo" id="stu-photo-img" src="" alt="Student Photo" onload="this.classList.add('loaded')" onerror="this.style.display='none'"/>
+          <div id="photo-slot">
+            <div class="photo-wrap" id="stu-photo-wrap">
+              <div class="photo-skel" id="stu-photo-skel">👤</div>
+              <img class="student-photo" id="stu-photo-img" src="" alt="Student Photo" onload="this.classList.add('loaded')" onerror="this.style.display='none'"/>
+            </div>
           </div>
           <div class="stu-info">
             <h2 style="display: flex; align-items: center; gap: 8px;" id="stu-name-el">Loading...</h2>
@@ -519,6 +546,59 @@
   </div>
 </div>
 
+<!-- Suggestion Reply Toast -->
+<div id="sug-toast" class="sug-toast" onclick="openSugModal('history'); closeSugToast();">
+  <div class="sug-toast-icon">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+  </div>
+  <div class="sug-toast-text"><span id="sug-toast-msg">You have new replies!</span></div>
+  <button class="sug-toast-close" onclick="event.stopPropagation(); closeSugToast();">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+
+<!-- Suggestions Modal -->
+<div id="sug-modal" class="modal-overlay" onclick="if(event.target===this)closeSugModal()">
+  <div class="modal-card" style="width: min(420px, 100%); text-align: left; padding: 0; overflow: hidden;">
+    <!-- Tab bar -->
+    <div class="sug-tab-bar">
+      <button class="sug-tab-btn active" data-tab="send" onclick="switchSugTab('send')">Send Feedback</button>
+      <button class="sug-tab-btn" data-tab="history" onclick="switchSugTab('history')">My Suggestions <span class="sug-tab-dot" id="sug-unread-dot" style="display:none;"></span></button>
+    </div>
+    
+    <!-- Send Tab -->
+    <div id="sug-tab-send" style="padding: 20px 24px 24px;">
+      <div id="sug-modal-form">
+        <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; font-weight: 500;">
+          Spotted a bug or have an idea to improve the Student Hub? Let me know!
+        </div>
+        <textarea id="sug-modal-text" class="s-input" style="height: 120px; resize: none; padding: 12px; margin-bottom: 16px;" placeholder="What's on your mind?"></textarea>
+        <div class="modal-actions" style="display: flex; gap: 8px;">
+          <button class="modal-btn modal-btn-cancel" onclick="closeSugModal()">Cancel</button>
+          <button id="sug-modal-submit" class="modal-btn modal-btn-save" style="flex:1;" onclick="submitSugModal()">Submit</button>
+        </div>
+      </div>
+      <div id="sug-modal-success" style="display: none; text-align: center; padding: 10px 0 0;">
+        <div style="color: #10b981; margin-bottom: 12px;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Thank You!</div>
+        <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">Your feedback helps us improve.</div>
+        <button class="modal-btn modal-btn-cancel" style="width:100%;" onclick="closeSugModal()">Close</button>
+      </div>
+    </div>
+    
+    <!-- History Tab -->
+    <div id="sug-tab-history" style="display: none; padding: 16px 20px 20px; max-height: 65vh; overflow-y: auto;">
+      <div id="sug-history-list">
+        <div style="text-align:center; padding: 32px 0; color: var(--muted); font-size: 0.85rem;">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- DRAWER MENU -->
 <button class="drawer-pull-tab" onclick="toggleDrawer(true)" aria-label="Open Menu">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -598,7 +678,7 @@
 
 <script type="module">
   import { initAttendance, flipCard, switchTab, fetchSgpa, showAttendanceDetail, closeAttModal, menuSwitchSem } from '../js/attendance.js';
-  import { toggleCeDd, pickCeIdType, openCredsEditor, closeCredsEditor, saveCredsEditor, confirmLogout, closeLogoutConfirm, executeLogout, toggleTheme, toggleDrawer } from '../js/shared.js';
+  import { toggleCeDd, pickCeIdType, openCredsEditor, closeCredsEditor, saveCredsEditor, confirmLogout, closeLogoutConfirm, executeLogout, toggleTheme, toggleDrawer, openSugModal, closeSugModal, switchSugTab, submitSugModal, closeSugToast } from '../js/shared.js';
 
   document.addEventListener('DOMContentLoaded', initAttendance);
 </script>

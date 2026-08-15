@@ -1,236 +1,438 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Results Leaderboard — Student Hub</title>
-  <meta name="description" content="View semester grades, SGPA rankings, and branch performance statistics."/>
-  <meta name="theme-color" content="#2563eb"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <title>Branch Performance — Student Hub</title>
+  <meta name="theme-color" content="#2563eb">
   <link rel="manifest" href="../manifest.json"/>
-  <link rel="icon" href="../icon.svg" type="image/svg+xml"/>
-  <link rel="apple-touch-icon" href="../icon.svg"/>
+  <link rel="icon" type="image/svg+xml" href="../icon.svg"/>
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500;700;800&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=DM+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-  <!-- Stylesheets -->
-  <link rel="stylesheet" href="../css/base.css"/>
-  <link rel="stylesheet" href="../css/shared.css"/>
-  <link rel="stylesheet" href="../css/results.css"/>
+  <script>
+    try {
+      var _t = localStorage.getItem('nie_theme') || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', _t);
+    } catch(e) {}
+  </script>
+
+  <style>
+    :root{--bg:#f0f4ff;--surface:#fff;--border:#dde6ff;--accent:#2563eb;--accent-h:#1d4ed8;--muted:#64748b;--text:#0f172a;--danger:#ef4444;--warn:#f59e0b;--success:#10b981;--radius:14px;--shadow:0 4px 24px rgba(37,99,235,.07);color-scheme:light}
+    [data-theme=dark]{--bg:#0f172a;--surface:#000;--border:#334155;--muted:#94a3b8;--text:#e2e8f0;--shadow:0 4px 24px rgba(0,0,0,.4);color-scheme:dark}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;height:100dvh;overflow:hidden}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+    [data-theme=dark]::-webkit-scrollbar{width:6px;height:6px}
+    [data-theme=dark]::-webkit-scrollbar-track{background:var(--bg)}
+    [data-theme=dark]::-webkit-scrollbar-thumb{background:#334155;border-radius:99px}
+    
+    /* SHARED CSS */
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:stretch;justify-content:space-around;padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:200;box-shadow:0 -4px 20px rgba(0,0,0,.05)}
+    [data-theme=dark] .bottom-nav{box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+    .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;transition:color .15s}
+    .nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--accent)}
+    .btn-icon{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s;color:#fff;flex-shrink:0;padding:0}
+    .btn-icon:hover{background:rgba(255,255,255,.22)}
+
+    .modal-overlay{position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s;background:rgba(15,23,42,.5);backdrop-filter:blur(0)}
+    .modal-overlay.active{opacity:1;pointer-events:auto;backdrop-filter:blur(12px)}
+    .modal-card{background:var(--surface);border-radius:20px;padding:20px;width:min(520px,100%);box-shadow:0 20px 40px rgba(0,0,0,.15);transform:scale(.95);transition:transform .2s;border:1px solid var(--border);max-height:85vh;overflow-y:auto}
+    .modal-overlay.active .modal-card{transform:scale(1)}
+    .modal-title{font-size:1rem;font-weight:800;margin-bottom:14px;letter-spacing:-.3px;text-align:center}
+    .s-group{margin-bottom:10px}
+    .s-label{display:block;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px}
+    .s-input{width:100%;height:42px;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;outline:none;transition:border-color .15s}
+    .s-input:focus{border-color:var(--accent)}
+    .email-row{display:flex;align-items:stretch}
+    .email-row .s-input{border-radius:10px 0 0 10px;border-right:none;flex:1;min-width:0}
+    .email-suffix{border:1.5px solid var(--border);border-left:none;border-radius:0 10px 10px 0;padding:0 10px;display:flex;align-items:center;font-size:.78rem;font-weight:600;color:var(--muted);white-space:nowrap;background:var(--bg)}
+    .email-row:focus-within .s-input{border-color:var(--accent)}
+    .email-row:focus-within .email-suffix{border-color:var(--accent)}
+    .modal-actions{display:flex;gap:8px;margin-top:14px}
+    .modal-btn{flex:1;padding:10px;border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;border:none;transition:all .15s}
+    .modal-btn-cancel{background:var(--bg);color:var(--text);border:1.5px solid var(--border)}
+    .modal-btn-cancel:hover{border-color:var(--muted)}
+    .modal-btn-save{background:var(--accent);color:#fff}.modal-btn-save:hover{opacity:.9}
+
+    /* Drawer */
+    .drawer-pull-tab {
+      position: fixed; left: -4px; top: 120px; z-index: 999;
+      width: 32px; height: 54px;
+      background: rgba(255, 255, 255, 0.85); color: var(--text);
+      border: 1px solid rgba(0,0,0,0.06); border-radius: 0 16px 16px 0;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.04);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      padding: 0; padding-left: 4px; outline: none;
+    }
+    .drawer-pull-tab:hover { width: 40px; background: #fff; color: var(--accent); box-shadow: 6px 6px 24px rgba(0, 0, 0, 0.08); }
+    .drawer-pull-tab:active { transform: scale(0.92) translateX(-4px); }
+    [data-theme=dark] .drawer-pull-tab { background: rgba(0, 0, 0, 0.85); box-shadow: 4px 4px 20px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); }
+    [data-theme=dark] .drawer-pull-tab:hover { background: #000; box-shadow: 6px 6px 24px rgba(0,0,0,0.5); }
+
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.2); 
+      backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
+      z-index: 9998; opacity: 0; pointer-events: none;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-overlay.active { opacity: 1; pointer-events: auto; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    [data-theme=dark] .drawer-overlay { background: rgba(0, 0, 0, 0.4); }
+
+    .drawer-content {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 290px; background: rgba(255, 255, 255, 0.85);
+      border-right: 1px solid rgba(0,0,0,0.06); border-radius: 0 24px 24px 0;
+      display: flex; flex-direction: column;
+      transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 20px 0 40px rgba(0, 0, 0, 0.06);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      overflow: hidden;
+    }
+    .drawer-overlay.active .drawer-content { transform: translateX(0); }
+    [data-theme=dark] .drawer-content { background: rgba(0, 0, 0, 0.85); box-shadow: 20px 0 40px rgba(0,0,0,0.5); border-right: 1px solid rgba(255,255,255,0.15); }
+
+    .drawer-header { padding: 24px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .drawer-title { font-size: 1.25rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+    .drawer-close-btn {
+      background: rgba(0,0,0,0.03); border: none; color: var(--muted); cursor: pointer;
+      width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s; padding: 0;
+    }
+    .drawer-close-btn:hover { background: rgba(0,0,0,0.08); color: var(--text); }
+    [data-theme=dark] .drawer-close-btn { background: rgba(255,255,255,0.05); }
+    [data-theme=dark] .drawer-close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    .drawer-menu-list { padding: 10px 16px 24px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
+    .drawer-menu-item {
+      display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px;
+      color: var(--muted); text-decoration: none; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600;
+      transition: all 0.2s ease; background: transparent; border: none; width: 100%; text-align: left; cursor: pointer; outline: none;
+    }
+    .drawer-menu-item:hover { background: rgba(37, 99, 235, 0.08); color: var(--accent); transform: translateX(4px); }
+    [data-theme=dark] .drawer-menu-item:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+    .drawer-menu-item.danger { color: var(--danger); margin-top: auto; }
+    .drawer-menu-item.danger:hover { background: rgba(239, 68, 68, 0.08); color: var(--danger); transform: translateX(4px); }
+    .drawer-menu-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: currentColor; }
+    .drawer-menu-icon svg { display: block; transition: transform 0.2s ease; }
+    .drawer-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent); margin: 12px 0; flex-shrink: 0; border: none; }
+    [data-theme=dark] .drawer-divider { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent); }
+
+    .drawer-footer {
+      padding: 16px 20px 20px 20px; border-top: 1px solid rgba(0,0,0,0.06); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.4);
+    }
+    [data-theme=dark] .drawer-footer { background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.15); }
+    .drawer-footer-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      color: var(--muted); cursor: pointer; transition: all 0.2s ease; padding: 10px; border-radius: 14px;
+    }
+    .drawer-footer-item:hover { color: var(--accent); background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.05); transform: translateY(-2px); }
+    [data-theme=dark] .drawer-footer-item:hover { background: #1e293b; box-shadow: 0 4px 14px rgba(0,0,0,0.3); color: #fff; }
+    .drawer-footer-icon { display: flex; align-items: center; }
+    .drawer-footer-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
+    .drawer-footer-divider { width: 1px; height: 32px; background: rgba(0,0,0,0.06); flex-shrink: 0; margin: 0 10px; }
+    [data-theme=dark] .drawer-footer-divider { background: rgba(255,255,255,0.15); }
+
+    /* Results Specific Layout */
+    html,body{height:100%!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+    .page-wrap{flex:1;width:100%;max-width:600px;margin:0 auto;padding:16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0;box-sizing:border-box}
+    .page-wrap::-webkit-scrollbar{width:4px}
+    .page-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+    [data-theme=dark] .page-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2)}
+
+    /* Header */
+    .perf-header{text-align:center;padding:8px 0}
+    .perf-header h1{font-size:1.4rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;margin-bottom:4px}
+    .perf-header .sub{color:var(--muted);font-size:.82rem;font-weight:500}
+
+    /* Stats Row */
+    .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+    [data-theme=dark] .stat-card{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+    .stat-label{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+    .stat-value{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:800;color:var(--accent)}
+    .stat-value.gold{color:#ca8a04}
+    .stat-value.small{font-size:.9rem}
+
+    /* My Rank Card */
+    .my-rank-card{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-radius:16px;padding:18px 20px;color:#fff;display:flex;align-items:center;gap:16px;box-shadow:0 8px 24px rgba(37,99,235,.25)}
+    .my-rank-num{font-family:'DM Mono',monospace;font-size:2rem;font-weight:800;line-height:1;opacity:.95}
+    .my-rank-info{flex:1;min-width:0}
+    .my-rank-name{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .my-rank-meta{font-size:.78rem;opacity:.75;font-weight:500;margin-top:2px}
+    .my-rank-sgpa{font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;text-align:right;line-height:1}
+    .my-rank-sgpa-label{font-size:.55rem;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.06em;text-align:right;margin-top:2px}
+
+    /* Leaderboard List */
+    .lb-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.03);display:flex;flex-direction:column;flex:1;min-height:0}
+    [data-theme=dark] .lb-card{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+    .lb-title{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:14px 16px 0;flex-shrink:0}
+    .lb-list{padding:8px;overflow-y:auto;flex:1;min-height:0;position:relative}
+    .lb-list::-webkit-scrollbar{width:6px}
+    .lb-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+    [data-theme=dark] .lb-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2)}
+
+    .lb-row{display:grid;grid-template-columns:36px 1fr auto auto;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;transition:background .12s}
+    .lb-row:hover{background:rgba(37,99,235,.04)}
+    [data-theme=dark] .lb-row:hover{background:rgba(255,255,255,.04)}
+    .lb-row.me{background:rgba(37,99,235,.06);border:1.5px solid rgba(37,99,235,.15)}
+    [data-theme=dark] .lb-row.me{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.3)}
+    .lb-row + .lb-row{margin-top:2px}
+
+    .lb-rank{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:800;color:var(--muted);text-align:center;width:36px}
+    .lb-rank.gold{color:#ca8a04;font-size:1.1rem}
+    .lb-rank.silver{color:#6b7280;font-size:1rem}
+    .lb-rank.bronze{color:#b45309;font-size:1rem}
+
+    .lb-info{min-width:0}
+    .lb-name{font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lb-usn{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);font-weight:500}
+
+    .lb-cr{text-align:right;flex-shrink:0;font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;color:var(--muted);padding-right:16px}
+    .lb-right{text-align:right;flex-shrink:0;width:32px}
+    .lb-sgpa{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:800;color:var(--text)}
+
+    .lb-fail-badge{display:inline-block;font-size:.58rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:20px;margin-left:4px}
+    [data-theme=dark] .lb-fail-badge{background:rgba(220,38,38,.15);color:#f87171}
+
+    /* Loading / Error States */
+    .center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);gap:14px;flex:1;min-height:0;box-sizing:border-box}
+    .loader{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .err-title{font-size:1.1rem;font-weight:800;color:var(--text)}
+    .err-sub{font-size:.85rem;color:var(--muted);max-width:300px;line-height:1.5}
+    .back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.85rem;border:none;cursor:pointer;transition:opacity .15s}
+    .back-btn:hover{opacity:.88}
+  </style>
 </head>
 <body>
 
-  <!-- Topbar Header -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-title">Results &amp; Rankings</div>
-      <div class="topbar-sub">Branch Leaderboard</div>
-    </div>
-    <div class="topbar-actions">
-      <button class="btn-icon" onclick="loadResultsData()" title="Refresh" aria-label="Refresh">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      </button>
-      <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle Theme">
-        <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        <svg id="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
-    </div>
-  </header>
+  <!-- Loading State -->
+  <div class="center-state" id="loading-state">
+    <div class="loader"></div>
+    <div style="font-size:.85rem;font-weight:600;color:var(--muted)">Loading leaderboard...</div>
+  </div>
 
-  <!-- Pull Tab for Side Navigation Drawer -->
-  <button class="drawer-pull-tab" onclick="toggleDrawer(true)" aria-label="Open menu">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-  </button>
+  <!-- Error State -->
+  <div class="center-state" id="error-state" style="display:none">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+    </svg>
+    <div class="err-title" id="err-title">Error</div>
+    <div class="err-sub" id="err-sub"></div>
+    <a class="back-btn" href="../">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to Home
+    </a>
+  </div>
 
-  <!-- Side Navigation Drawer -->
-  <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)">
-    <div class="drawer-content" onclick="event.stopPropagation()">
-      <div class="drawer-header">
-        <div class="drawer-title">Navigation</div>
-        <button class="drawer-close-btn" onclick="toggleDrawer(false)" aria-label="Close menu">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+  <!-- Empty / Generate State -->
+  <div class="center-state" id="empty-state" style="display:none">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;max-width:340px;width:100%;box-shadow:0 4px 16px rgba(0,0,0,.03)">
+      <div style="width:56px;height:56px;border-radius:16px;background:rgba(37,99,235,.08);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
       </div>
-      <div class="drawer-menu-list">
-        <button class="drawer-menu-item" onclick="toggleDrawer(false); openSugModal('send');">
-          <div class="drawer-menu-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <span>Feedback &amp; Suggestions</span>
-        </button>
-        <button class="drawer-menu-item danger" onclick="confirmLogout()">
-          <div class="drawer-menu-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </div>
-          <span>Logout</span>
-        </button>
-      </div>
-      <div class="drawer-footer">
-        <div class="drawer-footer-item" onclick="openCredsEditor()">
-          <div class="drawer-footer-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </div>
-          <span class="drawer-footer-label">Settings</span>
-        </div>
-        <div class="drawer-footer-divider"></div>
-        <div class="drawer-footer-item" onclick="toggleTheme()">
-          <div class="drawer-footer-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </div>
-          <span class="drawer-footer-label">Theme</span>
-        </div>
+      <div class="err-title" style="margin-bottom:8px">No Results Yet</div>
+      <div class="err-sub" style="margin:0 auto 24px">The leaderboard for your branch hasn't been fetched yet. Be the first to generate it!</div>
+      <button class="back-btn" id="start-gen-btn" style="width:100%;justify-content:center;height:48px;font-size:.95rem">Generate Leaderboard</button>
+    </div>
+  </div>
+
+  <!-- Generating State -->
+  <div class="center-state" id="gen-state" style="display:none">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;max-width:340px;width:100%;box-shadow:0 4px 16px rgba(0,0,0,.03)">
+      <div class="loader" style="margin:0 auto 16px;border-color:var(--border);border-top-color:var(--accent)"></div>
+      <div class="err-title" id="gen-title" style="margin-bottom:8px">Generating...</div>
+      <div class="err-sub" id="gen-sub" style="margin:0 auto 20px">Fetching results for your branch. This might take 10-20 seconds.</div>
+      <div id="gen-prog-wrap" style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:none">
+        <div id="gen-fill" style="height:100%;width:0;background:var(--accent);transition:width .25s"></div>
       </div>
     </div>
   </div>
 
-  <!-- Main Content Page -->
-  <main class="page-wrap">
-    
+  <!-- Main Content -->
+  <div class="page-wrap" id="main-content" style="display:none">
+
     <div class="perf-header">
-      <h1>Performance Leaderboard</h1>
-      <div class="sub">Branch SGPA Rankings</div>
+      <h1 id="perf-title">Branch Performance</h1>
+      <div class="sub" id="perf-sub"></div>
     </div>
 
-    <!-- Loading State -->
-    <div class="center-state" id="results-loader">
-      <div class="spinner"></div>
-      <div style="font-weight:600;color:var(--muted);font-size:0.85rem">Loading leaderboard...</div>
-    </div>
-
-    <!-- Error State -->
-    <div class="center-state" id="results-error" style="display:none">
-      <div class="err-title">No Results Available</div>
-      <div class="err-sub" id="results-err-msg">Results have not been populated yet or are still being processed.</div>
-    </div>
-
-    <!-- Leaderboard Content -->
-    <div id="results-content" style="display:none;flex-direction:column;gap:14px;flex:1;min-height:0">
-      
-      <!-- Stats Row -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-label">Students</div>
-          <div class="stat-value" id="stat-total-students">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Highest SGPA</div>
-          <div class="stat-value gold" id="stat-highest-sgpa">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Class Avg</div>
-          <div class="stat-value" id="stat-avg-sgpa">—</div>
-        </div>
+    <!-- My Rank Highlight -->
+    <div class="my-rank-card" id="my-rank-card" style="display:none">
+      <div class="my-rank-num" id="my-rank-num">#1</div>
+      <div class="my-rank-info">
+        <div class="my-rank-name" id="my-rank-name">You</div>
+        <div class="my-rank-meta" id="my-rank-meta"></div>
       </div>
-
-      <!-- My Rank Banner -->
-      <div class="my-rank-card" id="my-rank-banner" style="display:none">
-        <div class="my-rank-num">#—</div>
-        <div class="my-rank-info">
-          <div class="my-rank-name">My Result</div>
-          <div class="my-rank-meta"></div>
-        </div>
-        <div>
-          <div class="my-rank-sgpa">—</div>
-          <div class="my-rank-sgpa-label">Your SGPA</div>
-        </div>
+      <div>
+        <div class="my-rank-sgpa" id="my-rank-sgpa">—</div>
+        <div class="my-rank-sgpa-label">SGPA</div>
       </div>
-
-      <!-- Class Rankings List -->
-      <div class="lb-card">
-        <div class="lb-title">Rankings</div>
-        <div class="lb-list" id="lb-list-items"></div>
-      </div>
-
     </div>
 
-  </main>
+    <!-- Stats Summary -->
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Students</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Branch Avg</div>
+        <div class="stat-value" id="stat-avg">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Your Rank</div>
+        <div class="stat-value gold" id="stat-rank">—</div>
+      </div>
+    </div>
 
-  <!-- Settings Editor Modal -->
-  <div class="modal-overlay" id="creds-modal" onclick="closeCredsEditor()">
-    <div class="modal-card" id="creds-modal-card" onclick="event.stopPropagation()">
+    <!-- Leaderboard -->
+    <div class="lb-card">
+      <div class="lb-title">Leaderboard</div>
+      <div class="lb-list" id="lb-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <a class="nav-tab" href="../">
+      <svg width="18" height="18" viewBox="0 0 512 512" fill="none"><rect x="32" y="32" width="448" height="448" rx="100" stroke="currentColor" stroke-width="36"/><path fill="currentColor" d="M256 120L120 235V392H210V300H302V392H392V235L256 120Z"/></svg>Home
+    </a>
+    <a class="nav-tab" href="../moodle/">
+      <svg width="18" height="18" viewBox="0 0 512 512" fill="none"><rect x="32" y="32" width="448" height="448" rx="100" stroke="currentColor" stroke-width="36" fill="none"/><g transform="translate(86, 74) scale(2.5)" fill="currentColor" stroke="currentColor"><path fill="currentColor" d="M106.259 105.754V66.975c0-8.164-3.397-12.244-10.034-12.244-6.629 0-10.034 4.08-10.034 12.244v38.779H66.294V66.975c0-8.164-3.228-12.244-9.862-12.244-6.633 0-10.036 4.08-10.036 12.244v38.779H26.667V64.768c0-8.504 2.891-14.801 8.844-19.223 5.102-3.91 12.246-5.777 20.92-5.777 9.015 0 15.478 2.207 19.727 6.801 3.57-4.594 10.207-6.801 19.897-6.801 8.844 0 15.819 1.867 20.922 5.777 5.951 4.422 8.843 10.719 8.843 19.223v41.152h-19.563v-.166z"/><path fill="currentColor" opacity="0.85" d="M28.539 49.627l-2.041 10.207c18.708 6.291 36.395.166 45.751-16.158-13.778-9.522-26.535.17-43.71 5.951"/><path fill="currentColor" opacity="0.7" d="M28.539 47.08c-.681 3.91-1.192 7.65-1.872 11.563 17.857 6.125 35.375.85 44.73-15.137-11.909-13.776-25.17-2.383-42.858 3.574"/><path fill="currentColor" opacity="0.6" d="M49.799 51.668c-8.164-1.701-17.009 2.555-23.131 6.975-3.912-28.57 13.777-27.893 36.903-20.75-1.529 6.975-4.083 16.33-8.502 21.941-.169-3.744-1.869-6.293-5.27-8.166"/><path fill="currentColor" opacity="0.8" d="M2.178 47.08c29.932-18.031 46.77-21.43 81.634-25-40.478 31.969-41.499 25-81.634 25"/><path stroke="currentColor" stroke-width=".5" fill="none" d="M83.812 22.246L51.667 45.545"/><path opacity=".23" fill="currentColor" d="M45.545 34.66c.34 3.744-.511-3.572 0 0"/><path stroke="currentColor" stroke-width=".5" fill="none" d="M2.178 47.08l49.489-1.535"/><path stroke="currentColor" stroke-width=".5" d="M42.484 35.002C33.98 37.383 6.09 43.506 5.747 47.08c-.849 6.631-.167 17.176-.167 17.176" fill="none"/><path fill="currentColor" d="M8.131 89.596c-3.063-7.652-6.804-16.158-2.384-26.703C8.64 72.756 8.131 80.24 8.131 89.596"/><path fill="currentColor" d="M41.076 33.844c.708-.25 1.384-.17 1.509.184.126.355-.344.846-1.052 1.096-.709.256-1.384.172-1.51-.184-.127-.352.344-.844 1.053-1.096z"/></g></svg>Moodle
+    </a>
+    <a class="nav-tab" href="../attendance/">
+      <svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="36"><rect x="32" y="32" width="448" height="448" rx="100"/><rect x="142" y="281" width="60" height="90" rx="30" fill="currentColor" stroke="none" opacity="0.4"/><rect x="226" y="221" width="60" height="150" rx="30" fill="currentColor" stroke="none" opacity="0.7"/><rect x="310" y="141" width="60" height="230" rx="30" fill="currentColor" stroke="none"/></svg>Attendance
+    </a>
+    <a class="nav-tab active" href="./">
+      <svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="448" height="448" rx="100"/><line x1="180" y1="332" x2="332" y2="180"/><circle cx="180" cy="180" r="38"/><circle cx="332" cy="332" r="38"/></svg>Results
+    </a>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="creds-modal" class="modal-overlay" onclick="if(event.target===this)closeCredsEditor()">
+    <div class="modal-card" id="creds-modal-card">
       <div class="modal-title" id="ce-modal-title">Settings</div>
-      <div id="ce-att-col">
-        <div class="s-group">
-          <label class="s-label">USN</label>
-          <input class="s-input" id="ce-usn" placeholder="e.g. 4NI23CS001"/>
-        </div>
-        <div class="s-group">
-          <label class="s-label">Date of Birth</label>
-          <input class="s-input" id="ce-dob" placeholder="DD/MM/YYYY"/>
-        </div>
-        <div class="s-group">
-          <label class="s-label">Verification Code</label>
-          <input class="s-input" id="ce-code" placeholder="4 digits" maxlength="4"/>
+      <div class="settings-grid">
+        <div id="ce-att-col">
+          <div class="s-group"><label class="s-label">USN</label><input type="text" id="ce-usn" class="s-input" autocorrect="off" spellcheck="false"></div>
+          <div class="s-group"><label class="s-label">Date of Birth</label><input type="text" id="ce-dob" class="s-input" placeholder="DD/MM/YYYY" maxlength="10"></div>
+          <div class="s-group"><label class="s-label">Verification Type</label>
+            <input type="hidden" id="ce-idtype" value="1"/>
+            <div class="ce-dropdown" id="ce-idtype-dd">
+              <div class="ce-dd-trigger" onclick="toggleCeDd()">
+                <span id="ce-idtype-label">Father's Last 4 Digits</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <div class="ce-dd-menu">
+                <div class="ce-dd-opt selected" onclick="pickCeIdType('1','Father\'s Last 4 Digits',this)">Father's Last 4 Digits</div>
+                <div class="ce-dd-opt" onclick="pickCeIdType('2','Mother\'s Last 4 Digits',this)">Mother's Last 4 Digits</div>
+                <div class="ce-dd-opt" onclick="pickCeIdType('5','Guardian\'s Last 4 Digits',this)">Guardian's Last 4 Digits</div>
+              </div>
+            </div>
+          </div>
+          <div class="s-group">
+            <label class="s-label">Code</label>
+            <input type="text" id="ce-code" class="s-input" maxlength="4" style="font-family:'DM Mono',monospace;letter-spacing:2px">
+            <div id="ce-err-code" style="display:none;color:var(--danger);font-size:.76rem;font-weight:600;margin-top:4px">Enter exactly 4 digits</div>
+          </div>
         </div>
       </div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn-cancel" onclick="closeCredsEditor()">Cancel</button>
-        <button class="modal-btn modal-btn-save" onclick="saveCredsEditor()">Save Changes</button>
+        <button class="modal-btn modal-btn-save" onclick="saveCredsEditor()">Save</button>
       </div>
     </div>
   </div>
 
-  <!-- Logout Modal -->
-  <div class="modal-overlay" id="logout-confirm-modal" onclick="closeLogoutConfirm()">
-    <div class="modal-card" style="width:min(340px, 100%)" onclick="event.stopPropagation()">
-      <div class="modal-title">Log Out?</div>
-      <p style="font-size:0.85rem;color:var(--muted);text-align:center;margin-bottom:16px">This will clear your stored credentials and cached data from this browser.</p>
-      <div class="modal-actions">
+  <!-- Logout Confirm Modal -->
+  <div id="logout-confirm-modal" class="modal-overlay" onclick="if(event.target===this)closeLogoutConfirm()">
+    <div class="modal-card" style="width: min(340px, 100%); text-align: center; padding: 24px;">
+      <div class="modal-title" style="font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; color: var(--danger);">Clear Data?</div>
+      <div style="font-size: 0.85rem; color: var(--muted); line-height: 1.5; margin-bottom: 20px; font-weight: 500;">
+        Are you sure you want to clear all data and logout? This action cannot be undone.
+      </div>
+      <div class="modal-actions" style="display: flex; gap: 8px;">
         <button class="modal-btn modal-btn-cancel" onclick="closeLogoutConfirm()">Cancel</button>
-        <button class="modal-btn" style="background:var(--danger);color:#fff" onclick="executeLogout()">Log Out</button>
+        <button class="modal-btn" style="background: var(--danger); color: #fff;" onclick="executeLogout()">Clear All</button>
       </div>
     </div>
   </div>
 
-  <!-- Suggestions & Feedback Modal -->
-  <div class="modal-overlay" id="sug-modal" onclick="closeSugModal()">
-    <div class="modal-card" style="padding:0;overflow:hidden;width:min(440px, 100%)" onclick="event.stopPropagation()">
-      <div class="sug-tab-bar">
-        <button class="sug-tab-btn active" data-tab="send" onclick="switchSugTab('send')">Send Feedback</button>
-        <button class="sug-tab-btn" data-tab="history" onclick="switchSugTab('history')">Past Replies</button>
-      </div>
-      <div style="padding:20px" id="sug-tab-send">
-        <div id="sug-modal-form">
-          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Found a bug or have a suggestion? Let us know!</p>
-          <textarea id="sug-modal-text" class="s-input" style="height:110px;padding:10px 12px;font-family:inherit;resize:none" placeholder="Type your suggestion or feedback here..."></textarea>
-          <div class="modal-actions" style="margin-top:14px">
-            <button class="modal-btn modal-btn-cancel" onclick="closeSugModal()">Cancel</button>
-            <button class="modal-btn modal-btn-save" onclick="submitSugModal()">Submit</button>
-          </div>
+  <!-- Drawer Menu -->
+  <button class="drawer-pull-tab" onclick="toggleDrawer(true)" aria-label="Open Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+  <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer(false)">
+    <div class="drawer-content" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <div class="drawer-title">Menu</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="drawer-close-btn" id="m-theme-btn" onclick="toggleTheme()" aria-label="Toggle Theme">
+            <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+          <button class="drawer-close-btn" onclick="toggleDrawer(false)" aria-label="Close Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
       </div>
-      <div style="padding:20px;max-height:360px;overflow-y:auto;display:none" id="sug-tab-history">
-        <div id="sug-history-list"></div>
+      <div class="drawer-menu-list">
+        <div class="drawer-section-title" style="margin-top:4px;">Quick Links</div>
+        <a class="drawer-menu-item" href="https://sis.nie.ac.in/" target="_blank" rel="noopener">
+          <span class="drawer-menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+          <span class="drawer-menu-label">Fee Payment Portal</span>
+        </a>
+        <button class="drawer-menu-item" onclick="var sm = document.getElementById('pyq-sub-menu'); var ic = document.getElementById('pyq-chevron'); if(sm.style.display==='flex'){sm.style.display='none';ic.style.transform='rotate(0deg)';}else{sm.style.display='flex';ic.style.transform='rotate(180deg)';}">
+          <span class="drawer-menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
+          <span class="drawer-menu-label">Previous Year QPs</span>
+          <svg id="pyq-chevron" style="margin-left:auto; opacity:0.5; transition: transform 0.2s;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="pyq-sub-menu" style="display:none; flex-direction:column; padding-left:42px; padding-bottom:8px; gap:4px; margin-top:-4px;">
+          <a class="drawer-menu-item" style="padding:10px 14px; font-size:0.85rem;" href="https://drive.google.com/drive/folders/1XZpAFYe1jOU9Znb2y0iF6n5q_BbpsUI5?usp=share_link" target="_blank" rel="noopener">1st Year</a>
+          <a class="drawer-menu-item" style="padding:10px 14px; font-size:0.85rem;" href="https://drive.google.com/drive/folders/1xjvyP2X6HE8aiHln6waaGo6rg1D_KHN8?usp=sharing" target="_blank" rel="noopener">2nd-4th Year</a>
+        </div>
+        <div class="drawer-divider"></div>
+
+        <button class="drawer-menu-item danger" onclick="confirmLogout()">
+          <span class="drawer-menu-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </span>
+          <span class="drawer-menu-label">Clear All Data & Logout</span>
+        </button>
+      </div>
+      <div class="drawer-footer">
+        <div class="drawer-footer-item" onclick="openSugModal(); toggleDrawer(false);" style="cursor:pointer;">
+          <span class="drawer-footer-icon" aria-label="Suggestions">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+          </span>
+          <span class="drawer-footer-label">Suggestions</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Bottom Navigation Bar -->
-  <nav class="bottom-nav">
-    <a href="../" class="nav-tab">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a href="../attendance/" class="nav-tab">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
-      <span>Attendance</span>
-    </a>
-    <a href="../moodle/" class="nav-tab">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      <span>Moodle</span>
-    </a>
-    <a href="./" class="nav-tab active">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
-      <span>Results</span>
-    </a>
-  </nav>
-
-  <!-- Module Scripts -->
   <script type="module">
     import { initResults } from '../js/results.js';
+    import { openCredsEditor, closeCredsEditor, saveCredsEditor, confirmLogout, closeLogoutConfirm, executeLogout, toggleTheme, toggleDrawer } from '../js/shared.js';
+
     document.addEventListener('DOMContentLoaded', initResults);
   </script>
+
 </body>
 </html>

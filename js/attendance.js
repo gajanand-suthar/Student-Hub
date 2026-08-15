@@ -404,16 +404,35 @@ function renderAttendanceModal(data) {
     </div>`;
 }
 
+export function menuSwitchSem(newSem) {
+  if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
+  const currentSem = (document.getElementById('att-sem') && document.getElementById('att-sem').value) || '';
+  if (currentSem === newSem) return;
+  try {
+    const creds = loadCreds() || {};
+    creds.sem = newSem;
+    localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
+    const attSemInput = document.getElementById('att-sem');
+    if (attSemInput) attSemInput.value = newSem;
+    const btnEven = document.getElementById('m-sem-even');
+    const btnOdd = document.getElementById('m-sem-odd');
+    if (btnEven && btnOdd) {
+      btnEven.classList.toggle('active', newSem === 'even');
+      btnOdd.classList.toggle('active', newSem === 'odd');
+    }
+    fetchAttendanceData(true);
+  } catch (e) {
+    alert('Error switching semester: ' + e.message);
+  }
+}
+
 export function closeAttModal() {
   const modal = document.getElementById('att-modal');
   if (modal) modal.style.display = 'none';
 }
 
 export function switchSem(newSem) {
-  const creds = loadCreds() || {};
-  creds.sem = newSem;
-  localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
-  fetchAttendanceData(true);
+  menuSwitchSem(newSem);
 }
 
 function escHtml(s) {
@@ -429,5 +448,6 @@ if (typeof window !== 'undefined') {
   window.showAttendanceDetail = showAttendanceDetail;
   window.closeAttModal = closeAttModal;
   window.switchSem = switchSem;
+  window.menuSwitchSem = menuSwitchSem;
   window.refreshData = () => fetchAttendanceData(true);
 }

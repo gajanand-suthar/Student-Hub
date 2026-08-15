@@ -238,6 +238,25 @@ export const api = {
   },
 
   // ── Results & Leaderboard ──
+  async getResultsPerformance(usn) {
+    const res = await fetch(this.getApiUrl('/api/results/performance?usn=' + encodeURIComponent(usn)));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
+  async post(path, data) {
+    const res = await fetch(this.getApiUrl(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
   async getResults(branch = '', batch = '') {
     const params = new URLSearchParams();
     if (branch) params.set('branch', branch);

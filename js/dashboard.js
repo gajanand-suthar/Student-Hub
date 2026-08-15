@@ -107,11 +107,20 @@ function continueBoot() {
     if (hour < 12) timeStr = 'Good morning,';
     else if (hour < 17) timeStr = 'Good afternoon,';
     const gTime = document.getElementById('greeting-time');
-    if (gTime) gTime.textContent = timeStr;
-  }
-
   initAcademicCalendar();
   checkSugUnread();
+
+  // Check Feature Config (Hallticket toggle)
+  api.getConfig().then(cfg => {
+    const btn = document.getElementById('download-ht-btn');
+    if (btn) {
+      if (cfg && cfg.hall_ticket_enabled === false) {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = 'flex';
+      }
+    }
+  }).catch(() => {});
 
   const creds = loadCreds();
   if (!creds || !creds.usn) {
@@ -742,6 +751,37 @@ export function closeNoticesModal() {
   }, 300);
 }
 
+function getNoticeIconSvg(link, idPrefix = 'n') {
+  const linkLower = (link || '').toLowerCase();
+  if (linkLower.endsWith('.pdf')) {
+    return `<svg viewBox="0 0 1024 1024" width="34" height="34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PDF file icon">
+      <defs>
+        <linearGradient id="${idPrefix}-paperGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#f1f2f6"/></linearGradient>
+        <linearGradient id="${idPrefix}-paperFoldGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eceef4"/><stop offset="100%" stop-color="#dfe3eb"/></linearGradient>
+        <linearGradient id="${idPrefix}-redGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff4a3d"/><stop offset="100%" stop-color="#ef1f1b"/></linearGradient>
+        <filter id="${idPrefix}-softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#cfd4df" flood-opacity="0.55"/></filter>
+        <filter id="${idPrefix}-labelShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#d43a32" flood-opacity="0.35"/></filter>
+      </defs>
+      <g filter="url(#${idPrefix}-softShadow)">
+        <path d="M360 170 Q360 130 400 130 H728 L880 282 V860 Q880 894 846 894 H400 Q360 894 360 854 Z" fill="url(#${idPrefix}-paperGrad)"/>
+        <path d="M728 130 L880 282 H760 Q728 282 728 250 Z" fill="url(#${idPrefix}-paperFoldGrad)"/>
+        <path d="M728 130 L880 282 H760 Q728 282 728 250 Z" fill="none" stroke="#e1e5ec" stroke-width="1"/>
+      </g>
+      <g filter="url(#${idPrefix}-labelShadow)">
+        <rect x="145" y="540" width="534" height="230" rx="28" ry="28" fill="url(#${idPrefix}-redGrad)"/>
+        <rect x="145" y="540" width="534" height="230" rx="28" ry="28" fill="none" stroke="#ff6a61" stroke-opacity="0.35"/>
+        <text x="412" y="706" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="2" fill="#ffffff">PDF</text>
+      </g>
+    </svg>`;
+  } else if (linkLower.endsWith('.doc') || linkLower.endsWith('.docx')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+  } else if (linkLower.match(/\.(jpeg|jpg|gif|png|webp)$/)) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+  } else {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+  }
+}
+
 export async function fetchNotices(forceRefresh = false) {
   const list = document.getElementById('nm-list');
   const loader = document.getElementById('nm-loader');
@@ -770,7 +810,7 @@ export async function fetchNotices(forceRefresh = false) {
     if (!notices || !notices.length) {
       list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted);">No notices found.</div>';
     } else {
-      notices.forEach(n => {
+      notices.forEach((n, idx) => {
         const card = document.createElement('a');
         card.className = 'notice-card';
         card.href = n.link;
@@ -779,7 +819,7 @@ export async function fetchNotices(forceRefresh = false) {
 
         card.innerHTML = `
           <div class="notice-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ${getNoticeIconSvg(n.link, 'n-' + idx)}
           </div>
           <div class="notice-content">
             <div class="notice-title" title="${n.title.replace(/"/g, '&quot;')}">${n.title}</div>
@@ -893,7 +933,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
   if (!items || !items.length) {
     list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted);">No ${currentDeptTab} files found.</div>`;
   } else {
-    items.forEach(item => {
+    items.forEach((item, idx) => {
       const card = document.createElement('a');
       card.className = 'notice-card';
       card.href = item.file;
@@ -903,7 +943,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
 
       card.innerHTML = `
         <div class="notice-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          ${getNoticeIconSvg(item.file, 'dept-' + idx)}
         </div>
         <div class="notice-content">
           <div class="notice-title" title="${item.title.replace(/"/g, '&quot;')}">${item.title}</div>

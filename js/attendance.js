@@ -87,10 +87,13 @@ export function renderStudentView(data) {
   const initials = name.split(' ').slice(0, 2).map(w => w[0] || '').join('');
   if (photoSlot) {
     if (data.photoUri) {
+      const fullPhotoUrl = data.photoUri.startsWith('http') || data.photoUri.startsWith('data:')
+        ? data.photoUri
+        : CONFIG.API_BASE.replace(/\/$/, '') + (data.photoUri.startsWith('/') ? data.photoUri : '/' + data.photoUri);
       photoSlot.innerHTML = `
         <div class="photo-wrap">
           <div class="photo-skel">${escHtml(initials)}</div>
-          <img src="${data.photoUri}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')"/>
+          <img src="${fullPhotoUrl}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')"/>
         </div>`;
     } else {
       photoSlot.innerHTML = `<div class="student-photo-ph">${escHtml(initials)}</div>`;
@@ -99,60 +102,66 @@ export function renderStudentView(data) {
 
   // Attendance Rows
   const sortedAtt = [...attendance].sort((a, b) => a.pct - b.pct);
-  const attRowsEl = document.getElementById('att-rows-container');
-  if (attRowsEl) {
-    if (!sortedAtt.length) {
-      attRowsEl.innerHTML = '<p class="empty-panel">No attendance records found.</p>';
-    } else {
-      attRowsEl.innerHTML = sortedAtt
-        .map(s => {
-          let barColor = '#3b82f6', textColor = '#1d4ed8';
-          if (s.pct < 75) { barColor = '#ef4444'; textColor = '#dc2626'; }
-          else if (s.pct < 85) { barColor = '#f59e0b'; textColor = '#b45309'; }
+  let attHtml = '';
+  if (!sortedAtt.length) {
+    attHtml = '<p class="empty-panel">No attendance records found.</p>';
+  } else {
+    attHtml = sortedAtt
+      .map(s => {
+        let barColor = '#3b82f6', textColor = '#1d4ed8';
+        if (s.pct < 75) { barColor = '#ef4444'; textColor = '#dc2626'; }
+        else if (s.pct < 85) { barColor = '#f59e0b'; textColor = '#b45309'; }
 
-          const params = cieLinks[s.code] || {};
-          return `
-            <div class="cr" data-code="${escHtml(s.code)}" data-name="${escHtml(s.name)}" data-pct="${s.pct}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" onclick="showAttendanceDetail('${escHtml(s.code)}')">
-              <div class="cr-label"><span class="cr-name">${escHtml(s.name)}</span></div>
-              <div class="cr-track">
-                <div class="cr-fill" style="width:${Math.max(s.pct, 2)}%; background:${barColor}"></div>
-                <div class="cr-mark" style="left:75%"></div>
-                <div class="cr-mark" style="left:85%"></div>
-              </div>
-              <div class="cr-pill" style="background:${barColor}1a; color:${textColor}; border-color:${barColor}55">
-                ${s.pct}%<span class="cr-pill-arrow">›</span>
-              </div>
-            </div>`;
-        })
-        .join('');
-    }
+        const params = cieLinks[s.code] || {};
+        return `
+          <div class="cr" data-code="${escHtml(s.code)}" data-name="${escHtml(s.name)}" data-pct="${s.pct}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" onclick="showAttendanceDetail('${escHtml(s.code)}')">
+            <div class="cr-label"><span class="cr-name">${escHtml(s.name)}</span></div>
+            <div class="cr-track">
+              <div class="cr-fill" style="width:${Math.max(s.pct, 2)}%; background:${barColor}"></div>
+              <div class="cr-mark" style="left:75%"></div>
+              <div class="cr-mark" style="left:85%"></div>
+            </div>
+            <div class="cr-pill" style="background:${barColor}1a; color:${textColor}; border-color:${barColor}55">
+              ${s.pct}%<span class="cr-pill-arrow">›</span>
+            </div>
+          </div>`;
+      })
+      .join('');
   }
+
+  const attMobile = document.getElementById('att-rows-container');
+  const attDesk = document.getElementById('desk-att-rows');
+  if (attMobile) attMobile.innerHTML = attHtml;
+  if (attDesk) attDesk.innerHTML = attHtml;
 
   // CIE Breakdown
-  const ciePanelEl = document.getElementById('cie-panel-container');
-  if (ciePanelEl) {
-    if (!cie.length) {
-      ciePanelEl.innerHTML = '<div class="empty-panel">No CIE data found.</div>';
-    } else {
-      ciePanelEl.innerHTML = cie
-        .map(subject => {
-          const params = cieLinks[subject.code] || {};
-          const scoreLabel = subject.marks > 0 ? String(subject.marks) : '—';
-          return `
-            <details class="bd-item" data-code="${escHtml(subject.code)}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" ontoggle="onCieItemToggle(this)">
-              <summary>
-                <div class="bd-left"><span class="bd-name">${escHtml(subject.name)}</span></div>
-                <div class="bd-right">
-                  <span class="bd-pill bd-pill-main">${escHtml(scoreLabel)}</span>
-                  <span class="bd-chevron">›</span>
-                </div>
-              </summary>
-              <div class="bd-body"></div>
-            </details>`;
-        })
-        .join('');
-    }
+  let cieHtml = '';
+  if (!cie.length) {
+    cieHtml = '<div class="empty-panel">No CIE data found.</div>';
+  } else {
+    cieHtml = cie
+      .map(subject => {
+        const params = cieLinks[subject.code] || {};
+        const scoreLabel = subject.marks > 0 ? String(subject.marks) : '—';
+        return `
+          <details class="bd-item" data-code="${escHtml(subject.code)}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" ontoggle="onCieItemToggle(this)">
+            <summary>
+              <div class="bd-left"><span class="bd-name">${escHtml(subject.name)}</span></div>
+              <div class="bd-right">
+                <span class="bd-pill bd-pill-main">${escHtml(scoreLabel)}</span>
+                <span class="bd-chevron">›</span>
+              </div>
+            </summary>
+            <div class="bd-body"></div>
+          </details>`;
+      })
+      .join('');
   }
+
+  const cieMobile = document.getElementById('cie-accordion-container');
+  const cieDesk = document.getElementById('desk-cie-accordion');
+  if (cieMobile) cieMobile.innerHTML = cieHtml;
+  if (cieDesk) cieDesk.innerHTML = cieHtml;
 }
 
 export function switchTab(id, btn) {

@@ -141,7 +141,6 @@ export const api = {
   },
 
   async moodleCall(token, wsfunction, params = {}) {
-    // Try Direct API call or fallback to worker proxy
     const query = new URLSearchParams({
       wstoken: token,
       wsfunction: wsfunction,
@@ -149,26 +148,17 @@ export const api = {
       ...params
     });
 
-    try {
-      const res = await fetch('https://moodlegurukul.nie.ac.in/webservice/rest/server.php?' + query.toString());
-      const data = await res.json();
-      if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
-        throw new Error('invalidtoken');
-      }
-      if (data && data.exception) throw new Error(data.message || data.exception);
-      return data;
-    } catch (e) {
-      if (e.message === 'invalidtoken') throw e;
-      // Fallback via Worker proxy
-      const proxyRes = await fetch(this.getApiUrl('/api/moodle/rest'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: query.toString()
-      });
-      const data = await proxyRes.json();
-      if (data && data.exception) throw new Error(data.message || data.exception);
-      return data;
+    const proxyRes = await fetch(this.getApiUrl('/api/moodle/rest'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: query.toString()
+    });
+    const data = await proxyRes.json();
+    if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
+      throw new Error('invalidtoken');
     }
+    if (data && data.exception) throw new Error(data.message || data.exception);
+    return data;
   },
 
   getMoodleFileProxyUrl(fileurl, token, name, usn, download = false) {
@@ -180,6 +170,16 @@ export const api = {
     });
     if (download) params.set('download', '1');
     return this.getApiUrl('/api/moodle/file?' + params.toString());
+  },
+
+  async getConfig() {
+    try {
+      const res = await fetch(this.getApiUrl('/api/config'));
+      if (!res.ok) return { hall_ticket_enabled: true };
+      return await res.json();
+    } catch (e) {
+      return { hall_ticket_enabled: true };
+    }
   },
 
   // ── Notices & Department ──

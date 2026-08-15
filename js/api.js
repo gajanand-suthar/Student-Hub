@@ -19,7 +19,7 @@ export const api = {
     fd.append('dob', creds.dob || '');
     fd.append('idType', creds.idType || '1');
     fd.append('code', creds.code || '');
-    fd.append('sem', creds.sem || CONFIG.CURRENT_SEM);
+    if (creds.sem) fd.append('sem', creds.sem);
     if (creds.cookies) fd.append('cookies', creds.cookies);
 
     const res = await fetch(this.getApiUrl('/auth'), {
@@ -44,7 +44,7 @@ export const api = {
     fd.append('courseId', params.courseId);
     fd.append('secId', params.secId || '');
     fd.append('semId', params.semId);
-    fd.append('sem', params.sem || CONFIG.CURRENT_SEM);
+    if (params.sem) fd.append('sem', params.sem);
 
     const res = await fetch(this.getApiUrl('/attendance-detail'), {
       method: 'POST',
@@ -62,7 +62,7 @@ export const api = {
     fd.append('courseId', params.courseId);
     fd.append('secId', params.secId || '');
     fd.append('semId', params.semId);
-    fd.append('sem', params.sem || CONFIG.CURRENT_SEM);
+    if (params.sem) fd.append('sem', params.sem);
 
     const res = await fetch(this.getApiUrl('/cie-detail'), {
       method: 'POST',
@@ -78,7 +78,7 @@ export const api = {
     const fd = new FormData();
     fd.append('cookies', params.cookies || '');
     fd.append('usn', (params.usn || '').toUpperCase());
-    fd.append('sem', params.sem || CONFIG.CURRENT_SEM);
+    if (params.sem) fd.append('sem', params.sem);
 
     const res = await fetch(this.getApiUrl('/exam-history'), {
       method: 'POST',
@@ -102,7 +102,7 @@ export const api = {
       fd.append('dob', params.dob || '');
       fd.append('idType', params.idType || '1');
       fd.append('code', params.code || '');
-      fd.append('sem', params.sem || CONFIG.CURRENT_SEM);
+      if (params.sem) fd.append('sem', params.sem);
     }
 
     const res = await fetch(this.getApiUrl('/api/hallticket'), {

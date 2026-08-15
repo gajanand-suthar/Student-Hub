@@ -6,7 +6,6 @@ export const CONFIG = {
   // Cloudflare Worker API URL
   API_BASE: 'https://student-hub.gajanandsuthar003.workers.dev',
 
-  CURRENT_SEM: 'even',
   HALL_TICKET_ENABLED: true,
   MOODLE_ENABLED: true,
 

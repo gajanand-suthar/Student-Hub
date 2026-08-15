@@ -287,7 +287,6 @@ export function obFinish(saveMoodle) {
   const dob = document.getElementById('ob-dob')?.value || '';
   const idType = document.getElementById('ob-idtype')?.value || '1';
   const code = (document.getElementById('ob-code')?.value || '').trim();
-  const sem = document.getElementById('ob-sem')?.value || CONFIG.CURRENT_SEM;
 
   const creds = { usn, dob, idType, code };
   const existingCreds = loadCreds();
@@ -309,8 +308,8 @@ export function obFinish(saveMoodle) {
   localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
   document.getElementById('onboarding')?.classList.remove('active');
 
-  // Background auto-login test
-  api.login({ usn, dob, idType, code, sem }).catch(() => {});
+  // Background auto-login test (backend uses its configured default semester)
+  api.login({ usn, dob, idType, code }).catch(() => {});
 
   initAcademicCalendar();
 }
@@ -692,7 +691,6 @@ export async function downloadHallTicket() {
       dob: creds.dob,
       idType: creds.idType,
       code: creds.code,
-      sem: CONFIG.CURRENT_SEM,
       name: studentName,
       bypass: isBypass
     });

@@ -8,6 +8,7 @@ import { loadCreds, initTheme, initPwa } from './shared.js';
 
 let sgpaLoaded = false;
 let currentStudentData = null;
+let currentExplicitSem = null;
 
 export async function initAttendance() {
   initTheme();
@@ -28,29 +29,33 @@ export async function initAttendance() {
   if (cachedUser && cachedUser.usn === creds.usn && cachedUser.attendance) {
     currentStudentData = cachedUser;
     renderStudentView(cachedUser);
-    // Background refresh silently
+    // Background refresh silently from backend
     fetchAttendanceData(false);
   } else {
     fetchAttendanceData(true);
   }
 }
 
-export async function fetchAttendanceData(showLoading = true) {
+export async function fetchAttendanceData(showLoading = true, explicitSem = null) {
   const creds = loadCreds();
   if (!creds || !creds.usn) return;
+
+  if (explicitSem) currentExplicitSem = explicitSem;
 
   const overlay = document.getElementById('refresh-overlay');
   if (showLoading && overlay) overlay.classList.add('active');
 
   try {
-    const res = await api.login({
+    const payload = {
       action: 'login',
       usn: creds.usn,
       dob: creds.dob,
       idType: creds.idType,
-      code: creds.code,
-      sem: creds.sem || CONFIG.CURRENT_SEM
-    });
+      code: creds.code
+    };
+    if (currentExplicitSem) payload.sem = currentExplicitSem;
+
+    const res = await api.login(payload);
 
     if (res.student) {
       currentStudentData = res.student;
@@ -81,6 +86,18 @@ export function renderStudentView(data) {
   if (nameEl) nameEl.textContent = name;
   if (usnEl) usnEl.textContent = usn;
   if (progEl) progEl.textContent = program;
+
+  // Sync drawer semester UI dynamically to match semester returned from backend
+  if (data.sem) {
+    const attSemInput = document.getElementById('att-sem');
+    if (attSemInput) attSemInput.value = data.sem;
+    const btnEven = document.getElementById('m-sem-even');
+    const btnOdd = document.getElementById('m-sem-odd');
+    if (btnEven && btnOdd) {
+      btnEven.classList.toggle('active', data.sem === 'even');
+      btnOdd.classList.toggle('active', data.sem === 'odd');
+    }
+  }
 
   // Photo
   const photoSlot = document.getElementById('photo-slot') || document.getElementById('stu-photo-wrap');
@@ -189,7 +206,7 @@ export async function fetchSgpa(e) {
   const creds = loadCreds();
   const usn = creds?.usn || '';
   const cookies = currentStudentData?.cookies || '';
-  const sem = creds?.sem || CONFIG.CURRENT_SEM;
+  const sem = currentExplicitSem || currentStudentData?.sem;
 
   try {
     const json = await api.getExamHistory({ cookies, usn, sem });
@@ -274,8 +291,7 @@ export async function onCieItemToggle(detailEl) {
   detailEl.dataset.loading = '1';
   body.innerHTML = '<div style="text-align:center;padding:8px 0"><div class="big-spinner" style="margin:0 auto;width:20px;height:20px;border-width:2px"></div></div>';
 
-  const creds = loadCreds();
-  const sem = creds?.sem || currentStudentData?.sem || CONFIG.CURRENT_SEM;
+  const sem = currentExplicitSem || currentStudentData?.sem;
 
   try {
     const json = await api.getCieDetail({ cookies, courseId, secId, semId, sem });
@@ -341,8 +357,7 @@ export async function showAttendanceDetail(code) {
   body.innerHTML = '<div style="text-align:center;padding:32px 0"><div class="big-spinner" style="margin:0 auto"></div></div>';
   modal.style.display = 'flex';
 
-  const creds = loadCreds();
-  const sem = creds?.sem || currentStudentData?.sem || CONFIG.CURRENT_SEM;
+  const sem = currentExplicitSem || currentStudentData?.sem;
 
   try {
     const json = await api.getAttendanceDetail({ cookies, courseId, secId, semId, sem });
@@ -452,9 +467,7 @@ export function menuSwitchSem(newSem) {
   const currentSem = (document.getElementById('att-sem') && document.getElementById('att-sem').value) || '';
   if (currentSem === newSem) return;
   try {
-    const creds = loadCreds() || {};
-    creds.sem = newSem;
-    localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
+    currentExplicitSem = newSem;
     const attSemInput = document.getElementById('att-sem');
     if (attSemInput) attSemInput.value = newSem;
     const btnEven = document.getElementById('m-sem-even');
@@ -463,7 +476,8 @@ export function menuSwitchSem(newSem) {
       btnEven.classList.toggle('active', newSem === 'even');
       btnOdd.classList.toggle('active', newSem === 'odd');
     }
-    fetchAttendanceData(true);
+    localStorage.removeItem(CONFIG.USER_KEY);
+    fetchAttendanceData(true, newSem);
   } catch (e) {
     alert('Error switching semester: ' + e.message);
   }

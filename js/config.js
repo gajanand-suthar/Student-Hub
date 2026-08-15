@@ -3,17 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 export const CONFIG = {
-  // Cloudflare Worker API URL (Set your custom worker domain here or leave dynamic)
-  API_BASE: (function () {
-    if (typeof window !== 'undefined') {
-      // If hosted on GitHub Pages or custom frontend domain, point to your Cloudflare Worker URL
-      if (window.location.hostname.includes('github.io')) {
-        return 'https://student-hub.workers.dev'; // Replace with your actual Cloudflare Worker URL
-      }
-    }
-    // Local / same-origin default
-    return '';
-  })(),
+  // Cloudflare Worker API URL
+  API_BASE: 'https://student-hub.gajanandsuthar003.workers.dev',
 
   CURRENT_SEM: 'even',
   HALL_TICKET_ENABLED: true,

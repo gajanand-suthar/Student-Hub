@@ -135,7 +135,12 @@ export const api = {
       body: body.toString()
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error('Invalid response from server');
+    }
     if (!res.ok || data.error) throw new Error(data.error || 'Moodle login failed');
     return data;
   },
@@ -148,17 +153,35 @@ export const api = {
       ...params
     });
 
-    const proxyRes = await fetch(this.getApiUrl('/api/moodle/rest'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: query.toString()
-    });
-    const data = await proxyRes.json();
-    if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
-      throw new Error('invalidtoken');
+    // Try through backend proxy first, fallback to direct Moodle if needed
+    try {
+      const proxyRes = await fetch(this.getApiUrl('/api/moodle/rest'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: query.toString()
+      });
+      const data = await proxyRes.json();
+      if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
+        throw new Error('invalidtoken');
+      }
+      if (data && data.exception) throw new Error(data.message || data.exception);
+      return data;
+    } catch (err) {
+      if (err.message === 'invalidtoken') throw err;
+      // Fallback: try direct fetch to Moodle
+      try {
+        const directUrl = 'https://moodlegurukul.nie.ac.in/webservice/rest/server.php?' + query.toString();
+        const directRes = await fetch(directUrl);
+        const data = await directRes.json();
+        if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
+          throw new Error('invalidtoken');
+        }
+        if (data && data.exception) throw new Error(data.message || data.exception);
+        return data;
+      } catch (fallbackErr) {
+        throw err || fallbackErr;
+      }
     }
-    if (data && data.exception) throw new Error(data.message || data.exception);
-    return data;
   },
 
   getMoodleFileProxyUrl(fileurl, token, name, usn, download = false) {

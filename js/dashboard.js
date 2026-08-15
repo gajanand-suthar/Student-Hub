@@ -113,18 +113,6 @@ function continueBoot() {
   initAcademicCalendar();
   checkSugUnread();
 
-  // Check Feature Config (Hallticket toggle)
-  api.getConfig().then(cfg => {
-    const btn = document.getElementById('download-ht-btn');
-    if (btn) {
-      if (cfg && cfg.hall_ticket_enabled === false) {
-        btn.style.display = 'none';
-      } else {
-        btn.style.display = 'flex';
-      }
-    }
-  }).catch(() => {});
-
   const creds = loadCreds();
   if (!creds || !creds.usn) {
     const ob = document.getElementById('onboarding');

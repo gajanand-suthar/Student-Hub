@@ -902,8 +902,18 @@
       .res-btn svg { width: 16px; height: 16px; }
       .res-name { font-size: 0.85rem; }
       .res-badge { min-width: 44px; font-size: 0.6rem; padding: 3px 6px; }
-      .res-item { padding: 8px; gap: 8px; }
-    }
+    /* Suggestions Modal */
+    .sug-tab-bar { display: flex; border-bottom: 1.5px solid var(--border); background: var(--bg); border-radius: 20px 20px 0 0; overflow: hidden; }
+    .sug-tab-btn { flex: 1; padding: 14px 16px; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--muted); cursor: pointer; transition: all 0.15s; border-bottom: 2px solid transparent; position: relative; }
+    .sug-tab-btn:hover { color: var(--text); }
+    .sug-tab-btn.active { color: var(--accent); background: var(--surface); border-bottom-color: var(--accent); }
+    .sug-tab-dot { position: absolute; top: 12px; right: 16px; width: 7px; height: 7px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); }
+    .sug-item-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 0.85rem; }
+    .sug-item-date { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+    .sug-item-text { color: var(--text); font-weight: 500; line-height: 1.4; }
+    .sug-reply-box { margin-top: 8px; padding: 8px 10px; background: rgba(37, 99, 235, 0.08); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 0.8rem; }
+    .sug-reply-title { font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .sug-reply-text { color: var(--text); line-height: 1.35; }
   </style>
 </head>
 <body>
@@ -1064,6 +1074,43 @@
   </div>
 </div>
 
+<!-- Suggestions Modal -->
+<div id="sug-modal" class="modal-overlay" onclick="if(event.target===this)closeSugModal()">
+  <div class="modal-card" style="width: min(420px, 100%); text-align: left; padding: 0; overflow: hidden;">
+    <div class="sug-tab-bar">
+      <button class="sug-tab-btn active" data-tab="send" onclick="switchSugTab('send')">Send Feedback</button>
+      <button class="sug-tab-btn" data-tab="history" onclick="switchSugTab('history')">My Suggestions <span class="sug-tab-dot" id="sug-unread-dot" style="display:none;"></span></button>
+    </div>
+    
+    <div id="sug-tab-send" style="padding: 20px 24px 24px;">
+      <div id="sug-modal-form">
+        <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; font-weight: 500;">
+          Spotted a bug or have an idea to improve the Student Hub? Let me know!
+        </div>
+        <textarea id="sug-modal-text" class="s-input" style="height: 120px; resize: none; padding: 12px; margin-bottom: 16px;" placeholder="What's on your mind?"></textarea>
+        <div class="modal-actions" style="display: flex; gap: 8px;">
+          <button class="modal-btn modal-btn-cancel" onclick="closeSugModal()">Cancel</button>
+          <button id="sug-modal-submit" class="modal-btn modal-btn-save" style="flex:1;" onclick="submitSugModal()">Submit</button>
+        </div>
+      </div>
+      <div id="sug-modal-success" style="display: none; text-align: center; padding: 10px 0 0;">
+        <div style="color: #10b981; margin-bottom: 12px;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Thank You!</div>
+        <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">Your feedback helps us improve.</div>
+        <button class="modal-btn modal-btn-cancel" style="width:100%;" onclick="closeSugModal()">Close</button>
+      </div>
+    </div>
+    
+    <div id="sug-tab-history" style="display: none; padding: 16px 20px 20px; max-height: 65vh; overflow-y: auto;">
+      <div id="sug-history-list">
+        <div style="text-align:center; padding: 32px 0; color: var(--muted); font-size: 0.85rem;">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Bottom Navigation -->
 <div class="bottom-nav">
   <a class="nav-tab" href="../">
@@ -1150,7 +1197,7 @@
 
 <script type="module">
   import { initMoodle, doLogin, refreshCourses, filterCourses, toggleSemDropdown, closeSemDropdown, selectSem, showCourses, openCourse, openImageLightbox, closeImageLightbox, openDocLightbox, closeDocLightbox, hideDocLoader } from '../js/moodle.js';
-  import { openCredsEditor, closeCredsEditor, saveCredsEditor, confirmLogout, closeLogoutConfirm, executeLogout, toggleTheme, toggleDrawer } from '../js/shared.js';
+  import { openCredsEditor, closeCredsEditor, saveCredsEditor, confirmLogout, closeLogoutConfirm, executeLogout, toggleTheme, toggleDrawer, openSugModal, closeSugModal, switchSugTab, submitSugModal } from '../js/shared.js';
 
   document.addEventListener('DOMContentLoaded', initMoodle);
 </script>

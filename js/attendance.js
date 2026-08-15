@@ -331,6 +331,17 @@ export async function showAttendanceDetail(code) {
 
   try {
     const json = await api.getAttendanceDetail({ cookies, courseId, secId, semId, sem: CONFIG.CURRENT_SEM });
+    if (json.error === 'SESSION_EXPIRED') {
+      body.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:36px 20px;text-align:center">'
+        + '<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--accent)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>'
+        + '<div style="font-weight:800;font-size:.95rem;color:var(--text)">Session expired</div>'
+        + '<div style="font-size:.82rem;color:var(--muted);max-width:260px;line-height:1.5">Someone logged in on another device. Refresh to restore your session.</div>'
+        + '<button onclick="refreshData()" style="margin-top:4px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-weight:700;font-size:.88rem;cursor:pointer">Refresh</button>'
+        + '</div>';
+      return;
+    }
+    if (json.error) throw new Error(json.error);
     renderAttendanceModal(json);
   } catch (err) {
     body.innerHTML = `<div style="padding:28px;text-align:center;color:var(--muted);font-size:.85rem">Failed to load details.<br><span style="font-size:.75rem">${escHtml(err.message)}</span></div>`;
@@ -391,9 +402,18 @@ function renderAttendanceModal(data) {
     return `${parseInt(m[1], 10)} ${mon}`;
   }
 
+  function fmtTime(s) {
+    return String(s)
+      .replace(/ *(AM|PM) */gi, '')
+      .replace(/\s*(?:TO|-|\u2013|\u2014)\s*/gi, '-')
+      .split('-')
+      .map(part => part.trim())
+      .join('-');
+  }
+
   function rows(list) {
     if (!list.length) return '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:12px">No records</td></tr>';
-    return list.map(r => `<tr><td class="mono">${escHtml(fmtDate(r.date))}</td><td class="mono">${escHtml(r.time)}</td></tr>`).join('');
+    return list.map(r => `<tr><td class="mono">${escHtml(fmtDate(r.date))}</td><td class="mono">${escHtml(fmtTime(r.time))}</td></tr>`).join('');
   }
 
   body.innerHTML = `
@@ -446,6 +466,78 @@ export function switchSem(newSem) {
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Click backdrop to close modal
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', function(e) {
+    const modal = document.getElementById('att-modal');
+    if (e.target === modal) closeAttModal();
+  });
+}
+
+// CIE expand / collapse with frozen sibling heights (prevents layout jumps)
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', function (e) {
+    var summary = e.target.closest && e.target.closest('details.bd-item > summary');
+    if (!summary) return;
+    var detail = summary.closest('details.bd-item');
+    var panel = detail.closest('#cie-accordion-container') || detail.closest('#desk-cie-accordion');
+    if (!panel) return;
+
+    var isOpening = !detail.open;
+    var siblings = Array.from(panel.querySelectorAll('details.bd-item'));
+
+    if (isOpening) {
+      if (!summary.style.height) {
+        var compSum = summary.getBoundingClientRect().height + 'px';
+        summary.style.height = compSum;
+        summary.style.minHeight = compSum;
+        summary.style.maxHeight = compSum;
+        summary.style.flex = 'none';
+      }
+      siblings.forEach(function (d) {
+        if (d !== detail) {
+          var compBox = d.getBoundingClientRect().height + 'px';
+          d.style.flex = 'none';
+          d.style.height = compBox;
+          d.style.minHeight = compBox;
+          d.style.maxHeight = compBox;
+        }
+      });
+      detail.style.flex = 'none';
+      detail.style.height = 'auto';
+      detail.style.minHeight = '';
+      detail.style.maxHeight = '';
+      panel.style.flex = 'none';
+      panel.style.height = 'auto';
+    } else {
+      var anyOpen = siblings.some(function (d) { return d !== detail && d.open; });
+      if (!anyOpen) {
+        siblings.forEach(function (d) {
+          d.style.flex = '';
+          d.style.height = '';
+          d.style.minHeight = '';
+          d.style.maxHeight = '';
+        });
+        detail.style.flex = '';
+        detail.style.height = '';
+        detail.style.minHeight = '';
+        detail.style.maxHeight = '';
+        summary.style.height = '';
+        summary.style.minHeight = '';
+        summary.style.maxHeight = '';
+        summary.style.flex = '';
+        panel.style.flex = '';
+        panel.style.height = '';
+      } else {
+        detail.style.flex = 'none';
+        detail.style.height = summary.style.height;
+        detail.style.minHeight = summary.style.height;
+        detail.style.maxHeight = summary.style.height;
+      }
+    }
+  }, true);
 }
 
 // Bind window helpers

@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Student Hub — NIE</title>
+  <meta name="description" content="Your all-in-one student portal — access Moodle notes, attendance, CIE marks, and exam results."/>
+  <meta name="theme-color" content="#2563eb"/>
+  <link rel="manifest" href="./manifest.json"/>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml"/>
+  <link rel="apple-touch-icon" href="./icon.svg"/>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500;700;800&display=swap" rel="stylesheet"/>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="./css/base.css"/>
+  <link rel="stylesheet" href="./css/shared.css"/>
+  <link rel="stylesheet" href="./css/dashboard.css"/>
+</head>
+<body>
+
+  <!-- Topbar Header -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">Student Hub</div>
+      <div class="topbar-sub">NIE Portal</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn-icon" id="theme-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+        <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Pull Tab for Side Navigation Drawer -->
+  <button class="drawer-pull-tab" onclick="toggleDrawer(true)" aria-label="Open menu" title="Open Navigation Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+
+  <!-- Side Navigation Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)">
+    <div class="drawer-content" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <div class="drawer-title">Navigation</div>
+        <button class="drawer-close-btn" onclick="toggleDrawer(false)" aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="drawer-menu-list">
+        <button class="drawer-menu-item" onclick="toggleDrawer(false); openSugModal('send');">
+          <div class="drawer-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span>Feedback &amp; Feature Request</span>
+        </button>
+        <button class="drawer-menu-item danger" onclick="confirmLogout()">
+          <div class="drawer-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+          <span>Logout</span>
+        </button>
+      </div>
+      <div class="drawer-footer">
+        <div class="drawer-footer-item" onclick="openCredsEditor()">
+          <div class="drawer-footer-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <span class="drawer-footer-label">Settings</span>
+        </div>
+        <div class="drawer-footer-divider"></div>
+        <div class="drawer-footer-item" onclick="toggleTheme()">
+          <div class="drawer-footer-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <span class="drawer-footer-label">Theme</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Main View -->
+  <div class="hub-container">
+    
+    <!-- Greeting Banner -->
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
+      <div class="greeting-wrap">
+        <div class="greeting-time" id="greeting-time">Welcome back,</div>
+        <div class="greeting-name" id="greeting-name">Student</div>
+      </div>
+      <button class="share-btn" onclick="shareApp()" title="Share Student Hub" aria-label="Share Student Hub">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
+    </div>
+
+    <!-- Quick Actions Row -->
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button class="notices-btn-wide" onclick="openDepartmentModal('syllabus')">
+          <span class="btn-lbl">Syllabus</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+        <button class="notices-btn-wide" onclick="openDepartmentModal('timetable')">
+          <span class="btn-lbl">Time Table</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+      </div>
+      <button class="notices-btn-wide" onclick="openNoticesModal()">
+        <span class="btn-lbl">Circulars &amp; Notices</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="notices-btn-wide" id="download-ht-btn" onclick="downloadHallTicket()" style="color:var(--accent);border-color:var(--accent)">
+        <span class="btn-lbl">Download Hall Ticket</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+    </div>
+
+    <!-- Academic Calendar Carousel -->
+    <div class="cal-section">
+      <div class="calendar-carousel" id="calendar-carousel" onscroll="updateCalCarouselDots()">
+        
+        <!-- Card 1: Holidays List -->
+        <div class="cal-card" id="cal-card-1">
+          <div class="cal-card-header">
+            <div class="cal-month-label" style="text-align:left; justify-content:flex-start">General Holidays</div>
+          </div>
+          <div class="cal-list-scroll" id="cal-holidays-list"></div>
+        </div>
+
+        <!-- Card 2: Interactive Month Grid -->
+        <div class="cal-card" id="cal-card-2">
+          <div class="cal-card-header">
+            <div class="cal-month-nav">
+              <button class="cal-nav-btn" id="cal-prev-btn" onclick="prevCalMonth()" aria-label="Previous Month">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div class="cal-month-label" id="cal-month-label">Aug</div>
+              <button class="cal-nav-btn" id="cal-next-btn" onclick="nextCalMonth()" aria-label="Next Month">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div class="sem-dropdown" id="cal-sem-dropdown">
+              <div class="sem-trigger" onclick="toggleCalSemDropdown()">
+                <span class="sem-trigger-label" id="cal-sem-trigger-label">Sem III</span>
+                <span class="sem-trigger-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+              </div>
+              <div class="sem-menu" id="cal-sem-menu">
+                <button class="sem-option active" onclick="pickCalSem('III')">Sem III</button>
+                <button class="sem-option" onclick="pickCalSem('V')">Sem V</button>
+                <button class="sem-option" onclick="pickCalSem('VII')">Sem VII</button>
+              </div>
+              <div class="sem-backdrop" onclick="closeCalSemDropdown()"></div>
+            </div>
+          </div>
+          <div class="cal-grid-header">
+            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+          </div>
+          <div class="cal-grid-body" id="cal-grid-body"></div>
+        </div>
+
+        <!-- Card 3: Events & Exams List -->
+        <div class="cal-card" id="cal-card-3">
+          <div class="cal-card-header">
+            <div class="cal-month-label" style="text-align:left; justify-content:flex-start">Events &amp; Exams</div>
+          </div>
+          <div class="cal-list-scroll" id="cal-events-list"></div>
+        </div>
+
+      </div>
+
+      <!-- Carousel Navigation Dots (Mobile) -->
+      <div class="cal-dots" id="cal-dots">
+        <div class="cal-dot" onclick="scrollToCalCard(0)"></div>
+        <div class="cal-dot active" onclick="scrollToCalCard(1)"></div>
+        <div class="cal-dot" onclick="scrollToCalCard(2)"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Calendar Day Tooltip Popover -->
+  <div class="cal-popover" id="cal-popover">
+    <div class="cal-popover-date" id="cal-popover-date"></div>
+    <div class="cal-popover-body" id="cal-popover-body"></div>
+  </div>
+
+  <!-- Circulars & Notices Modal -->
+  <div id="notices-backdrop" onclick="closeNoticesModal()"></div>
+  <div id="notices-modal">
+    <div class="nm-header">
+      <div class="nm-title">Notices</div>
+      <div class="nm-controls">
+        <button class="nm-icon-btn" onclick="fetchNotices(true)" title="Refresh Notices" aria-label="Refresh">
+          <svg id="nm-refresh-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button class="nm-icon-btn" onclick="closeNoticesModal()" title="Close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="nm-scroll-area">
+      <div class="nm-loader" id="nm-loader"><div class="spinner"></div><span>Loading notices...</span></div>
+      <div class="nm-list" id="nm-list"></div>
+    </div>
+  </div>
+
+  <!-- Department Syllabus / Time Table Modal -->
+  <div id="department-backdrop" onclick="closeDepartmentModal()"></div>
+  <div id="department-modal">
+    <div class="nm-header">
+      <div class="nm-title" id="dept-modal-title">Syllabus</div>
+      <div class="nm-controls">
+        <button class="nm-icon-btn" onclick="fetchDepartmentData(true)" title="Refresh" aria-label="Refresh">
+          <svg id="dept-refresh-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button class="nm-icon-btn" onclick="closeDepartmentModal()" title="Close" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="nm-scroll-area">
+      <div class="nm-loader" id="dept-loader"><div class="spinner"></div><span>Loading files...</span></div>
+      <div class="nm-list" id="dept-list"></div>
+    </div>
+  </div>
+
+  <!-- Onboarding Modal -->
+  <div id="onboarding">
+    <div class="ob-card">
+      <button class="ob-back hide" id="ob-back" onclick="obBack()" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="ob-dots">
+        <div class="ob-dot active" id="od-0"></div>
+        <div class="ob-dot" id="od-1"></div>
+        <div class="ob-dot" id="od-2"></div>
+        <div class="ob-dot" id="od-3"></div>
+      </div>
+
+      <!-- Step 0: USN -->
+      <div class="ob-step active" id="os-0">
+        <div class="ob-icon" style="background:#eff6ff">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="ob-title">Enter your USN</div>
+        <div class="ob-hint">Your University Seat Number</div>
+        <input class="ob-input" id="ob-usn" placeholder="e.g. 4NI23CS001" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
+        <div class="ob-err" id="ob-err-0"></div>
+        <button class="ob-btn" onclick="obNext()">Continue</button>
+      </div>
+
+      <!-- Step 1: DOB -->
+      <div class="ob-step" id="os-1">
+        <div class="ob-icon" style="background:#fef3c7">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="ob-title">Date of Birth</div>
+        <div class="ob-hint">Format: DD/MM/YYYY</div>
+        <input class="ob-input" id="ob-dob" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric"/>
+        <div class="ob-err" id="ob-err-1"></div>
+        <button class="ob-btn" onclick="obNext()">Continue</button>
+      </div>
+
+      <!-- Step 2: Verification Code -->
+      <div class="ob-step" id="os-2">
+        <div class="ob-icon" style="background:#ecfdf5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="ob-title">Verification Code</div>
+        <div class="ob-hint">Select relationship &amp; enter last 4 digits</div>
+        <input type="hidden" id="ob-idtype" value="1"/>
+        <div class="ob-dropdown" id="ob-idtype-dd">
+          <div class="ob-dd-trigger" onclick="toggleObDd()">
+            <span id="ob-idtype-label">Father's Last 4 Digits</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="ob-dd-menu">
+            <div class="ob-dd-opt selected" onclick="pickObIdType('1','Father\'s Last 4 Digits',this)">Father's Last 4 Digits</div>
+            <div class="ob-dd-opt" onclick="pickObIdType('2','Mother\'s Last 4 Digits',this)">Mother's Last 4 Digits</div>
+            <div class="ob-dd-opt" onclick="pickObIdType('5','Guardian\'s Last 4 Digits',this)">Guardian's Last 4 Digits</div>
+          </div>
+        </div>
+        <input class="ob-input" id="ob-code" placeholder="4 digits" maxlength="4" inputmode="numeric"/>
+        <div class="ob-err" id="ob-err-2"></div>
+        <button class="ob-btn" onclick="obNext()">Continue</button>
+      </div>
+
+      <!-- Step 3: Moodle Credentials -->
+      <div class="ob-step" id="os-3">
+        <div class="ob-icon" style="background:#eff6ff">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </div>
+        <div class="ob-title">Moodle Login</div>
+        <div class="ob-hint">To access course materials and notes</div>
+        <label class="ob-lbl">College Email Prefix</label>
+        <div class="ob-email-row">
+          <input class="ob-input" id="ob-moodle-email" placeholder="e.g. 4ni23cs001" autocomplete="username"/>
+          <span class="ob-email-suffix">@nie.ac.in</span>
+        </div>
+        <label class="ob-lbl">Moodle Password</label>
+        <input class="ob-input" type="password" id="ob-moodle-pass" placeholder="••••••••" style="margin-bottom:14px" autocomplete="current-password"/>
+        <button class="ob-btn" onclick="obFinish(true)">Finish Setup</button>
+        <button class="ob-skip" onclick="obFinish(false)">Skip for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Consent Modal -->
+  <div id="consent-modal">
+    <div class="cm-card">
+      <div class="ob-title" style="font-size:1.2rem;margin-bottom:12px;text-align:left">Privacy Policy &amp; Terms</div>
+      <div class="cm-content" id="cm-content" onscroll="checkCmScroll()">
+        <p>Welcome to <strong>Student Hub</strong>. We are committed to transparency regarding how your data is handled.</p>
+        <div class="cm-point">
+          <strong>1. Local Storage of Credentials</strong>
+          <ul>
+            <li>Your credentials (USN, DOB, verification code, and Moodle login) are stored strictly in your browser's local storage.</li>
+            <li>We do not retain your passwords or personal portal credentials on external databases.</li>
+          </ul>
+        </div>
+        <div class="cm-point">
+          <strong>2. Direct Portal Communication</strong>
+          <ul>
+            <li>All attendance, CIE, and Moodle requests are proxied directly to the official NIE college servers.</li>
+            <li>No scraping logic or private data is exposed publicly.</li>
+          </ul>
+        </div>
+        <div class="cm-point">
+          <strong>3. Student Photo Consent</strong>
+          <p style="margin-bottom:8px;font-size:0.82rem">Do you consent to display your official student photograph on the attendance dashboard?</p>
+          <div style="display:flex;gap:16px;margin-top:6px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;font-size:0.85rem">
+              <input type="radio" name="photo_consent" value="yes" checked/> Yes, show photo
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;font-size:0.85rem">
+              <input type="radio" name="photo_consent" value="no"/> No, use avatar
+            </label>
+          </div>
+        </div>
+      </div>
+      <button class="ob-btn" id="cm-accept-btn" style="margin-top:16px;margin-bottom:0" onclick="acceptConsent()">I Understand and Agree</button>
+    </div>
+  </div>
+
+  <!-- Settings Editor Modal -->
+  <div class="modal-overlay" id="creds-modal" onclick="closeCredsEditor()">
+    <div class="modal-card" id="creds-modal-card" onclick="event.stopPropagation()">
+      <div class="modal-title" id="ce-modal-title">Settings</div>
+      <div id="ce-att-col">
+        <div class="s-group">
+          <label class="s-label">USN</label>
+          <input class="s-input" id="ce-usn" placeholder="e.g. 4NI23CS001" autocomplete="off" autocapitalize="characters"/>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Date of Birth</label>
+          <input class="s-input" id="ce-dob" placeholder="DD/MM/YYYY"/>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Verification Type</label>
+          <input type="hidden" id="ce-idtype" value="1"/>
+          <div class="ce-dropdown" id="ce-idtype-dd">
+            <div class="ce-dd-trigger" onclick="toggleCeDd()">
+              <span id="ce-idtype-label">Father's Last 4 Digits</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="ce-dd-menu">
+              <div class="ce-dd-opt selected" onclick="pickCeIdType('1','Father\'s Last 4 Digits',this)">Father's Last 4 Digits</div>
+              <div class="ce-dd-opt" onclick="pickCeIdType('2','Mother\'s Last 4 Digits',this)">Mother's Last 4 Digits</div>
+              <div class="ce-dd-opt" onclick="pickCeIdType('5','Guardian\'s Last 4 Digits',this)">Guardian's Last 4 Digits</div>
+            </div>
+          </div>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Verification Code</label>
+          <input class="s-input" id="ce-code" placeholder="4 digits" maxlength="4"/>
+          <div id="ce-err-code" style="color:var(--danger);font-size:0.75rem;margin-top:4px;display:none">Enter exactly 4 digits</div>
+        </div>
+      </div>
+      <div id="ce-moodle-col" style="display:none">
+        <div class="s-group">
+          <label class="s-label">College Email Prefix</label>
+          <div class="email-row">
+            <input class="s-input" id="ce-moodle-prefix" placeholder="e.g. 4ni23cs001" autocomplete="username"/>
+            <span class="email-suffix">@nie.ac.in</span>
+          </div>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Moodle Password</label>
+          <input class="s-input" type="password" id="ce-moodle-pass" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" onclick="closeCredsEditor()">Cancel</button>
+        <button class="modal-btn modal-btn-save" onclick="saveCredsEditor()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Modal -->
+  <div class="modal-overlay" id="logout-confirm-modal" onclick="closeLogoutConfirm()">
+    <div class="modal-card" style="width:min(340px, 100%)" onclick="event.stopPropagation()">
+      <div class="modal-title">Log Out?</div>
+      <p style="font-size:0.85rem;color:var(--muted);text-align:center;margin-bottom:16px">This will clear your stored credentials and cached data from this browser.</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" onclick="closeLogoutConfirm()">Cancel</button>
+        <button class="modal-btn" style="background:var(--danger);color:#fff" onclick="executeLogout()">Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions & Feedback Modal -->
+  <div class="modal-overlay" id="sug-modal" onclick="closeSugModal()">
+    <div class="modal-card" style="padding:0;overflow:hidden;width:min(440px, 100%)" onclick="event.stopPropagation()">
+      <div class="sug-tab-bar">
+        <button class="sug-tab-btn active" data-tab="send" onclick="switchSugTab('send')">Send Feedback</button>
+        <button class="sug-tab-btn" data-tab="history" onclick="switchSugTab('history')">
+          Past Replies <span id="sug-unread-dot" class="sug-tab-dot" style="display:none"></span>
+        </button>
+      </div>
+      <div style="padding:20px" id="sug-tab-send">
+        <div id="sug-modal-form">
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Found a bug or have a suggestion? Let us know!</p>
+          <textarea id="sug-modal-text" class="s-input" style="height:110px;padding:10px 12px;font-family:inherit;resize:none" placeholder="Type your suggestion or feedback here..."></textarea>
+          <div class="modal-actions" style="margin-top:14px">
+            <button class="modal-btn modal-btn-cancel" onclick="closeSugModal()">Cancel</button>
+            <button class="modal-btn modal-btn-save" id="sug-modal-submit" onclick="submitSugModal()">Submit</button>
+          </div>
+        </div>
+        <div id="sug-modal-success" style="display:none;text-align:center;padding:24px 0">
+          <div style="font-size:1.8rem;margin-bottom:8px">🎉</div>
+          <div style="font-weight:800;font-size:1rem;color:var(--text);margin-bottom:4px">Thank you!</div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:16px">Your feedback has been received.</div>
+          <button class="modal-btn modal-btn-save" onclick="closeSugModal()">Close</button>
+        </div>
+      </div>
+      <div style="padding:20px;max-height:360px;overflow-y:auto;display:none" id="sug-tab-history">
+        <div id="sug-history-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Toast Notification -->
+  <div class="sug-toast" id="sug-toast" onclick="openSugModal('history')">
+    <div class="sug-toast-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="sug-toast-text" id="sug-toast-msg">You have a new reply to your feedback!</div>
+    <button class="sug-toast-close" onclick="event.stopPropagation(); closeSugToast();">&times;</button>
+  </div>
+
+  <!-- PWA Install Popup -->
+  <div id="pwa-modal">
+    <div class="pwa-card">
+      <div class="pwa-app-icon">
+        <svg viewBox="0 0 512 512" fill="#2563eb"><rect width="512" height="512" rx="100"/><g transform="translate(256,256) scale(0.55) translate(-256,-256)" fill="#fff"><rect x="64" y="64" width="171" height="171" rx="43"/><rect x="277" y="64" width="171" height="107" rx="43"/><rect x="277" y="213" width="171" height="235" rx="43"/><rect x="64" y="277" width="171" height="171" rx="43"/></g></svg>
+      </div>
+      <div class="pwa-title">Install Student Hub</div>
+      <div class="pwa-sub">Add to your Home Screen for faster access and offline support.</div>
+      <button class="pwa-install-btn" id="pwa-install-btn">Install App</button>
+      <button class="pwa-later-btn" id="pwa-later-btn">Maybe later</button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="./" class="nav-tab active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="./attendance/" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      <span>Attendance</span>
+    </a>
+    <a href="./moodle/" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Moodle</span>
+    </a>
+    <a href="./results/" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+      <span>Results</span>
+    </a>
+  </nav>
+
+  <!-- Service Worker Registration & Modules -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+  <script type="module">
+    import { initDashboard } from './js/dashboard.js';
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>

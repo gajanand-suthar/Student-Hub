@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin Portal — Student Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="../css/base.css"/>
+  <link rel="stylesheet" href="../css/shared.css"/>
+  <link rel="stylesheet" href="../css/admin.css"/>
+</head>
+<body class="admin-body">
+
+  <div class="admin-container">
+    <div class="admin-header">
+      <h1>Admin Dashboard</h1>
+      <button class="btn-icon" onclick="loadSuggestions()" title="Refresh" aria-label="Refresh">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+    </div>
+
+    <!-- Feedback & Suggestions Manager -->
+    <div class="admin-card">
+      <div class="admin-card-title">
+        <span>Student Feedback &amp; Suggestions</span>
+      </div>
+      <div id="admin-sug-list">
+        <div class="loader-wrap"><div class="spinner"></div>Loading feedback...</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initAdmin } from '../js/admin.js';
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+</body>
+</html>

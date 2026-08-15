@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════════
+   BASE STYLES & DESIGN TOKENS — Student Hub
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #f0f4ff;
+  --surface: #ffffff;
+  --border: #dde6ff;
+  --accent: #2563eb;
+  --accent-h: #1d4ed8;
+  --muted: #64748b;
+  --text: #0f172a;
+  --danger: #ef4444;
+  --danger-h: #dc2626;
+  --warn: #f59e0b;
+  --success: #10b981;
+  --radius: 14px;
+  --shadow: 0 4px 24px rgba(37, 99, 235, 0.07);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #000000;
+  --border: #334155;
+  --muted: #94a3b8;
+  --text: #e2e8f0;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+/* Topbar Header */
+.topbar {
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 2px 16px rgba(37, 99, 235, 0.3);
+  z-index: 100;
+  min-height: 52px;
+}
+
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.topbar-title {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.3px;
+}
+
+.topbar-sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  color: #fff;
+  flex-shrink: 0;
+  padding: 0;
+}
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+/* Common spinners & animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.loader-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}

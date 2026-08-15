@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Moodle — Student Hub</title>
+  <meta name="description" content="Access course materials, presentations, PDF notes, and assignments directly."/>
+  <meta name="theme-color" content="#2563eb"/>
+  <link rel="manifest" href="../manifest.json"/>
+  <link rel="icon" href="../icon.svg" type="image/svg+xml"/>
+  <link rel="apple-touch-icon" href="../icon.svg"/>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@500;700;800&display=swap" rel="stylesheet"/>
+
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
+  <!-- Plyr Video/Audio Player CDN -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css"/>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="../css/base.css"/>
+  <link rel="stylesheet" href="../css/shared.css"/>
+  <link rel="stylesheet" href="../css/moodle.css"/>
+</head>
+<body>
+
+  <!-- Topbar Header -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">Moodle Portal</div>
+      <div class="topbar-sub">Course Materials</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn-icon" onclick="refreshCourses()" id="refresh-btn" title="Refresh Courses" aria-label="Refresh Courses">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme" aria-label="Toggle Theme">
+        <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Pull Tab for Side Navigation Drawer -->
+  <button class="drawer-pull-tab" onclick="toggleDrawer(true)" aria-label="Open menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+
+  <!-- Side Navigation Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)">
+    <div class="drawer-content" onclick="event.stopPropagation()">
+      <div class="drawer-header">
+        <div class="drawer-title">Navigation</div>
+        <button class="drawer-close-btn" onclick="toggleDrawer(false)" aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="drawer-menu-list">
+        <button class="drawer-menu-item" onclick="toggleDrawer(false); openSugModal('send');">
+          <div class="drawer-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span>Feedback &amp; Suggestions</span>
+        </button>
+        <button class="drawer-menu-item danger" onclick="confirmLogout()">
+          <div class="drawer-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+          <span>Logout</span>
+        </button>
+      </div>
+      <div class="drawer-footer">
+        <div class="drawer-footer-item" onclick="openCredsEditor()">
+          <div class="drawer-footer-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <span class="drawer-footer-label">Settings</span>
+        </div>
+        <div class="drawer-footer-divider"></div>
+        <div class="drawer-footer-item" onclick="toggleTheme()">
+          <div class="drawer-footer-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </div>
+          <span class="drawer-footer-label">Theme</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Views -->
+  <main class="page">
+    <div class="container" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      
+      <!-- 1. AUTH VIEW (When not logged in) -->
+      <div class="view" id="view-auth">
+        <div class="dashboard-header" style="text-align:center;margin-top:40px">
+          <h1 class="dashboard-title">Moodle Login</h1>
+          <p style="color:var(--muted);font-size:0.85rem;margin-top:4px">Sign in with your NIE credentials to access course materials.</p>
+        </div>
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:24px;box-shadow:var(--shadow)">
+          <div class="s-group">
+            <label class="s-label">College Email Prefix</label>
+            <div class="email-row">
+              <input class="s-input" id="inp-email" placeholder="e.g. 4ni23cs001" autocomplete="username"/>
+              <span class="email-suffix">@nie.ac.in</span>
+            </div>
+          </div>
+          <div class="s-group" style="margin-top:10px">
+            <label class="s-label">Moodle Password</label>
+            <input class="s-input" type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password"/>
+          </div>
+          <div id="auth-err" style="color:var(--danger);font-size:0.8rem;text-align:center;margin-top:10px;display:none"></div>
+          <button class="modal-btn modal-btn-save" style="margin-top:16px;width:100%;height:44px;font-size:0.92rem" onclick="doLogin()">Log In</button>
+        </div>
+      </div>
+
+      <!-- 2. COURSES LIST VIEW -->
+      <div class="view" id="view-courses">
+        <div class="dashboard-header">
+          <div class="header-row">
+            <h1 class="dashboard-title">My Courses</h1>
+          </div>
+        </div>
+
+        <div class="search-row">
+          <div class="search-container">
+            <svg class="search-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-input" id="course-search" placeholder="Search your courses..." oninput="filterCourses()"/>
+          </div>
+          <div class="sem-dropdown" id="sem-dropdown" style="display:none">
+            <div class="sem-trigger" onclick="toggleSemDropdown()">
+              <span class="sem-trigger-label" id="sem-trigger-label">Sem 1</span>
+              <span class="sem-trigger-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+            <div class="sem-menu" id="sem-menu"></div>
+            <div class="sem-backdrop" onclick="closeSemDropdown()"></div>
+          </div>
+        </div>
+
+        <div id="courses-list">
+          <div class="loader-wrap"><div class="spinner"></div>Loading courses...</div>
+        </div>
+      </div>
+
+      <!-- 3. COURSE CONTENT ACCORDION VIEW -->
+      <div class="view" id="view-content">
+        <div class="content-nav-header">
+          <button class="ch-back" onclick="showCourses()" aria-label="Back to courses">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="ch-course-details">
+            <div class="ch-title" id="content-title">Course Name</div>
+          </div>
+        </div>
+
+        <div id="content-list">
+          <div class="loader-wrap"><div class="spinner"></div>Loading sections...</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Image Lightbox Viewer -->
+  <div id="image-lightbox" onclick="closeImageLightbox()">
+    <button class="lightbox-close" onclick="closeImageLightbox()" aria-label="Close">&times;</button>
+    <div class="lightbox-body" onclick="event.stopPropagation()">
+      <img id="lightbox-img" src="" alt=""/>
+      <div id="lightbox-caption"></div>
+    </div>
+  </div>
+
+  <!-- Document & Media Lightbox Viewer -->
+  <div id="doc-lightbox" onclick="closeDocLightbox()">
+    <button class="lightbox-close" onclick="closeDocLightbox()" aria-label="Close">&times;</button>
+    <div class="doc-header" onclick="event.stopPropagation()">
+      <div class="doc-title" id="doc-title">Document</div>
+    </div>
+    <div class="doc-body" onclick="event.stopPropagation()">
+      <div id="doc-loader"><div class="spinner"></div><span>Loading preview...</span></div>
+      <iframe id="doc-iframe" onload="hideDocLoader()"></iframe>
+      <div id="pdf-container"></div>
+      <div class="media-container" id="media-container">
+        <video id="plyr-video" playsinline controls style="display:none;width:100%"></video>
+        <audio id="plyr-audio" controls style="display:none;width:100%"></audio>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Auth Spinner -->
+  <div id="auth-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,0.7);backdrop-filter:blur(4px);z-index:10000;display:none;align-items:center;justify-content:center;color:#fff;font-weight:700">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div class="spinner" style="border-top-color:#fff"></div>
+      <span>Signing in to Moodle...</span>
+    </div>
+  </div>
+
+  <!-- Settings Editor Modal -->
+  <div class="modal-overlay" id="creds-modal" onclick="closeCredsEditor()">
+    <div class="modal-card" id="creds-modal-card" onclick="event.stopPropagation()">
+      <div class="modal-title" id="ce-modal-title">Settings</div>
+      <div id="ce-att-col" style="display:none">
+        <div class="s-group">
+          <label class="s-label">USN</label>
+          <input class="s-input" id="ce-usn" placeholder="e.g. 4NI23CS001"/>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Date of Birth</label>
+          <input class="s-input" id="ce-dob" placeholder="DD/MM/YYYY"/>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Verification Code</label>
+          <input class="s-input" id="ce-code" placeholder="4 digits" maxlength="4"/>
+        </div>
+      </div>
+      <div id="ce-moodle-col">
+        <div class="s-group">
+          <label class="s-label">College Email Prefix</label>
+          <div class="email-row">
+            <input class="s-input" id="ce-moodle-prefix" placeholder="e.g. 4ni23cs001"/>
+            <span class="email-suffix">@nie.ac.in</span>
+          </div>
+        </div>
+        <div class="s-group">
+          <label class="s-label">Moodle Password</label>
+          <input class="s-input" type="password" id="ce-moodle-pass" placeholder="••••••••"/>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" onclick="closeCredsEditor()">Cancel</button>
+        <button class="modal-btn modal-btn-save" onclick="saveCredsEditor()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Modal -->
+  <div class="modal-overlay" id="logout-confirm-modal" onclick="closeLogoutConfirm()">
+    <div class="modal-card" style="width:min(340px, 100%)" onclick="event.stopPropagation()">
+      <div class="modal-title">Log Out?</div>
+      <p style="font-size:0.85rem;color:var(--muted);text-align:center;margin-bottom:16px">This will clear your stored credentials and cached data from this browser.</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" onclick="closeLogoutConfirm()">Cancel</button>
+        <button class="modal-btn" style="background:var(--danger);color:#fff" onclick="executeLogout()">Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestions & Feedback Modal -->
+  <div class="modal-overlay" id="sug-modal" onclick="closeSugModal()">
+    <div class="modal-card" style="padding:0;overflow:hidden;width:min(440px, 100%)" onclick="event.stopPropagation()">
+      <div class="sug-tab-bar">
+        <button class="sug-tab-btn active" data-tab="send" onclick="switchSugTab('send')">Send Feedback</button>
+        <button class="sug-tab-btn" data-tab="history" onclick="switchSugTab('history')">Past Replies</button>
+      </div>
+      <div style="padding:20px" id="sug-tab-send">
+        <div id="sug-modal-form">
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Found a bug or have a suggestion? Let us know!</p>
+          <textarea id="sug-modal-text" class="s-input" style="height:110px;padding:10px 12px;font-family:inherit;resize:none" placeholder="Type your suggestion or feedback here..."></textarea>
+          <div class="modal-actions" style="margin-top:14px">
+            <button class="modal-btn modal-btn-cancel" onclick="closeSugModal()">Cancel</button>
+            <button class="modal-btn modal-btn-save" onclick="submitSugModal()">Submit</button>
+          </div>
+        </div>
+      </div>
+      <div style="padding:20px;max-height:360px;overflow-y:auto;display:none" id="sug-tab-history">
+        <div id="sug-history-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="../" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a href="../attendance/" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      <span>Attendance</span>
+    </a>
+    <a href="./" class="nav-tab active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>Moodle</span>
+    </a>
+    <a href="../results/" class="nav-tab">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+      <span>Results</span>
+    </a>
+  </nav>
+
+  <!-- Module Scripts -->
+  <script type="module">
+    import { initMoodle } from '../js/moodle.js';
+    document.addEventListener('DOMContentLoaded', initMoodle);
+  </script>
+</body>
+</html>

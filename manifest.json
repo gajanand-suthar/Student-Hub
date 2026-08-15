@@ -1,0 +1,28 @@
+{
+  "name": "Student Hub",
+  "short_name": "Student Hub",
+  "description": "Your all-in-one student portal — access Moodle notes, attendance, CIE marks, and exam results.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": [
+    "education",
+    "utilities"
+  ]
+}

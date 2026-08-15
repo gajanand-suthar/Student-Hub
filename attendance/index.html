@@ -368,7 +368,7 @@
 
 <input type="hidden" id="att-cookies" value="" />
 <input type="hidden" id="att-usn" value="" />
-<input type="hidden" id="att-sem" value="even" />
+<input type="hidden" id="att-sem" value="odd" />
 
 <div class="page">
   <!-- FLIP CARD -->
@@ -439,8 +439,10 @@
             <span class="leg-item"><span class="leg-dot" style="background:#3b82f6"></span>&ge;85%</span>
           </div>
         </div>
-        <div class="desk-panel-body" id="desk-att-rows">
-          <div class="empty-panel">Loading attendance records...</div>
+        <div class="desk-panel-body">
+          <div class="att-rows" id="desk-att-rows">
+            <div class="empty-panel">Loading attendance records...</div>
+          </div>
         </div>
       </div>
 
@@ -449,8 +451,10 @@
           <span class="desk-panel-title">CIE Breakdown</span>
           <span style="font-size:.68rem;color:var(--muted)">tap to expand</span>
         </div>
-        <div class="desk-panel-body desk-panel-body--cie" id="desk-cie-accordion">
-          <div class="empty-panel">Loading CIE records...</div>
+        <div class="desk-panel-body desk-panel-body--cie">
+          <div class="cie-panel" id="desk-cie-accordion">
+            <div class="empty-panel">Loading CIE records...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -625,8 +629,8 @@
       <div style="padding-bottom: 8px;">
         <div class="drawer-section-title">Semester</div>
         <div class="drawer-sem-ctrl">
-          <button class="drawer-sem-btn active" id="m-sem-even" onclick="menuSwitchSem('even')">Even</button>
-          <button class="drawer-sem-btn" id="m-sem-odd" onclick="menuSwitchSem('odd')">Odd</button>
+          <button class="drawer-sem-btn" id="m-sem-even" onclick="menuSwitchSem('even')">Even</button>
+          <button class="drawer-sem-btn active" id="m-sem-odd" onclick="menuSwitchSem('odd')">Odd</button>
         </div>      
       </div>
       <div class="drawer-divider"></div>

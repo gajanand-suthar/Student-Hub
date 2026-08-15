@@ -751,6 +751,13 @@ export function openNoticesModal() {
   const bd = document.getElementById('notices-backdrop');
   if (!nm || !bd) return;
 
+  const btn = document.querySelector('.notices-btn-wide[onclick*="openNoticesModal"]') || document.querySelectorAll('.notices-btn-wide')[2];
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
+    nm.style.transform = 'scale(0.3)';
+  }
+
   bd.style.display = 'block';
   nm.classList.add('active');
   void nm.offsetWidth;
@@ -764,8 +771,15 @@ export function closeNoticesModal() {
   const nm = document.getElementById('notices-modal');
   const bd = document.getElementById('notices-backdrop');
   if (!nm || !bd) return;
+
   nm.classList.remove('show');
   bd.classList.remove('show');
+
+  const btn = document.querySelector('.notices-btn-wide[onclick*="openNoticesModal"]') || document.querySelectorAll('.notices-btn-wide')[2];
+  if (btn) {
+    nm.style.transform = 'scale(0.3)';
+  }
+
   setTimeout(() => {
     nm.classList.remove('active');
     bd.style.display = 'none';
@@ -887,6 +901,13 @@ export function openDepartmentModal(tab) {
   const bd = document.getElementById('department-backdrop');
   if (!nm || !bd) return;
 
+  const btn = document.querySelector(`.notices-btn-wide[onclick*="${tab}"]`) || document.querySelector('.notices-btn-wide')?.parentNode;
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
+    nm.style.transform = 'scale(0.3)';
+  }
+
   bd.style.display = 'block';
   nm.classList.add('active');
   void nm.offsetWidth;
@@ -900,8 +921,11 @@ export function closeDepartmentModal() {
   const nm = document.getElementById('department-modal');
   const bd = document.getElementById('department-backdrop');
   if (!nm || !bd) return;
+
   nm.classList.remove('show');
   bd.classList.remove('show');
+  nm.style.transform = 'scale(0.3)';
+
   setTimeout(() => {
     nm.classList.remove('active');
     bd.style.display = 'none';

@@ -107,6 +107,9 @@ function continueBoot() {
     if (hour < 12) timeStr = 'Good morning,';
     else if (hour < 17) timeStr = 'Good afternoon,';
     const gTime = document.getElementById('greeting-time');
+    if (gTime) gTime.textContent = timeStr;
+  }
+
   initAcademicCalendar();
   checkSugUnread();
 
@@ -144,6 +147,13 @@ function continueBoot() {
       else this.value = v;
     });
   }
+
+  // Prevent keyboard from scrolling the page during onboarding
+  document.querySelectorAll('#onboarding input').forEach(inp => {
+    inp.addEventListener('focus', () => {
+      setTimeout(() => window.scrollTo(0, 0), 50);
+    });
+  });
 }
 
 export function checkCmScroll() {

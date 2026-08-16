@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nie-hub-static-v3';
+const CACHE_NAME = 'nie-hub-static-v4';
 const PRECACHE = [
   './',
   './index.html',
@@ -10,6 +10,15 @@ const PRECACHE = [
   './results/index.html',
   './manifest.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './css/base.css',
+  './css/shared.css',
+  './css/dashboard.css',
+  './css/attendance.css',
+  './css/moodle.css',
+  './css/results.css',
   './js/config.js',
   './js/api.js',
   './js/shared.js',
@@ -43,8 +52,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Network-First for JS and HTML files to avoid stale config cache
-  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
+  // Network-First for JS, CSS, and HTML files to avoid stale cache
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html')) {
     e.respondWith(
       fetch(e.request)
         .then(res => {
@@ -59,7 +68,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-First for static assets (images, fonts, svg)
+  // Cache-First for static media (images, fonts, svg, icons)
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;

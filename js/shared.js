@@ -352,61 +352,200 @@ export function checkSugUnread() {
 }
 
 // ── PWA Installation ──
-export function initPwa() {
-  const PWA_SNOOZED_KEY = 'nie_hub_pwa_snoozed';
-  const SNOOZE_MS = 24 * 60 * 60 * 1000;
-  let deferredPrompt = null;
+const PWA_SNOOZED_KEY = 'nie_hub_pwa_snoozed';
+const PWA_IOS_SHOWN_KEY = 'nie_hub_pwa_ios_shown';
+const SNOOZE_MS = 24 * 60 * 60 * 1000; // 24 hours
+let deferredPrompt = null;
 
-  const modal = document.getElementById('pwa-modal');
-  const installBtn = document.getElementById('pwa-install-btn');
-  const laterBtn = document.getElementById('pwa-later-btn');
-
-  if (!modal || !installBtn || !laterBtn) return;
-  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
-
-  function isSnoozed() {
-    const t = parseInt(localStorage.getItem(PWA_SNOOZED_KEY) || '0', 10);
-    return t && Date.now() - t < SNOOZE_MS;
-  }
-  function showModal() {
-    if (isSnoozed()) return;
-    setTimeout(() => modal.classList.add('active'), 2500);
-  }
-  function hideModal() {
-    modal.classList.remove('active');
-  }
-  function snooze() {
-    localStorage.setItem(PWA_SNOOZED_KEY, Date.now().toString());
-    hideModal();
-  }
-
+// Catch beforeinstallprompt as early as possible
+if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
-    showModal();
+    if (typeof window._triggerPwaPrompt === 'function') {
+      window._triggerPwaPrompt();
+    }
   });
 
-  installBtn.addEventListener('click', () => {
-    if (!deferredPrompt) return;
-    hideModal();
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(result => {
-      if (result.outcome !== 'accepted') snooze();
-      deferredPrompt = null;
-    });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    const modal = document.getElementById('pwa-modal');
+    if (modal) modal.classList.remove('active');
   });
+}
 
-  laterBtn.addEventListener('click', snooze);
-
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isIos && !window.navigator.standalone) {
-    installBtn.textContent = 'How to Install';
-    installBtn.addEventListener('click', () => {
-      hideModal();
-      alert('Tap the Share button in Safari, then "Add to Home Screen".');
+export function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    const isSub = window.location.pathname.includes('/attendance') ||
+                  window.location.pathname.includes('/moodle') ||
+                  window.location.pathname.includes('/results') ||
+                  window.location.pathname.includes('/admin');
+    const swPath = isSub ? '../sw.js' : './sw.js';
+    navigator.serviceWorker.register(swPath).catch(() => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-    showModal();
   }
+}
+
+export function initPwa() {
+  registerServiceWorker();
+
+  // If already running standalone (installed PWA / home screen), never show popup
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true ||
+                       (typeof document !== 'undefined' && document.referrer.includes('android-app://'));
+  if (isStandalone) return;
+
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  function ensureModal() {
+    let modal = document.getElementById('pwa-modal');
+    if (!modal) {
+      const container = document.createElement('div');
+      container.id = 'pwa-modal';
+      container.innerHTML = `
+        <div class="pwa-card">
+          <div class="pwa-app-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+              <rect width="512" height="512" fill="#2563eb" rx="120"/>
+              <g transform="translate(256,256) scale(0.55) translate(-256,-256)">
+                <rect x="64" y="64" width="171" height="171" rx="43" fill="#fff"/>
+                <rect x="277" y="64" width="171" height="107" rx="43" fill="#fff"/>
+                <rect x="277" y="213" width="171" height="235" rx="43" fill="#fff"/>
+                <rect x="64" y="277" width="171" height="171" rx="43" fill="#fff"/>
+              </g>
+            </svg>
+          </div>
+          <div class="pwa-title" id="pwa-title">Install Student Hub</div>
+          <div class="pwa-sub" id="pwa-sub-text">Add to your home screen for instant access.</div>
+          <div id="pwa-ios-guide" style="display: none; text-align: left; background: var(--bg); padding: 12px 14px; border-radius: 12px; margin-bottom: 18px; font-size: 0.82rem; line-height: 1.6; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">1</span>
+              <span>Tap the <strong>Share</strong> button in Safari (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">2</span>
+              <span>Scroll down &amp; tap <strong>&quot;Add to Home Screen&quot;</strong></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">3</span>
+              <span>Tap <strong>Add</strong> in the top right</span>
+            </div>
+          </div>
+          <button class="pwa-install-btn" id="pwa-install-btn">Install</button>
+          <button class="pwa-later-btn" id="pwa-later-btn">Maybe later</button>
+        </div>
+      `;
+      document.body.appendChild(container);
+      modal = container;
+    }
+    return modal;
+  }
+
+  function isSnoozed() {
+    const t = parseInt(localStorage.getItem(PWA_SNOOZED_KEY) || '0', 10);
+    return t > 0 && (Date.now() - t < SNOOZE_MS);
+  }
+
+  function snooze() {
+    try {
+      localStorage.setItem(PWA_SNOOZED_KEY, Date.now().toString());
+    } catch (e) {}
+    hideModal();
+  }
+
+  function hideModal() {
+    const modal = document.getElementById('pwa-modal');
+    if (modal) modal.classList.remove('active');
+  }
+
+  function showModal() {
+    const modal = ensureModal();
+    if (!modal) return;
+    setTimeout(() => {
+      modal.classList.add('active');
+    }, 2500);
+  }
+
+  // --- iOS Handling ---
+  // iOS has no programmatic PWA install; show instructions once at start, and never show again.
+  if (isIos) {
+    const iosShown = localStorage.getItem(PWA_IOS_SHOWN_KEY);
+    if (iosShown === '1') {
+      return; // Never show again on iOS
+    }
+
+    const modal = ensureModal();
+    const titleEl = document.getElementById('pwa-title');
+    const subEl = document.getElementById('pwa-sub-text');
+    const iosGuide = document.getElementById('pwa-ios-guide');
+    const installBtn = document.getElementById('pwa-install-btn');
+    const laterBtn = document.getElementById('pwa-later-btn');
+
+    if (titleEl) titleEl.textContent = 'Add to Home Screen';
+    if (subEl) subEl.textContent = 'Add Student Hub to your iPhone/iPad for instant, fast access.';
+    if (iosGuide) iosGuide.style.display = 'block';
+    if (installBtn) {
+      installBtn.textContent = 'Got It';
+      installBtn.onclick = () => {
+        try { localStorage.setItem(PWA_IOS_SHOWN_KEY, '1'); } catch (e) {}
+        hideModal();
+      };
+    }
+    if (laterBtn) {
+      laterBtn.textContent = 'Close';
+      laterBtn.onclick = () => {
+        try { localStorage.setItem(PWA_IOS_SHOWN_KEY, '1'); } catch (e) {}
+        hideModal();
+      };
+    }
+
+    showModal();
+    return;
+  }
+
+  // --- Desktop & Android Handling ---
+  // Show prompt with 24-hour snooze support when clicked "Maybe later"
+  function setupDesktopAndroid() {
+    const modal = ensureModal();
+    const installBtn = document.getElementById('pwa-install-btn');
+    const laterBtn = document.getElementById('pwa-later-btn');
+
+    if (installBtn) {
+      installBtn.onclick = () => {
+        if (!deferredPrompt) {
+          hideModal();
+          return;
+        }
+        hideModal();
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(result => {
+          if (result && result.outcome !== 'accepted') {
+            snooze();
+          }
+          deferredPrompt = null;
+        }).catch(() => {});
+      };
+    }
+
+    if (laterBtn) {
+      laterBtn.onclick = snooze;
+    }
+
+    if (!isSnoozed() && deferredPrompt) {
+      showModal();
+    }
+  }
+
+  window._triggerPwaPrompt = function() {
+    if (!isIos && !isStandalone && !isSnoozed()) {
+      setupDesktopAndroid();
+      showModal();
+    }
+  };
+
+  setupDesktopAndroid();
 }
 
 // ── Helpers ──

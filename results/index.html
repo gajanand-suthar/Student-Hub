@@ -5,8 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
   <title>Branch Performance — Student Hub</title>
   <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Student Hub">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="../manifest.json"/>
   <link rel="icon" type="image/svg+xml" href="../icon.svg"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png"/>
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png"/>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -388,6 +394,41 @@
         <button class="modal-btn modal-btn-cancel" onclick="closeLogoutConfirm()">Cancel</button>
         <button class="modal-btn" style="background: var(--danger); color: #fff;" onclick="executeLogout()">Clear All</button>
       </div>
+    </div>
+  </div>
+
+  <!-- PWA Install Popup -->
+  <div id="pwa-modal">
+    <div class="pwa-card">
+      <div class="pwa-app-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <rect width="512" height="512" fill="#2563eb" rx="120"/>
+          <g transform="translate(256,256) scale(0.55) translate(-256,-256)">
+            <rect x="64" y="64" width="171" height="171" rx="43" fill="#fff"/>
+            <rect x="277" y="64" width="171" height="107" rx="43" fill="#fff"/>
+            <rect x="277" y="213" width="171" height="235" rx="43" fill="#fff"/>
+            <rect x="64" y="277" width="171" height="171" rx="43" fill="#fff"/>
+          </g>
+        </svg>
+      </div>
+      <div class="pwa-title" id="pwa-title">Install Student Hub</div>
+      <div class="pwa-sub" id="pwa-sub-text">Add to your home screen for instant access.</div>
+      <div id="pwa-ios-guide" style="display: none; text-align: left; background: var(--bg); padding: 12px 14px; border-radius: 12px; margin-bottom: 18px; font-size: 0.82rem; line-height: 1.6; border: 1px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">1</span>
+          <span>Tap the <strong>Share</strong> button in Safari (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">2</span>
+          <span>Scroll down &amp; tap <strong>&quot;Add to Home Screen&quot;</strong></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">3</span>
+          <span>Tap <strong>Add</strong> in the top right</span>
+        </div>
+      </div>
+      <button class="pwa-install-btn" id="pwa-install-btn">Install</button>
+      <button class="pwa-later-btn" id="pwa-later-btn">Maybe later</button>
     </div>
   </div>
 

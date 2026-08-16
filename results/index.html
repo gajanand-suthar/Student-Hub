@@ -144,6 +144,21 @@
     .drawer-footer-divider { width: 1px; height: 32px; background: rgba(0,0,0,0.06); flex-shrink: 0; margin: 0 10px; }
     [data-theme=dark] .drawer-footer-divider { background: rgba(255,255,255,0.15); }
 
+    /* PWA Install Popup */
+    #pwa-modal{position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s,backdrop-filter .25s;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);background:rgba(15,23,42,0)}
+    #pwa-modal.active{opacity:1;pointer-events:auto;backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);background:rgba(15,23,42,.5)}
+    .pwa-card{background:var(--surface);border-radius:22px;padding:32px 26px 26px;width:min(320px,100%);position:relative;z-index:1;box-shadow:0 32px 80px rgba(15,23,42,.3);transform:translateY(14px) scale(.97);transition:transform .3s cubic-bezier(.34,1.3,.64,1);text-align:center}
+    #pwa-modal.active .pwa-card{transform:translateY(0) scale(1)}
+    [data-theme=dark] .pwa-card{background:#1e293b}
+    .pwa-app-icon{width:72px;height:72px;border-radius:18px;margin:0 auto 16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+    .pwa-app-icon svg{width:72px;height:72px}
+    .pwa-title{font-size:1.05rem;font-weight:800;color:var(--text);margin-bottom:6px}
+    .pwa-sub{font-size:.8rem;color:var(--muted);line-height:1.5;margin-bottom:22px}
+    .pwa-install-btn{display:block;width:100%;height:48px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .15s;margin-bottom:10px}
+    .pwa-install-btn:hover{background:var(--accent-h)}
+    .pwa-later-btn{display:block;width:100%;height:40px;background:none;border:none;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;color:var(--muted);cursor:pointer;border-radius:10px;transition:color .15s}
+    .pwa-later-btn:hover{color:var(--text)}
+
     /* Results Specific Layout */
     html,body{height:100%!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
     .page-wrap{flex:1;width:100%;max-width:600px;margin:0 auto;padding:16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0;box-sizing:border-box}
@@ -401,7 +416,7 @@
   <div id="pwa-modal">
     <div class="pwa-card">
       <div class="pwa-app-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 512 512" style="width:72px;height:72px;display:block;">
           <rect width="512" height="512" fill="#2563eb" rx="120"/>
           <g transform="translate(256,256) scale(0.55) translate(-256,-256)">
             <rect x="64" y="64" width="171" height="171" rx="43" fill="#fff"/>

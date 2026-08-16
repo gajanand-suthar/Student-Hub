@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nie-hub-static-v4';
+const CACHE_NAME = 'nie-hub-static-v5';
 const PRECACHE = [
   './',
   './index.html',
@@ -13,12 +13,6 @@ const PRECACHE = [
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
-  './css/base.css',
-  './css/shared.css',
-  './css/dashboard.css',
-  './css/attendance.css',
-  './css/moodle.css',
-  './css/results.css',
   './js/config.js',
   './js/api.js',
   './js/shared.js',
@@ -52,8 +46,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Network-First for JS, CSS, and HTML files to avoid stale cache
-  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html')) {
+  // Network-First for JS and HTML files to avoid stale cache
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
     e.respondWith(
       fetch(e.request)
         .then(res => {

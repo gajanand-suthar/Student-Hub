@@ -378,8 +378,7 @@ export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     const isSub = window.location.pathname.includes('/attendance') ||
                   window.location.pathname.includes('/moodle') ||
-                  window.location.pathname.includes('/results') ||
-                  window.location.pathname.includes('/admin');
+                  window.location.pathname.includes('/results');
     const swPath = isSub ? '../sw.js' : './sw.js';
     navigator.serviceWorker.register(swPath).catch(() => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

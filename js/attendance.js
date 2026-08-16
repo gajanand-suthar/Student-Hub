@@ -37,6 +37,7 @@ export async function initAttendance() {
 }
 
 export async function fetchAttendanceData(showLoading = true, explicitSem = null) {
+  closeAttModal();
   const creds = loadCreds();
   if (!creds || !creds.usn) return;
 
@@ -568,6 +569,11 @@ if (typeof document !== 'undefined') {
   }, true);
 }
 
+export function refreshData() {
+  closeAttModal();
+  return fetchAttendanceData(true);
+}
+
 // Bind window helpers
 if (typeof window !== 'undefined') {
   window.switchTab = switchTab;
@@ -578,5 +584,5 @@ if (typeof window !== 'undefined') {
   window.closeAttModal = closeAttModal;
   window.switchSem = switchSem;
   window.menuSwitchSem = menuSwitchSem;
-  window.refreshData = () => fetchAttendanceData(true);
+  window.refreshData = refreshData;
 }

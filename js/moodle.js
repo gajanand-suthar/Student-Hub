@@ -139,7 +139,7 @@ export async function initMoodle() {
   token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
 
   try {
-    const u = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const u = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
     if (u.name) {
       userName = u.name.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
     }

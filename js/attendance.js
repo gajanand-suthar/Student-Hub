@@ -20,23 +20,19 @@ export async function initAttendance() {
     return;
   }
 
-  // Cleanup legacy localStorage user data if any
+  // Check session cache for attendance (persists only for current tab/PWA session)
+  let sessionAtt = null;
   try {
-    localStorage.removeItem(CONFIG.USER_KEY);
+    sessionAtt = JSON.parse(sessionStorage.getItem('nie_att_session'));
   } catch (e) {}
 
-  // Check cached user data in sessionStorage (valid for current session only)
-  let cachedUser = null;
-  try {
-    cachedUser = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY));
-  } catch (e) {}
-
-  if (cachedUser && cachedUser.usn === creds.usn && cachedUser.attendance) {
-    currentStudentData = cachedUser;
-    renderStudentView(cachedUser);
+  if (sessionAtt && sessionAtt.usn === creds.usn && sessionAtt.attendance) {
+    currentStudentData = sessionAtt;
+    renderStudentView(sessionAtt);
     // Background refresh silently from backend
     fetchAttendanceData(false);
   } else {
+    // First visit in this session: fetch fresh live data
     fetchAttendanceData(true);
   }
 }
@@ -65,7 +61,23 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
     if (res.student) {
       currentStudentData = res.student;
-      sessionStorage.setItem(CONFIG.USER_KEY, JSON.stringify(res.student));
+      // Cache attendance for this particular session only
+      sessionStorage.setItem('nie_att_session', JSON.stringify(res.student));
+
+      // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
+      try {
+        const profile = {
+          name: res.student.name,
+          usn: res.student.usn,
+          program: res.student.program,
+          semNum: res.student.semNum || '',
+          section: res.student.section || '',
+          photoUri: res.student.photoUri || null,
+          sem: res.student.sem || ''
+        };
+        localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+      } catch (e) {}
+
       renderStudentView(res.student);
     }
   } catch (err) {
@@ -482,8 +494,7 @@ export function menuSwitchSem(newSem) {
       btnEven.classList.toggle('active', newSem === 'even');
       btnOdd.classList.toggle('active', newSem === 'odd');
     }
-    sessionStorage.removeItem(CONFIG.USER_KEY);
-    localStorage.removeItem(CONFIG.USER_KEY);
+    sessionStorage.removeItem('nie_att_session');
     fetchAttendanceData(true, newSem);
   } catch (e) {
     alert('Error switching semester: ' + e.message);

@@ -1,9 +1,7 @@
-const CACHE_NAME = 'nie-hub-static-v6';
+const CACHE_NAME = 'nie-hub-static-v7';
 const PRECACHE = [
   './',
   './index.html',
-  './attendance/',
-  './attendance/index.html',
   './moodle/',
   './moodle/index.html',
   './results/',
@@ -46,7 +44,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Network-First for JS and HTML files to avoid stale cache
+  // Never cache attendance HTML page — always fetch live from network
+  if (url.pathname.includes('/attendance') && (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/attendance') || url.pathname.endsWith('/attendance/'))) {
+    e.respondWith(
+      fetch(e.request).catch(() => new Response('Attendance is unavailable offline.', {
+        headers: { 'Content-Type': 'text/plain' }
+      }))
+    );
+    return;
+  }
+
+  // Network-First for other JS and HTML files to avoid stale cache
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
     e.respondWith(
       fetch(e.request)

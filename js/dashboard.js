@@ -96,7 +96,7 @@ export function initDashboard() {
 function continueBoot() {
   let user = null;
   try {
-    user = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY));
+    user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
   } catch (e) {}
 
   if (user && user.name) {
@@ -311,7 +311,16 @@ export function obFinish(saveMoodle) {
   // Background auto-login test (backend uses its configured default semester)
   api.login({ usn, dob, idType, code }).then(res => {
     if (res && res.student) {
-      sessionStorage.setItem(CONFIG.USER_KEY, JSON.stringify(res.student));
+      const profile = {
+        name: res.student.name,
+        usn: res.student.usn,
+        program: res.student.program,
+        semNum: res.student.semNum || '',
+        section: res.student.section || '',
+        photoUri: res.student.photoUri || null,
+        sem: res.student.sem || ''
+      };
+      localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
       const gName = document.getElementById('greeting-name');
       if (gName && res.student.name) gName.textContent = toTitleCase(res.student.name);
     }
@@ -348,7 +357,7 @@ export function initAcademicCalendar() {
   let resolved = false;
 
   try {
-    const user = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
     if (user.semNum) {
       const num = parseInt(user.semNum, 10) || 0;
       if (num <= 3) selectedCalSem = 'III';
@@ -687,7 +696,7 @@ export async function downloadHallTicket() {
 
   let studentName = '';
   try {
-    const user = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
     if (user.name) studentName = user.name;
   } catch (e) {}
 
@@ -837,7 +846,7 @@ export async function fetchNotices(forceRefresh = false) {
   try {
     const c = loadCreds() || {};
     usn = c.usn || '';
-    const p = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
     name = p.name || '';
   } catch (e) {}
 
@@ -960,7 +969,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
     try {
       const c = loadCreds() || {};
       usn = c.usn || '';
-      const p = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
+      const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
       name = p.name || '';
     } catch (e) {}
 

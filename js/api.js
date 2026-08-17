@@ -53,7 +53,7 @@ export const api = {
     return { ok: res.ok, html: text };
   },
 
-  async _postPortalForm(path, { cookies, courseId, secId, semId, sem }) {
+  async _postPortalForm(path, { cookies = '', courseId = '', secId = '', semId = '', sem = '' } = {}) {
     const fd = new FormData();
     fd.append('cookies', cookies);
     fd.append('courseId', courseId);
@@ -62,15 +62,15 @@ export const api = {
     if (sem) fd.append('sem', sem);
     const res = await fetch(this.getApiUrl(path), { method: 'POST', body: fd });
     return this._checkPortalResponse(res);
-  }
+  },
 
   getAttendanceDetail(params) {
     return this._postPortalForm('/attendance-detail', params);
-  }
+  },
 
   getCieDetail(params) {
     return this._postPortalForm('/cie-detail', params);
-  }
+  },
 
   async getExamHistory(params) {
     const fd = new FormData();

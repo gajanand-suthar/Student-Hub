@@ -4,9 +4,9 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa } from './shared.js';
+import { loadCreds, initTheme, initPwa, escHtml, toTitleCase, loadUser, getStoredUsn } from './shared.js';
 
-var BRANCH_NAMES = {
+const BRANCH_NAMES = {
   'EE': 'Electrical & Electronics',
   'EC': 'Electronics & Communication',
   'IS': 'Information Science',
@@ -16,7 +16,13 @@ var BRANCH_NAMES = {
   'CV': 'Civil'
 };
 
-var currentUsn = '';
+let currentUsn = '';
+let pollRetries = 0;
+const MAX_POLL_RETRIES = 60;
+
+function fmtVal(val, decimals = 2) {
+  return val !== null && val !== undefined ? Number(val).toFixed(decimals) : '—';
+}
 
 function getMedal(rank) {
   if (rank === 1) return '🥇';
@@ -32,15 +38,9 @@ function getRankClass(rank) {
   return '';
 }
 
-function toTitleCase(str) {
-  return (str || '').split(' ').map(function(w) {
-    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-  }).join(' ');
-}
-
 function showState(stateId) {
   ['loading-state','error-state','main-content','empty-state','gen-state'].forEach(function(id) {
-    var el = document.getElementById(id);
+    const el = document.getElementById(id);
     if (el) el.style.display = id === stateId ? 'flex' : 'none';
   });
 }
@@ -55,8 +55,9 @@ function showError(title, sub) {
 
 function renderLeaderboard(data) {
   showState('main-content');
+  pollRetries = 0; // Reset retries on successful render
 
-  var branchName = BRANCH_NAMES[data.branch] || data.branch;
+  const branchName = BRANCH_NAMES[data.branch] || data.branch;
   const perfTitle = document.getElementById('perf-title');
   const perfSub = document.getElementById('perf-sub');
   if (perfTitle) perfTitle.textContent = 'Semester Leaderboard';
@@ -67,12 +68,12 @@ function renderLeaderboard(data) {
   const statAvg = document.getElementById('stat-avg');
   const statRank = document.getElementById('stat-rank');
   if (statTotal) statTotal.textContent = data.totalStudents || '—';
-  if (statAvg) statAvg.textContent = data.branchAvgSgpa !== null && data.branchAvgSgpa !== undefined ? Number(data.branchAvgSgpa).toFixed(2) : '—';
+  if (statAvg) statAvg.textContent = fmtVal(data.branchAvgSgpa);
 
   // Find current user
-  var me = null;
-  var leaderboard = data.leaderboard || [];
-  for (var i = 0; i < leaderboard.length; i++) {
+  let me = null;
+  const leaderboard = data.leaderboard || [];
+  for (let i = 0; i < leaderboard.length; i++) {
     if (leaderboard[i].isCurrentUser) {
       me = leaderboard[i];
       break;
@@ -81,40 +82,39 @@ function renderLeaderboard(data) {
 
   if (me) {
     if (statRank) statRank.textContent = '#' + me.rank;
-    var myCard = document.getElementById('my-rank-card');
+    const myCard = document.getElementById('my-rank-card');
     if (myCard) myCard.style.display = 'flex';
-    var rankNum = document.getElementById('my-rank-num');
-    var rankName = document.getElementById('my-rank-name');
-    var rankMeta = document.getElementById('my-rank-meta');
-    var rankSgpa = document.getElementById('my-rank-sgpa');
+    const rankNum = document.getElementById('my-rank-num');
+    const rankName = document.getElementById('my-rank-name');
+    const rankMeta = document.getElementById('my-rank-meta');
+    const rankSgpa = document.getElementById('my-rank-sgpa');
     if (rankNum) rankNum.textContent = '#' + me.rank;
     if (rankName) rankName.textContent = toTitleCase(me.name);
     if (rankMeta) rankMeta.textContent = me.usn + (me.creditsEarned !== null && me.creditsEarned !== undefined ? ' · Cr: ' + me.creditsEarned + '/' + me.creditsRegistered : '');
-    if (rankSgpa) rankSgpa.textContent = me.sgpa !== null && me.sgpa !== undefined ? Number(me.sgpa).toFixed(2) : '—';
+    if (rankSgpa) rankSgpa.textContent = fmtVal(me.sgpa);
   }
 
   // Build leaderboard rows
-  var listEl = document.getElementById('lb-list');
+  const listEl = document.getElementById('lb-list');
   if (!listEl) return;
-  var html = '';
+  let html = '';
 
-  for (var j = 0; j < leaderboard.length; j++) {
-    var s = leaderboard[j];
-    var isMe = s.isCurrentUser;
-    var medal = getMedal(s.rank);
-    var rankClass = getRankClass(s.rank);
-    var failBadge = '';
-    var displayName = isMe ? toTitleCase(s.name) + ' (You)' : toTitleCase(s.name);
+  for (let j = 0; j < leaderboard.length; j++) {
+    const s = leaderboard[j];
+    const isMe = s.isCurrentUser;
+    const medal = getMedal(s.rank);
+    const rankClass = getRankClass(s.rank);
+    const displayName = isMe ? toTitleCase(s.name) + ' (You)' : toTitleCase(s.name);
 
     html += '<div class="lb-row' + (isMe ? ' me' : '') + '">'
       + '<div class="lb-rank ' + rankClass + '">' + medal + '</div>'
       + '<div class="lb-info">'
-      +   '<div class="lb-name">' + escHtml(displayName) + failBadge + '</div>'
+      +   '<div class="lb-name">' + escHtml(displayName) + '</div>'
       +   '<div class="lb-usn">' + escHtml(s.usn) + '</div>'
       + '</div>'
       + '<div class="lb-cr">' + (s.creditsEarned !== null && s.creditsEarned !== undefined ? s.creditsEarned + '/' + s.creditsRegistered : '') + '</div>'
       + '<div class="lb-right">'
-      +   '<div class="lb-sgpa">' + (s.sgpa !== null && s.sgpa !== undefined ? Number(s.sgpa).toFixed(2) : '—') + '</div>'
+      +   '<div class="lb-sgpa">' + fmtVal(s.sgpa) + '</div>'
       + '</div>'
       + '</div>';
   }
@@ -123,8 +123,8 @@ function renderLeaderboard(data) {
 
   // Scroll to current user row after render
   setTimeout(function() {
-    var meRow = document.querySelector('.lb-row.me');
-    var list = document.getElementById('lb-list');
+    const meRow = document.querySelector('.lb-row.me');
+    const list = document.getElementById('lb-list');
     if (meRow && list) {
        list.scrollTo({
          top: meRow.offsetTop - (list.clientHeight / 2) + (meRow.clientHeight / 2),
@@ -135,6 +135,9 @@ function renderLeaderboard(data) {
 }
 
 function checkLeaderboard() {
+  if (pollRetries >= MAX_POLL_RETRIES) return;
+  pollRetries++;
+
   api.getResultsPerformance(currentUsn)
     .then(function(data) {
       if (data.generating || data.empty) {
@@ -147,11 +150,11 @@ function checkLeaderboard() {
 }
 
 function setupGenerate(batch, branch) {
-  var btn = document.getElementById('start-gen-btn');
+  const btn = document.getElementById('start-gen-btn');
   if (btn) {
     btn.onclick = function() {
       showState('gen-state');
-      var progWrap = document.getElementById('gen-prog-wrap');
+      const progWrap = document.getElementById('gen-prog-wrap');
       if (progWrap) progWrap.style.display = 'block';
       startGen(batch, branch);
     };
@@ -161,29 +164,29 @@ function setupGenerate(batch, branch) {
 function pad(n) { return ('000' + n).slice(-3); }
 
 async function startGen(batch, branch) {
-  var year = batch.slice(-2);
-  var fill = document.getElementById('gen-fill');
-  var sub = document.getElementById('gen-sub');
+  const year = batch.slice(-2);
+  const fill = document.getElementById('gen-fill');
+  const sub = document.getElementById('gen-sub');
   
   try {
-    var startRes = await api.post('/api/results/generate-start', { year: year, branch: branch, usn: currentUsn });
+    const startRes = await api.post('/api/results/generate-start', { year: year, branch: branch, usn: currentUsn });
     
-    var regularPrefix = '4NI' + year + branch;
-    var lateralYear = String(parseInt(year, 10) + 1).padStart(2, '0');
-    var lateralPrefix = '4NI' + lateralYear + branch;
+    const regularPrefix = '4NI' + year + branch;
+    const lateralYear = String(parseInt(year, 10) + 1).padStart(2, '0');
+    const lateralPrefix = '4NI' + lateralYear + branch;
 
-    var chunkSize = 10;
-    var totalMaxChunks = 70;
-    var chunkIndex = 0;
+    const chunkSize = 10;
+    const totalMaxChunks = 70;
+    let chunkIndex = 0;
 
     // Fetch Regular
-    for (var s = 1; s <= 600; s += chunkSize) {
-      var chunk = [];
-      for (var i = 0; i < chunkSize; i++) chunk.push(regularPrefix + pad(s + i));
+    for (let s = 1; s <= 600; s += chunkSize) {
+      const chunk = [];
+      for (let i = 0; i < chunkSize; i++) chunk.push(regularPrefix + pad(s + i));
       chunkIndex++;
       if (sub) sub.textContent = 'Fetching USN ' + chunk[0] + ' to ' + chunk[chunk.length-1];
       
-      var data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
+      const data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
       if (fill) fill.style.width = Math.round((chunkIndex / totalMaxChunks) * 100) + '%';
       if (data.count === 0) {
         chunkIndex += Math.floor((600 - s) / chunkSize);
@@ -192,13 +195,13 @@ async function startGen(batch, branch) {
     }
 
     // Fetch Lateral
-    for (var s = 400; s <= 500; s += chunkSize) {
-      var chunk = [];
-      for (var i = 0; i < chunkSize; i++) chunk.push(lateralPrefix + pad(s + i));
+    for (let s = 400; s <= 500; s += chunkSize) {
+      const chunk = [];
+      for (let i = 0; i < chunkSize; i++) chunk.push(lateralPrefix + pad(s + i));
       chunkIndex++;
       if (sub) sub.textContent = 'Fetching USN ' + chunk[0] + ' to ' + chunk[chunk.length-1];
       
-      var data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
+      const data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
       if (fill) fill.style.width = Math.round((chunkIndex / totalMaxChunks) * 100) + '%';
       if (data.count === 0) break;
     }
@@ -212,10 +215,10 @@ async function startGen(batch, branch) {
 
   } catch(e) {
     if (e.message && e.message.includes('Already generating')) {
-      var genTitle = document.getElementById('gen-title');
+      const genTitle = document.getElementById('gen-title');
       if (genTitle) genTitle.textContent = 'Please Wait';
       if (sub) sub.textContent = 'Someone else started generating! Waiting for them to finish...';
-      var progWrap = document.getElementById('gen-prog-wrap');
+      const progWrap = document.getElementById('gen-prog-wrap');
       if (progWrap) progWrap.style.display = 'none';
       setTimeout(checkLeaderboard, 5000);
       return;
@@ -228,18 +231,11 @@ export function initResults() {
   initTheme();
   initPwa();
 
-  var params = new URLSearchParams(window.location.search);
-  var usn = params.get('usn') || '';
+  const params = new URLSearchParams(window.location.search);
+  let usn = params.get('usn') || '';
 
   if (!usn) {
-    try {
-      var creds = loadCreds() || {};
-      usn = creds.usn || '';
-    } catch(e) {}
-    try {
-      var user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-      if (!usn) usn = user.usn || '';
-    } catch(e) {}
+    usn = getStoredUsn();
   }
 
   if (!usn) {
@@ -262,8 +258,8 @@ export function initResults() {
       }
       if (data.generating) {
         showState('gen-state');
-        var genTitle = document.getElementById('gen-title');
-        var genSub = document.getElementById('gen-sub');
+        const genTitle = document.getElementById('gen-title');
+        const genSub = document.getElementById('gen-sub');
         if (genTitle) genTitle.textContent = 'Please Wait';
         if (genSub) genSub.textContent = 'Another student is currently generating the leaderboard. This updates automatically...';
         setTimeout(checkLeaderboard, 5000);
@@ -274,10 +270,6 @@ export function initResults() {
     .catch(function() {
       showError('Connection Error', 'Could not load leaderboard data. Please check your connection.');
     });
-}
-
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 if (typeof window !== 'undefined') {

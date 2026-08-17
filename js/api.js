@@ -4,11 +4,26 @@
 
 import { CONFIG } from './config.js';
 
+const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
+
 export const api = {
   getApiUrl(path) {
-    const base = CONFIG.API_BASE.replace(/\/$/, '');
     const cleanPath = path.startsWith('/') ? path : '/' + path;
-    return base + cleanPath;
+    return API_BASE + cleanPath;
+  },
+
+  _checkPortalResponse(res) {
+    if (res.status === 401) throw new Error('SESSION_EXPIRED');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
+  _checkMoodleResponse(data) {
+    if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
+      throw new Error('invalidtoken');
+    }
+    if (data && data.exception) throw new Error(data.message || data.exception);
+    return data;
   },
 
   // ── Authentication / Parents Portal ──
@@ -38,41 +53,24 @@ export const api = {
     return { ok: res.ok, html: text };
   },
 
-  async getAttendanceDetail(params) {
+  async _postPortalForm(path, { cookies, courseId, secId, semId, sem }) {
     const fd = new FormData();
-    fd.append('cookies', params.cookies || '');
-    fd.append('courseId', params.courseId);
-    fd.append('secId', params.secId || '');
-    fd.append('semId', params.semId);
-    if (params.sem) fd.append('sem', params.sem);
+    fd.append('cookies', cookies);
+    fd.append('courseId', courseId);
+    fd.append('secId', secId);
+    fd.append('semId', semId);
+    if (sem) fd.append('sem', sem);
+    const res = await fetch(this.getApiUrl(path), { method: 'POST', body: fd });
+    return this._checkPortalResponse(res);
+  }
 
-    const res = await fetch(this.getApiUrl('/attendance-detail'), {
-      method: 'POST',
-      body: fd
-    });
+  getAttendanceDetail(params) {
+    return this._postPortalForm('/attendance-detail', params);
+  }
 
-    if (res.status === 401) throw new Error('SESSION_EXPIRED');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  },
-
-  async getCieDetail(params) {
-    const fd = new FormData();
-    fd.append('cookies', params.cookies || '');
-    fd.append('courseId', params.courseId);
-    fd.append('secId', params.secId || '');
-    fd.append('semId', params.semId);
-    if (params.sem) fd.append('sem', params.sem);
-
-    const res = await fetch(this.getApiUrl('/cie-detail'), {
-      method: 'POST',
-      body: fd
-    });
-
-    if (res.status === 401) throw new Error('SESSION_EXPIRED');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  },
+  getCieDetail(params) {
+    return this._postPortalForm('/cie-detail', params);
+  }
 
   async getExamHistory(params) {
     const fd = new FormData();
@@ -85,9 +83,7 @@ export const api = {
       body: fd
     });
 
-    if (res.status === 401) throw new Error('SESSION_EXPIRED');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return this._checkPortalResponse(res);
   },
 
   // ── Hall Ticket ──
@@ -161,11 +157,7 @@ export const api = {
         body: query.toString()
       });
       const data = await proxyRes.json();
-      if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
-        throw new Error('invalidtoken');
-      }
-      if (data && data.exception) throw new Error(data.message || data.exception);
-      return data;
+      return this._checkMoodleResponse(data);
     } catch (err) {
       if (err.message === 'invalidtoken') throw err;
       // Fallback: try direct fetch to Moodle
@@ -173,13 +165,9 @@ export const api = {
         const directUrl = 'https://moodlegurukul.nie.ac.in/webservice/rest/server.php?' + query.toString();
         const directRes = await fetch(directUrl);
         const data = await directRes.json();
-        if (data && data.exception === 'moodle_exception' && data.errorcode === 'invalidtoken') {
-          throw new Error('invalidtoken');
-        }
-        if (data && data.exception) throw new Error(data.message || data.exception);
-        return data;
+        return this._checkMoodleResponse(data);
       } catch (fallbackErr) {
-        throw err || fallbackErr;
+        throw fallbackErr;
       }
     }
   },
@@ -212,18 +200,14 @@ export const api = {
     if (usn) params.set('usn', usn);
     if (name) params.set('name', name);
 
-    const res = await fetch(this.getApiUrl('/api/notices?' + params.toString()));
+    const qs = params.toString();
+    const res = await fetch(this.getApiUrl('/api/notices' + (qs ? '?' + qs : '')));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
   async getDepartment(slug, tab, usn = '', name = '') {
-    const params = new URLSearchParams({
-      slug: slug,
-      tab: tab || 'syllabus',
-      usn: usn,
-      name: name
-    });
+    const params = new URLSearchParams({ slug, tab: tab || 'syllabus', usn, name });
     const res = await fetch(this.getApiUrl('/api/department?' + params.toString()));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -231,12 +215,7 @@ export const api = {
 
   // ── Suggestions & Feedback ──
   async submitSuggestion(data) {
-    const res = await fetch(this.getApiUrl('/api/suggestions'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return res.json();
+    return this.post('/api/suggestions', data);
   },
 
   async getMySuggestions(usn) {
@@ -252,12 +231,7 @@ export const api = {
   },
 
   async markSuggestionsSeen(usn) {
-    const res = await fetch(this.getApiUrl('/api/suggestions/mark-seen'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usn: usn })
-    });
-    return res.json();
+    return this.post('/api/suggestions/mark-seen', { usn });
   },
 
   // ── Results & Leaderboard ──
@@ -285,7 +259,8 @@ export const api = {
     if (branch) params.set('branch', branch);
     if (batch) params.set('batch', batch);
 
-    const res = await fetch(this.getApiUrl('/api/results?' + params.toString()));
+    const qs = params.toString();
+    const res = await fetch(this.getApiUrl('/api/results' + (qs ? '?' + qs : '')));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },

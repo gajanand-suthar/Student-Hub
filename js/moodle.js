@@ -4,10 +4,10 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa } from './shared.js';
+import { loadCreds, initTheme, initPwa, escHtml, toTitleCase, loadUser } from './shared.js';
 
 // ── State Management ──────────────────────────────────────────
-let token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+let token = '';
 let currentUserId = null;
 let currentSem = 0;
 let allCourses = [];       // all enrolled courses across all semesters
@@ -18,14 +18,6 @@ let userName = 'Anonymous';
 let userUsn = 'Unknown';
 
 // ── HTML & String Utilities ───────────────────────────────────
-export function escHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 export function decodeHtml(str) {
   return String(str || '')
     .replace(/&amp;/g, '&')
@@ -41,6 +33,12 @@ export function loadingHtml() {
 
 export function stateHtml(msg) {
   return '<div class="state-msg">' + escHtml(msg) + '</div>';
+}
+
+function handleInvalidToken() {
+  token = '';
+  localStorage.removeItem(CONFIG.TOKEN_KEY);
+  showView('auth');
 }
 
 export function showView(v) {
@@ -86,46 +84,6 @@ export function parseCourseInfo(fullname) {
   return { name: result || raw };
 }
 
-export function getCodeGradient(subjectName) {
-  let hash = 0;
-  for (let i = 0; i < subjectName.length; i++) {
-    hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue1 = Math.abs(hash % 360);
-  const hue2 = (hue1 + 45) % 360;
-  return 'linear-gradient(135deg, hsl(' + hue1 + ', 76%, 52%), hsl(' + hue2 + ', 76%, 38%))';
-}
-
-export function getInitials(name) {
-  let baseName = name;
-  const cutPattern = /\b(20\d{2}-\d{2}|\d{2}-\d{2}|\d{2}\s*-\s*\d{2})\b/i;
-  const m = name.match(cutPattern);
-  if (m) {
-    baseName = name.split(m[0])[0];
-  }
-
-  baseName = baseName.replace(/\b(Even|Odd|Sem|Semester|Section|Sec|Course|Lab|Laboratory|Class|Div)\b/ig, '');
-  baseName = baseName.replace(/\b[A-Z]\b/g, '');
-
-  const words = baseName.replace(/[^A-Za-z\s]/g, '').split(/\s+/);
-  const stopWords = ['for', 'and', 'of', 'to', 'the', 'in', 'on', 'with', 'a', 'an', 'by', 'practical', 'tutorial'];
-
-  let initials = '';
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i].trim().toLowerCase();
-    if (w && stopWords.indexOf(w) === -1) {
-      initials += w.charAt(0).toUpperCase();
-    }
-  }
-
-  if (!initials) {
-    const plain = name.replace(/[^A-Za-z]/g, '');
-    initials = plain.slice(0, 2).toUpperCase() || 'CS';
-  }
-
-  return initials.slice(0, 3);
-}
-
 // ── Boot / Initialization ─────────────────────────────────────
 export async function initMoodle() {
   initTheme();
@@ -139,9 +97,9 @@ export async function initMoodle() {
   token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
 
   try {
-    const u = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const u = loadUser();
     if (u.name) {
-      userName = u.name.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+      userName = toTitleCase(u.name);
     }
     const cCreds = loadCreds() || {};
     if (cCreds.usn) userUsn = cCreds.usn;
@@ -349,23 +307,20 @@ export async function fetchCoursesFromApi(forceRefresh = false) {
 
     // Build sorted semester list (descending — latest first)
     allSemesters = Object.keys(semSet).map(Number).sort((a, b) => b - a);
-    const hasOtherCourses = hasOther;
     currentSem = maxSem || (allSemesters.length ? allSemesters[0] : 1);
 
     // Cache all courses for semester switching
     localStorage.setItem(
       CONFIG.COURSES_KEY,
-      JSON.stringify({ allCourses: all, semesters: allSemesters, sem: currentSem, hasOther: hasOtherCourses })
+      JSON.stringify({ allCourses: all, semesters: allSemesters, sem: currentSem, hasOther: hasOther })
     );
 
     // Build dropdown and show courses for current sem
-    buildSemDropdown(allSemesters, currentSem, hasOtherCourses);
+    buildSemDropdown(allSemesters, currentSem, hasOther);
     switchSem(currentSem);
   } catch (e) {
     if (e.message === 'invalidtoken') {
-      token = '';
-      localStorage.removeItem(CONFIG.TOKEN_KEY);
-      showView('auth');
+      handleInvalidToken();
       return;
     }
     if (btn) btn.classList.remove('spinning');
@@ -715,9 +670,7 @@ export async function openCourse(idx) {
     if (listEl) listEl.innerHTML = html;
   } catch (e) {
     if (e.message === 'invalidtoken') {
-      token = '';
-      localStorage.removeItem(CONFIG.TOKEN_KEY);
-      showView('auth');
+      handleInvalidToken();
       return;
     }
     if (listEl) listEl.innerHTML = stateHtml('Could not load course contents. Please try again.');

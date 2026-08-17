@@ -4,13 +4,15 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa } from './shared.js';
+import { loadCreds, initTheme, initPwa, escHtml } from './shared.js';
 
 let sgpaLoaded = false;
 let currentStudentData = null;
 let currentExplicitSem = null;
 
-export async function initAttendance() {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function initAttendance() {
   initTheme();
   initPwa();
 
@@ -23,7 +25,7 @@ export async function initAttendance() {
   // Check session cache for attendance (persists only for current tab/PWA session)
   let sessionAtt = null;
   try {
-    sessionAtt = JSON.parse(sessionStorage.getItem('nie_att_session'));
+    sessionAtt = JSON.parse(sessionStorage.getItem(CONFIG.ATT_SESSION_KEY));
   } catch (e) {}
 
   if (sessionAtt && sessionAtt.usn === creds.usn && sessionAtt.attendance) {
@@ -62,7 +64,7 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
     if (res.student) {
       currentStudentData = res.student;
       // Cache attendance for this particular session only
-      sessionStorage.setItem('nie_att_session', JSON.stringify(res.student));
+      sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
 
       // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
       try {
@@ -147,10 +149,12 @@ export function renderStudentView(data) {
         if (s.pct < 75) { barColor = '#ef4444'; textColor = '#dc2626'; }
         else if (s.pct < 85) { barColor = '#f59e0b'; textColor = '#b45309'; }
 
+        const safeName = escHtml(s.name);
+        const safeCode = escHtml(s.code);
         const params = cieLinks[s.code] || {};
         return `
-          <div class="cr" data-code="${escHtml(s.code)}" data-name="${escHtml(s.name)}" data-pct="${s.pct}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" onclick="showAttendanceDetail('${escHtml(s.code)}')">
-            <div class="cr-label"><span class="cr-name">${escHtml(s.name)}</span></div>
+          <div class="cr" data-code="${safeCode}" data-name="${safeName}" data-pct="${s.pct}" data-courseid="${escHtml(params.courseId || '')}" data-secid="${escHtml(params.secId || '')}" data-semid="${escHtml(params.semId || '')}" onclick="showAttendanceDetail('${safeCode}')">
+            <div class="cr-label"><span class="cr-name">${safeName}</span></div>
             <div class="cr-track">
               <div class="cr-fill" style="width:${Math.max(s.pct, 2)}%; background:${barColor}"></div>
               <div class="cr-mark" style="left:75%"></div>
@@ -253,8 +257,8 @@ function renderSgpaChip(data) {
 
   const { semesters, cgpa } = data;
   let chipColor = '#16a34a', chipBg = '#f0fdf4', chipBorder = '#bbf7d0', chipDark = 'green';
-  if (cgpa !== null && cgpa < 6) { chipColor = '#dc2626'; chipBg = '#fff1f2'; chipBorder = '#fecdd3'; chipDark = 'red'; }
-  else if (cgpa !== null && cgpa < 7.5) { chipColor = '#b45309'; chipBg = '#fffbeb'; chipBorder = '#fde68a'; chipDark = 'amber'; }
+  if (cgpa < 6) { chipColor = '#dc2626'; chipBg = '#fff1f2'; chipBorder = '#fecdd3'; chipDark = 'red'; }
+  else if (cgpa < 7.5) { chipColor = '#b45309'; chipBg = '#fffbeb'; chipBorder = '#fde68a'; chipDark = 'amber'; }
 
   if (frontChipSlot) {
     frontChipSlot.outerHTML = `
@@ -294,7 +298,7 @@ function renderSgpaChip(data) {
   gridHtml += '</div>';
 
   if (backSlot) backSlot.innerHTML = gridHtml;
-  sgpaLoaded = cgpa !== null;
+  sgpaLoaded = true;
 }
 
 export async function onCieItemToggle(detailEl) {
@@ -400,8 +404,8 @@ function renderAttendanceModal(data) {
   const body = document.getElementById('att-modal-body');
   if (!body) return;
 
-  const p = counts.present || present.length;
-  const a = counts.absent || absent.length;
+  const p = counts.present ?? present.length;
+  const a = counts.absent ?? absent.length;
   const t = p + a;
 
   function attendNeeded(goal) {
@@ -441,7 +445,6 @@ function renderAttendanceModal(data) {
       </div>`;
   }
 
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function fmtDate(s) {
     const m = String(s).match(/([0-9]{1,2})[-/.]([0-9]{1,2})[-/.]([0-9]{2,4})/);
     if (!m) return s;
@@ -494,7 +497,7 @@ export function menuSwitchSem(newSem) {
       btnEven.classList.toggle('active', newSem === 'even');
       btnOdd.classList.toggle('active', newSem === 'odd');
     }
-    sessionStorage.removeItem('nie_att_session');
+    sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
     fetchAttendanceData(true, newSem);
   } catch (e) {
     alert('Error switching semester: ' + e.message);
@@ -506,13 +509,6 @@ export function closeAttModal() {
   if (modal) modal.style.display = 'none';
 }
 
-export function switchSem(newSem) {
-  menuSwitchSem(newSem);
-}
-
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 // Click backdrop to close modal
 if (typeof document !== 'undefined') {
@@ -587,7 +583,6 @@ if (typeof document !== 'undefined') {
 }
 
 export function refreshData() {
-  closeAttModal();
   return fetchAttendanceData(true);
 }
 
@@ -599,7 +594,7 @@ if (typeof window !== 'undefined') {
   window.onCieItemToggle = onCieItemToggle;
   window.showAttendanceDetail = showAttendanceDetail;
   window.closeAttModal = closeAttModal;
-  window.switchSem = switchSem;
+  window.switchSem = menuSwitchSem;
   window.menuSwitchSem = menuSwitchSem;
   window.refreshData = refreshData;
 }

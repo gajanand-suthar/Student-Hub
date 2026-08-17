@@ -47,6 +47,24 @@ export function loadCreds() {
   }
 }
 
+export function loadUser() {
+  try {
+    return JSON.parse(localStorage.getItem(CONFIG.USER_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function getStoredUsn() {
+  try {
+    const c = loadCreds() || {};
+    const p = loadUser();
+    return (c.usn || p.usn || '').trim().toUpperCase();
+  } catch (e) {
+    return '';
+  }
+}
+
 export function toggleCeDd() {
   const dd = document.getElementById('ce-idtype-dd');
   if (dd) dd.classList.toggle('open');
@@ -143,10 +161,9 @@ export function saveCredsEditor() {
 
   localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(c));
   localStorage.removeItem(CONFIG.USER_KEY);
-  sessionStorage.removeItem('nie_att_session');
+  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
   localStorage.removeItem(CONFIG.TOKEN_KEY);
   localStorage.removeItem(CONFIG.COURSES_KEY);
-  sessionStorage.removeItem('nie_att_cache_v2');
 
   closeCredsEditor();
   window.location.reload();
@@ -181,22 +198,22 @@ export function executeLogout() {
     CONFIG.CRED_KEY,
     CONFIG.USER_KEY,
     CONFIG.TOKEN_KEY,
-    CONFIG.COURSES_KEY,
-    'nie_attendance_html_cache'
+    CONFIG.COURSES_KEY
   ].forEach(k => localStorage.removeItem(k));
 
-  sessionStorage.removeItem('nie_att_session');
-  sessionStorage.removeItem('nie_att_cache_v2');
-  sessionStorage.setItem('nie_skip_autologin', '1');
+  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+  sessionStorage.setItem(CONFIG.SKIP_AUTOLOGIN_KEY, '1');
+
+  const dest = window.location.pathname.includes('/attendance') || window.location.pathname.includes('/moodle') || window.location.pathname.includes('/results') ? '../' : './';
 
   if ('caches' in window) {
     caches.keys().then(keys => {
       Promise.all(keys.map(x => caches.delete(x))).then(() => {
-        window.location.replace(window.location.pathname.includes('/attendance') || window.location.pathname.includes('/moodle') ? '../' : './');
+        window.location.replace(dest);
       });
     });
   } else {
-    window.location.replace(window.location.pathname.includes('/attendance') || window.location.pathname.includes('/moodle') ? '../' : './');
+    window.location.replace(dest);
   }
 }
 
@@ -243,13 +260,10 @@ export async function submitSugModal() {
     btn.textContent = 'Sending...';
   }
 
-  let name = 'Anonymous', usn = 'Unknown';
-  try {
-    const u = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    if (u.name) name = u.name;
-    const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
-    if (c.usn) usn = c.usn;
-  } catch (e) {}
+  const u = loadUser();
+  const creds = loadCreds() || {};
+  const name = u.name || 'Anonymous';
+  const usn = creds.usn || 'Unknown';
 
   try {
     await api.submitSuggestion({ name, usn, suggestion: text });
@@ -268,12 +282,7 @@ export async function submitSugModal() {
 }
 
 export async function loadSugHistory() {
-  let usn = '';
-  try {
-    const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
-    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    usn = (c.usn || p.usn || '').trim().toUpperCase();
-  } catch (e) {}
+  const usn = getStoredUsn();
 
   const list = document.getElementById('sug-history-list');
   if (!list) return;
@@ -326,12 +335,7 @@ export function closeSugToast() {
 }
 
 export function checkSugUnread() {
-  let usn = '';
-  try {
-    const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
-    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    usn = (c.usn || p.usn || '').trim().toUpperCase();
-  } catch (e) {}
+  const usn = getStoredUsn();
   if (!usn) return;
 
   api
@@ -354,8 +358,8 @@ export function checkSugUnread() {
 }
 
 // ── PWA Installation ──
-const PWA_SNOOZED_KEY = 'nie_hub_pwa_snoozed';
-const PWA_IOS_SHOWN_KEY = 'nie_hub_pwa_ios_shown';
+const PWA_SNOOZED_KEY = CONFIG.PWA_SNOOZED_KEY;
+const PWA_IOS_SHOWN_KEY = CONFIG.PWA_IOS_SHOWN_KEY;
 const SNOOZE_MS = 24 * 60 * 60 * 1000; // 24 hours
 let deferredPrompt = null;
 
@@ -550,12 +554,17 @@ export function initPwa() {
 }
 
 // ── Helpers ──
-function escHtml(s) {
+export function escHtml(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function toTitleCase(str) {
+  return (str || '').replace(/\\w\\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
 
 function fmtDate(d) {

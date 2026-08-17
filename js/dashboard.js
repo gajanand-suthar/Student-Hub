@@ -4,7 +4,54 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, checkSugUnread, initTheme, initPwa } from './shared.js';
+import { loadCreds, checkSugUnread, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn } from './shared.js';
+
+function getTodayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const DEPT_SLUG_MAP = {
+  EE: 'electrical-electronics',
+  EC: 'electronics-communication',
+  IS: 'information-science',
+  CS: 'computer-science',
+  CI: 'cse-ai-ml',
+  ME: 'mechanical',
+  CV: 'civil'
+};
+
+function openAnimatedModal(modalId, backdropId, triggerSelector) {
+  const nm = document.getElementById(modalId);
+  const nb = document.getElementById(backdropId);
+  const btn = document.querySelector(triggerSelector);
+  if (!nm) return;
+  if (btn) {
+    const rect = btn.getBoundingClientRect();
+    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
+  }
+  nm.style.transform = 'scale(0.3)';
+  nm.style.display = 'block';
+  nm.classList.add('active');
+  void nm.offsetWidth;
+  nm.classList.add('show');
+  nm.style.transform = '';
+  if (nb) nb.classList.add('active');
+}
+
+function closeAnimatedModal(modalId, backdropId) {
+  const nm = document.getElementById(modalId);
+  const nb = document.getElementById(backdropId);
+  if (!nm) return;
+  nm.classList.remove('show');
+  nm.style.transform = 'scale(0.3)';
+  setTimeout(() => {
+    nm.classList.remove('active');
+    nm.style.display = 'none';
+    nm.style.transform = '';
+    if (nb) nb.classList.remove('active');
+  }, 300);
+}
 
 let obStep = 0;
 let isTouchDevice = false;
@@ -94,10 +141,7 @@ export function initDashboard() {
 }
 
 function continueBoot() {
-  let user = null;
-  try {
-    user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-  } catch (e) {}
+  const user = loadUser();
 
   if (user && user.name) {
     const gName = document.getElementById('greeting-name');
@@ -245,7 +289,7 @@ export function obNext() {
     obShow(2);
   } else if (obStep === 2) {
     const code = (document.getElementById('ob-code')?.value || '').trim();
-    if (code.length !== 4 || !/^[0-9]{4}$/.test(code)) {
+    if (!/^[0-9]{4}$/.test(code)) {
       const e = document.getElementById('ob-err-2');
       if (e) {
         e.textContent = 'Enter exactly 4 digits';
@@ -356,17 +400,15 @@ export function initAcademicCalendar() {
   let usn = null;
   let resolved = false;
 
-  try {
-    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    if (user.semNum) {
-      const num = parseInt(user.semNum, 10) || 0;
-      if (num <= 3) selectedCalSem = 'III';
-      else if (num <= 5) selectedCalSem = 'V';
-      else selectedCalSem = 'VII';
-      resolved = true;
-    }
-    if (user.usn) usn = user.usn;
-  } catch (e) {}
+  const user = loadUser();
+  if (user.semNum) {
+    const num = parseInt(user.semNum, 10) || 0;
+    if (num <= 3) selectedCalSem = 'III';
+    else if (num <= 5) selectedCalSem = 'V';
+    else selectedCalSem = 'VII';
+    resolved = true;
+  }
+  if (user.usn) usn = user.usn;
 
   if (!resolved) {
     const creds = loadCreds();
@@ -470,8 +512,7 @@ export function renderCalMonth() {
   const daysInMonth = new Date(mObj.year, mObj.month + 1, 0).getDate();
   const prevMonthDays = new Date(mObj.year, mObj.month, 0).getDate();
 
-  const today = new Date();
-  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayISO = getTodayISO();
 
   for (let p = 0; p < firstDayIndex; p++) {
     const prevDayNum = prevMonthDays - firstDayIndex + 1 + p;
@@ -615,8 +656,7 @@ function renderCalHolidays() {
   if (!list) return;
   list.innerHTML = '';
 
-  const today = new Date();
-  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayISO = getTodayISO();
 
   HOLIDAYS_LIST.forEach(h => {
     const item = document.createElement('div');
@@ -657,8 +697,7 @@ function renderCalEvents() {
   if (!list) return;
   list.innerHTML = '';
 
-  const today = new Date();
-  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayISO = getTodayISO();
   const semEvents = ACADEMIC_EVENTS.filter(ev => ev.sems.includes(selectedCalSem));
 
   semEvents.forEach(ev => {
@@ -695,10 +734,8 @@ export async function downloadHallTicket() {
   }
 
   let studentName = '';
-  try {
-    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    if (user.name) studentName = user.name;
-  } catch (e) {}
+  const user = loadUser();
+  if (user.name) studentName = user.name;
 
   try {
     const res = await api.downloadHallTicket({
@@ -760,43 +797,12 @@ let currentDeptTab = 'syllabus';
 let cachedDeptData = null;
 
 export function openNoticesModal() {
-  const nm = document.getElementById('notices-modal');
-  const bd = document.getElementById('notices-backdrop');
-  if (!nm || !bd) return;
-
-  const btn = document.querySelector('.notices-btn-wide[onclick*="openNoticesModal"]') || document.querySelectorAll('.notices-btn-wide')[2];
-  if (btn) {
-    const rect = btn.getBoundingClientRect();
-    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
-    nm.style.transform = 'scale(0.3)';
-  }
-
-  bd.style.display = 'block';
-  nm.classList.add('active');
-  void nm.offsetWidth;
-  bd.classList.add('show');
-  nm.classList.add('show');
-
+  openAnimatedModal('notices-modal', 'notices-backdrop', '.notices-btn-wide, .notices-btn-compact');
   if (!noticesLoaded) fetchNotices(false);
 }
 
 export function closeNoticesModal() {
-  const nm = document.getElementById('notices-modal');
-  const bd = document.getElementById('notices-backdrop');
-  if (!nm || !bd) return;
-
-  nm.classList.remove('show');
-  bd.classList.remove('show');
-
-  const btn = document.querySelector('.notices-btn-wide[onclick*="openNoticesModal"]') || document.querySelectorAll('.notices-btn-wide')[2];
-  if (btn) {
-    nm.style.transform = 'scale(0.3)';
-  }
-
-  setTimeout(() => {
-    nm.classList.remove('active');
-    bd.style.display = 'none';
-  }, 300);
+  closeAnimatedModal('notices-modal', 'notices-backdrop');
 }
 
 function getNoticeIconSvg(link, idPrefix = 'n') {
@@ -842,13 +848,10 @@ export async function fetchNotices(forceRefresh = false) {
     loader.classList.add('show');
   }
 
-  let usn = '', name = '';
-  try {
-    const c = loadCreds() || {};
-    usn = c.usn || '';
-    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    name = p.name || '';
-  } catch (e) {}
+  const creds = loadCreds() || {};
+  const user = loadUser();
+  const usn = creds.usn || '';
+  const name = user.name || '';
 
   try {
     const notices = await api.getNotices(forceRefresh, usn, name);
@@ -890,16 +893,7 @@ function getDepartmentSlug() {
   if (creds && creds.usn) {
     const match = creds.usn.toUpperCase().match(/^[0-9]{1}[A-Z]{2}[0-9]{2}([A-Z]{2})/);
     if (match && match[1]) {
-      const map = {
-        EE: 'electrical-electronics',
-        EC: 'electronics-communication',
-        IS: 'information-science',
-        CS: 'computer-science',
-        CI: 'cse-ai-ml',
-        ME: 'mechanical',
-        CV: 'civil'
-      };
-      return map[match[1]] || null;
+      return DEPT_SLUG_MAP[match[1]] || null;
     }
   }
   return null;
@@ -910,39 +904,12 @@ export function openDepartmentModal(tab) {
   const titleEl = document.getElementById('dept-modal-title');
   if (titleEl) titleEl.textContent = tab === 'syllabus' ? 'Syllabus' : 'Time Table';
 
-  const nm = document.getElementById('department-modal');
-  const bd = document.getElementById('department-backdrop');
-  if (!nm || !bd) return;
-
-  const btn = document.querySelector(`.notices-btn-wide[onclick*="${tab}"]`) || document.querySelector('.notices-btn-wide')?.parentNode;
-  if (btn) {
-    const rect = btn.getBoundingClientRect();
-    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
-    nm.style.transform = 'scale(0.3)';
-  }
-
-  bd.style.display = 'block';
-  nm.classList.add('active');
-  void nm.offsetWidth;
-  bd.classList.add('show');
-  nm.classList.add('show');
-
+  openAnimatedModal('department-modal', 'department-backdrop', '.dept-btn-wide, .dept-btn-compact');
   fetchDepartmentData(false);
 }
 
 export function closeDepartmentModal() {
-  const nm = document.getElementById('department-modal');
-  const bd = document.getElementById('department-backdrop');
-  if (!nm || !bd) return;
-
-  nm.classList.remove('show');
-  bd.classList.remove('show');
-  nm.style.transform = 'scale(0.3)';
-
-  setTimeout(() => {
-    nm.classList.remove('active');
-    bd.style.display = 'none';
-  }, 300);
+  closeAnimatedModal('department-modal', 'department-backdrop');
 }
 
 export async function fetchDepartmentData(forceRefresh = false) {
@@ -965,13 +932,10 @@ export async function fetchDepartmentData(forceRefresh = false) {
       return;
     }
 
-    let usn = '', name = '';
-    try {
-      const c = loadCreds() || {};
-      usn = c.usn || '';
-      const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-      name = p.name || '';
-    } catch (e) {}
+    const creds = loadCreds() || {};
+    const user = loadUser();
+    const usn = creds.usn || '';
+    const name = user.name || '';
 
     try {
       const data = await api.getDepartment(slug, currentDeptTab, usn, name);
@@ -1035,9 +999,7 @@ export async function shareApp() {
   } catch (e) {}
 }
 
-function toTitleCase(str) {
-  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-}
+
 
 // Attach window handlers for dashboard events
 if (typeof window !== 'undefined') {

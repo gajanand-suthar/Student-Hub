@@ -35,6 +35,14 @@ self.addEventListener('activate', e => {
   );
 });
 
+function cacheResponse(request, response) {
+  if (response && response.status === 200) {
+    const clone = response.clone();
+    caches.open(CACHE_NAME).then(c => c.put(request, clone));
+  }
+  return response;
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
@@ -44,8 +52,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Never cache attendance HTML page — always fetch live from network
-  if (url.pathname.includes('/attendance') && (e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/attendance') || url.pathname.endsWith('/attendance/'))) {
+  // Never cache attendance — always fetch live from network
+  if (url.pathname.includes('/attendance')) {
     e.respondWith(
       fetch(e.request).catch(() => new Response('Attendance is unavailable offline.', {
         headers: { 'Content-Type': 'text/plain' }
@@ -58,13 +66,7 @@ self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
     e.respondWith(
       fetch(e.request)
-        .then(res => {
-          if (res && res.status === 200) {
-            const c = res.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(e.request, c));
-          }
-          return res;
-        })
+        .then(res => cacheResponse(e.request, res))
         .catch(() => caches.match(e.request))
     );
     return;
@@ -74,13 +76,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200) {
-          const resClone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, resClone));
-        }
-        return res;
-      });
+      return fetch(e.request).then(res => cacheResponse(e.request, res));
     })
   );
 });

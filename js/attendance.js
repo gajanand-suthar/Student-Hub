@@ -20,10 +20,15 @@ export async function initAttendance() {
     return;
   }
 
-  // Check cached user data in localStorage
+  // Cleanup legacy localStorage user data if any
+  try {
+    localStorage.removeItem(CONFIG.USER_KEY);
+  } catch (e) {}
+
+  // Check cached user data in sessionStorage (valid for current session only)
   let cachedUser = null;
   try {
-    cachedUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+    cachedUser = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY));
   } catch (e) {}
 
   if (cachedUser && cachedUser.usn === creds.usn && cachedUser.attendance) {
@@ -60,7 +65,7 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
     if (res.student) {
       currentStudentData = res.student;
-      localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(res.student));
+      sessionStorage.setItem(CONFIG.USER_KEY, JSON.stringify(res.student));
       renderStudentView(res.student);
     }
   } catch (err) {
@@ -477,6 +482,7 @@ export function menuSwitchSem(newSem) {
       btnEven.classList.toggle('active', newSem === 'even');
       btnOdd.classList.toggle('active', newSem === 'odd');
     }
+    sessionStorage.removeItem(CONFIG.USER_KEY);
     localStorage.removeItem(CONFIG.USER_KEY);
     fetchAttendanceData(true, newSem);
   } catch (e) {

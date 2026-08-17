@@ -8,6 +8,9 @@ import { api } from './api.js';
 // ── Theme Management ──
 export function initTheme() {
   try {
+    localStorage.removeItem(CONFIG.USER_KEY);
+  } catch (e) {}
+  try {
     const saved = localStorage.getItem(CONFIG.THEME_KEY);
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const theme = saved || (prefersDark ? 'dark' : 'light');
@@ -143,6 +146,7 @@ export function saveCredsEditor() {
 
   localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(c));
   localStorage.removeItem(CONFIG.USER_KEY);
+  sessionStorage.removeItem(CONFIG.USER_KEY);
   localStorage.removeItem(CONFIG.TOKEN_KEY);
   localStorage.removeItem(CONFIG.COURSES_KEY);
   sessionStorage.removeItem('nie_att_cache_v2');
@@ -184,6 +188,7 @@ export function executeLogout() {
     'nie_attendance_html_cache'
   ].forEach(k => localStorage.removeItem(k));
 
+  sessionStorage.removeItem(CONFIG.USER_KEY);
   sessionStorage.removeItem('nie_att_cache_v2');
   sessionStorage.setItem('nie_skip_autologin', '1');
 
@@ -243,7 +248,7 @@ export async function submitSugModal() {
 
   let name = 'Anonymous', usn = 'Unknown';
   try {
-    const u = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const u = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
     if (u.name) name = u.name;
     const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
     if (c.usn) usn = c.usn;
@@ -269,7 +274,7 @@ export async function loadSugHistory() {
   let usn = '';
   try {
     const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
-    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const p = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
     usn = (c.usn || p.usn || '').trim().toUpperCase();
   } catch (e) {}
 
@@ -327,7 +332,7 @@ export function checkSugUnread() {
   let usn = '';
   try {
     const c = JSON.parse(localStorage.getItem(CONFIG.CRED_KEY) || '{}');
-    const p = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
+    const p = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
     usn = (c.usn || p.usn || '').trim().toUpperCase();
   } catch (e) {}
   if (!usn) return;

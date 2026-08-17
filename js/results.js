@@ -237,7 +237,7 @@ export function initResults() {
       usn = creds.usn || '';
     } catch(e) {}
     try {
-      var user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
+      var user = JSON.parse(sessionStorage.getItem(CONFIG.USER_KEY) || '{}');
       if (!usn) usn = user.usn || '';
     } catch(e) {}
   }

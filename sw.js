@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nie-hub-static-v5';
+const CACHE_NAME = 'nie-hub-static-v6';
 const PRECACHE = [
   './',
   './index.html',

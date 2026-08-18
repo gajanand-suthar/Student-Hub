@@ -726,6 +726,7 @@
       background: rgba(0,0,0,0.2); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
       z-index: 45; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; display: none;
     }
+    #notices-backdrop.active, #department-backdrop.active { display: block; }
     #notices-backdrop.show, #department-backdrop.show { opacity: 1; pointer-events: auto; }
 
     #notices-modal, #department-modal {
@@ -739,13 +740,20 @@
     #notices-modal.active, #department-modal.active { display: flex; }
     #notices-modal.show, #department-modal.show { transform: scale(1) !important; opacity: 1; }
     
-    .nm-scroll-area { overflow-y: auto; flex: 1; }
+    .nm-scroll-area {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
     .nm-scroll-area::-webkit-scrollbar { width: 6px; }
     .nm-scroll-area::-webkit-scrollbar-track { background: transparent; }
     .nm-scroll-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
     [data-theme=dark] .nm-scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
     
     .nm-header {
+      flex-shrink: 0;
       padding: 24px 20px 16px; display: flex; justify-content: space-between; align-items: center;
       position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       z-index: 10; border-bottom: 1px solid var(--border);

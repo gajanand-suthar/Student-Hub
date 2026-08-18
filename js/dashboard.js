@@ -31,12 +31,12 @@ function openAnimatedModal(modalId, backdropId, triggerSelector) {
     nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
   }
   nm.style.transform = 'scale(0.3)';
-  nm.style.display = 'block';
   nm.classList.add('active');
+  if (nb) nb.classList.add('active');
   void nm.offsetWidth;
   nm.classList.add('show');
   nm.style.transform = '';
-  if (nb) nb.classList.add('active');
+  if (nb) nb.classList.add('show');
 }
 
 function closeAnimatedModal(modalId, backdropId) {
@@ -45,11 +45,15 @@ function closeAnimatedModal(modalId, backdropId) {
   if (!nm) return;
   nm.classList.remove('show');
   nm.style.transform = 'scale(0.3)';
+  if (nb) nb.classList.remove('show');
   setTimeout(() => {
     nm.classList.remove('active');
-    nm.style.display = 'none';
+    nm.style.display = '';
     nm.style.transform = '';
-    if (nb) nb.classList.remove('active');
+    if (nb) {
+      nb.classList.remove('active');
+      nb.style.display = '';
+    }
   }, 300);
 }
 

@@ -9,13 +9,12 @@ import { navigate } from './router.js';
 
 let sgpaLoaded = false;
 let currentStudentData = null;
+let currentSgpaData = null;
 let currentExplicitSem = null;
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function initAttendance() {
-  sgpaLoaded = false;
-
   const creds = loadCreds();
   if (!creds || !creds.usn) {
     navigate('/');
@@ -66,10 +65,12 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
     const res = await api.login(payload);
 
-    if (res.student) {
+    if (res && res.student) {
       currentStudentData = res.student;
       // Cache attendance for this particular session only
-      sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+      try {
+        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+      } catch (e) {}
 
       // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
       try {
@@ -97,6 +98,7 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 }
 
 export function renderStudentView(data) {
+  if (!data) return;
   const name = data.name || 'Student';
   const usn = data.usn || '';
   const program = data.program || '';
@@ -207,7 +209,7 @@ export function renderStudentView(data) {
   if (cieMobile) cieMobile.innerHTML = cieHtml;
   if (cieDesk) cieDesk.innerHTML = cieHtml;
 
-  // Restore cached SGPA / CGPA data across tab switches
+  // Restore cached SGPA data if present in session storage
   if (!currentSgpaData) {
     try {
       const cached = JSON.parse(sessionStorage.getItem('student_sgpa_cache'));
@@ -253,6 +255,17 @@ export function flipCard() {
 
 export async function fetchSgpa(e) {
   if (e) e.stopPropagation();
+
+  // Check session storage first
+  try {
+    const cached = JSON.parse(sessionStorage.getItem('student_sgpa_cache'));
+    if (cached && cached.semesters && cached.semesters.length) {
+      renderSgpaChip(cached);
+      document.getElementById('flip-inner')?.classList.toggle('flipped');
+      return;
+    }
+  } catch (e) {}
+
   const btn = document.getElementById('sgpa-fetch-btn');
   if (btn) {
     if (btn.disabled) return;
@@ -268,7 +281,7 @@ export async function fetchSgpa(e) {
   try {
     const json = await api.getExamHistory({ cookies, usn, sem });
     renderSgpaChip(json);
-    // Smooth flip to backside after first fetch
+    // Smooth flip to backside
     document.getElementById('flip-inner')?.classList.add('flipped');
   } catch (err) {
     if (btn) {
@@ -356,6 +369,18 @@ export async function onCieItemToggle(detailEl) {
   const body = detailEl.querySelector('.bd-body');
   if (!courseId || !semId || !body) return;
 
+  const cacheKey = `cie_detail_${courseId}_${semId}`;
+
+  // Check session cache for CIE split
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey));
+    if (cached && cached.components) {
+      body.innerHTML = renderCieBreakdownBody(cached);
+      detailEl.dataset.loaded = '1';
+      return;
+    }
+  } catch (e) {}
+
   detailEl.dataset.loading = '1';
   body.innerHTML = '<div style="text-align:center;padding:8px 0"><div class="big-spinner" style="margin:0 auto;width:20px;height:20px;border-width:2px"></div></div>';
 
@@ -363,6 +388,9 @@ export async function onCieItemToggle(detailEl) {
 
   try {
     const json = await api.getCieDetail({ cookies, courseId, secId, semId, sem });
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(json));
+    } catch (e) {}
     body.innerHTML = renderCieBreakdownBody(json);
     detailEl.dataset.loaded = '1';
   } catch (err) {
@@ -422,6 +450,19 @@ export async function showAttendanceDetail(code) {
   if (!modal || !title || !body) return;
 
   title.textContent = subjectName;
+
+  const cacheKey = `att_detail_${code}_${courseId}`;
+
+  // Check session cache first
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(cacheKey));
+    if (cached && (cached.present || cached.absent || cached.counts)) {
+      renderAttendanceModal(cached);
+      modal.style.display = 'flex';
+      return;
+    }
+  } catch (e) {}
+
   body.innerHTML = '<div style="text-align:center;padding:32px 0"><div class="big-spinner" style="margin:0 auto"></div></div>';
   modal.style.display = 'flex';
 
@@ -429,6 +470,9 @@ export async function showAttendanceDetail(code) {
 
   try {
     const json = await api.getAttendanceDetail({ cookies, courseId, secId, semId, sem });
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(json));
+    } catch (e) {}
     renderAttendanceModal(json);
   } catch (err) {
     if (err.message === 'SESSION_EXPIRED') {
@@ -450,104 +494,101 @@ function renderAttendanceModal(data) {
   const body = document.getElementById('att-modal-body');
   if (!body) return;
 
-  const p = counts.present ?? present.length;
-  const a = counts.absent ?? absent.length;
-  const t = p + a;
+  const total = counts.total || (present.length + absent.length);
+  const attended = counts.attended !== undefined ? counts.attended : present.length;
+  const missed = counts.missed !== undefined ? counts.missed : absent.length;
+  const curPct = total > 0 ? (attended / total) * 100 : 0;
 
-  function attendNeeded(goal) {
-    if (t === 0) return 0;
-    const n = Math.ceil((goal * t - 100 * p) / (100 - goal));
-    return n > 0 ? n : 0;
-  }
-  function canBunk(goal) {
-    if (t === 0) return 0;
-    const n = Math.floor((100 * p - goal * t) / goal);
-    return n > 0 ? n : 0;
-  }
+  // Bunk Math
+  const b85 = Math.max(0, Math.floor(attended / 0.85 - total));
+  const b75 = Math.max(0, Math.floor(attended / 0.75 - total));
+  const r85 = Math.max(0, Math.ceil((0.85 * total - attended) / 0.15));
+  const r75 = Math.max(0, Math.ceil((0.75 * total - attended) / 0.25));
 
-  function goalCard(label, goal, headClass) {
-    const currentPct = t > 0 ? (100 * p) / t : 0;
-    const achieved = currentPct >= goal;
-    const head = `<div class="att-goal-card-head ${achieved ? 'done' : headClass}">${label}</div>`;
-    if (achieved) {
-      const bunk = canBunk(goal);
-      return `
-        <div class="att-goal-card">
-          ${head}
-          <div class="att-goal-boxes">
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#16a34a">✓</div><div class="att-goal-box-lbl">Achieved</div></div>
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${bunk > 0 ? '#16a34a' : 'var(--muted)'}">${bunk}</div><div class="att-goal-box-lbl">Can Bunk</div></div>
-          </div>
-        </div>`;
-    }
-    const attend = attendNeeded(goal);
+  function makeCard(target, bunk, req, clr) {
+    const isSafe = curPct >= target;
+    const badgeTxt = isSafe ? 'SAFE' : 'ACTION REQUIRED';
+    const num = isSafe ? bunk : req;
+    const actionLabel = isSafe ? 'can miss' : 'must attend';
+    const sub = isSafe ? `to stay above ${target}%` : `to reach ${target}%`;
+
     return `
-      <div class="att-goal-card">
-        ${head}
+      <div class="att-goal-card" style="border-top:3px solid ${clr}">
+        <div class="att-goal-card-head">
+          <span style="font-weight:700;font-size:.82rem">${target}% Target</span>
+          <span style="font-size:.65rem;font-weight:800;background:${isSafe ? '#10b98120' : '#ef444420'};color:${isSafe ? '#10b981' : '#ef4444'};padding:2px 7px;border-radius:20px">${badgeTxt}</span>
+        </div>
         <div class="att-goal-boxes">
-          <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626">${attend}</div><div class="att-goal-box-lbl">Must Attend</div></div>
-          <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0</div><div class="att-goal-box-lbl">Can Bunk</div></div>
+          <div class="att-goal-box-cell" style="background:${clr}15">
+            <span class="att-goal-box-val" style="color:${clr}">${num}</span>
+            <span class="att-goal-box-lbl">${actionLabel}</span>
+          </div>
+          <div class="att-goal-box-cell" style="background:var(--surface)">
+            <span style="font-size:.72rem;color:var(--muted);line-height:1.3">${sub}</span>
+          </div>
         </div>
       </div>`;
   }
 
-  function fmtDate(s) {
-    const m = String(s).match(/([0-9]{1,2})[-/.]([0-9]{1,2})[-/.]([0-9]{2,4})/);
-    if (!m) return s;
-    const mon = MONTHS[parseInt(m[2], 10) - 1] || m[2];
-    return `${parseInt(m[1], 10)} ${mon}`;
-  }
+  function makeTable(arr, type) {
+    if (!arr.length) return `<div class="cie-detail-placeholder" style="margin-top:8px">No ${type} records.</div>`;
+    const rows = arr
+      .map((item, idx) => {
+        let dateStr = item.date || item.Date || '—';
+        try {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            dateStr = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+          }
+        } catch (e) {}
 
-  function fmtTime(s) {
-    return String(s)
-      .replace(/ *(AM|PM) */gi, '')
-      .replace(/\s*(?:TO|-|\u2013|\u2014)\s*/gi, '-')
-      .split('-')
-      .map(part => part.trim())
-      .join('-');
-  }
+        const hour = item.hour || item.Hour || item.period || '—';
+        const day = item.day || item.Day || '—';
+        return `
+          <tr>
+            <td style="color:var(--muted);width:32px">${idx + 1}</td>
+            <td style="font-weight:700">${escHtml(dateStr)}</td>
+            <td>${escHtml(day)}</td>
+            <td style="text-align:right">${escHtml(hour)}</td>
+          </tr>`;
+      })
+      .join('');
 
-  function rows(list) {
-    if (!list.length) return '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:12px">No records</td></tr>';
-    return list.map(r => `<tr><td class="mono">${escHtml(fmtDate(r.date))}</td><td class="mono">${escHtml(fmtTime(r.time))}</td></tr>`).join('');
+    return `
+      <table class="att-tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Day</th>
+            <th style="text-align:right">Period</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
   }
 
   body.innerHTML = `
     <div class="att-goal-grid">
-      ${goalCard('75% Goal', 75, 'g75')}
-      ${goalCard('85% Goal', 85, 'g85')}
+      ${makeCard(85, b85, r85, '#10b981')}
+      ${makeCard(75, b75, r75, '#3b82f6')}
     </div>
     <div class="att-tables-wrap">
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-present">Present <span class="att-count-pill present">${p}</span></div>
-        <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(present)}</tbody></table>
+        <div class="att-tbl-head">
+          <span style="font-weight:700;font-size:.85rem">Missed Classes</span>
+          <span class="att-count-pill" style="background:#ef444420;color:#ef4444">${missed}</span>
+        </div>
+        ${makeTable(absent, 'missed')}
       </div>
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-absent">Absent <span class="att-count-pill absent">${a}</span></div>
-        <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(absent)}</tbody></table>
+        <div class="att-tbl-head">
+          <span style="font-weight:700;font-size:.85rem">Attended Classes</span>
+          <span class="att-count-pill" style="background:#10b98120;color:#10b981">${attended}</span>
+        </div>
+        ${makeTable(present, 'attended')}
       </div>
     </div>`;
-}
-
-export function menuSwitchSem(newSem) {
-  if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
-  const currentSem = (document.getElementById('att-sem') && document.getElementById('att-sem').value) || '';
-  if (currentSem === newSem) return;
-  try {
-    currentExplicitSem = newSem;
-    const attSemInput = document.getElementById('att-sem');
-    if (attSemInput) attSemInput.value = newSem;
-    const btnEven = document.getElementById('m-sem-even');
-    const btnOdd = document.getElementById('m-sem-odd');
-    if (btnEven && btnOdd) {
-      btnEven.classList.toggle('active', newSem === 'even');
-      btnOdd.classList.toggle('active', newSem === 'odd');
-    }
-    sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
-    fetchAttendanceData(true, newSem);
-  } catch (e) {
-    alert('Error switching semester: ' + e.message);
-  }
 }
 
 export function closeAttModal() {
@@ -555,92 +596,63 @@ export function closeAttModal() {
   if (modal) modal.style.display = 'none';
 }
 
-
-// Click backdrop to close modal
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', function(e) {
-    const modal = document.getElementById('att-modal');
-    if (e.target === modal) closeAttModal();
-  });
-}
-
-// CIE expand / collapse with frozen sibling heights (prevents layout jumps)
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', function (e) {
-    var summary = e.target.closest && e.target.closest('details.bd-item > summary');
-    if (!summary) return;
-    var detail = summary.closest('details.bd-item');
-    var panel = detail.closest('#cie-accordion-container') || detail.closest('#desk-cie-accordion');
-    if (!panel) return;
-
-    var isOpening = !detail.open;
-    var siblings = Array.from(panel.querySelectorAll('details.bd-item'));
-
-    if (isOpening) {
-      if (!summary.style.height) {
-        var compSum = summary.getBoundingClientRect().height + 'px';
-        summary.style.height = compSum;
-        summary.style.minHeight = compSum;
-        summary.style.maxHeight = compSum;
-        summary.style.flex = 'none';
-      }
-      siblings.forEach(function (d) {
-        if (d !== detail) {
-          var compBox = d.getBoundingClientRect().height + 'px';
-          d.style.flex = 'none';
-          d.style.height = compBox;
-          d.style.minHeight = compBox;
-          d.style.maxHeight = compBox;
-        }
-      });
-      detail.style.flex = 'none';
-      detail.style.height = 'auto';
-      detail.style.minHeight = '';
-      detail.style.maxHeight = '';
-      panel.style.flex = 'none';
-      panel.style.height = 'auto';
-    } else {
-      var anyOpen = siblings.some(function (d) { return d !== detail && d.open; });
-      if (!anyOpen) {
-        siblings.forEach(function (d) {
-          d.style.flex = '';
-          d.style.height = '';
-          d.style.minHeight = '';
-          d.style.maxHeight = '';
-        });
-        detail.style.flex = '';
-        detail.style.height = '';
-        detail.style.minHeight = '';
-        detail.style.maxHeight = '';
-        summary.style.height = '';
-        summary.style.minHeight = '';
-        summary.style.maxHeight = '';
-        summary.style.flex = '';
-        panel.style.flex = '';
-        panel.style.height = '';
-      } else {
-        detail.style.flex = 'none';
-        detail.style.height = summary.style.height;
-        detail.style.minHeight = summary.style.height;
-        detail.style.maxHeight = summary.style.height;
-      }
-    }
-  }, true);
-}
-
 export function refreshData() {
-  return fetchAttendanceData(true);
+  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+  sessionStorage.removeItem('student_sgpa_cache');
+  // Clear any sub-caches
+  Object.keys(sessionStorage).forEach(k => {
+    if (k.startsWith('att_detail_') || k.startsWith('cie_detail_')) {
+      sessionStorage.removeItem(k);
+    }
+  });
+  currentStudentData = null;
+  currentSgpaData = null;
+  fetchAttendanceData(true);
 }
 
-// Bind window helpers
+export function setAttendanceSemester(newSem) {
+  if (newSem !== 'even' && newSem !== 'odd') return;
+  const attSemInput = document.getElementById('att-sem');
+  const currentSem = attSemInput ? attSemInput.value : '';
+
+  if (currentSem === newSem) {
+    toggleDrawer(false);
+    return;
+  }
+
+  const btnEven = document.getElementById('m-sem-even');
+  const btnOdd = document.getElementById('m-sem-odd');
+  if (btnEven && btnOdd) {
+    btnEven.classList.toggle('active', newSem === 'even');
+    btnOdd.classList.toggle('active', newSem === 'odd');
+  }
+
+  if (attSemInput) attSemInput.value = newSem;
+  toggleDrawer(false);
+
+  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+  sessionStorage.removeItem('student_sgpa_cache');
+  Object.keys(sessionStorage).forEach(k => {
+    if (k.startsWith('att_detail_') || k.startsWith('cie_detail_')) {
+      sessionStorage.removeItem(k);
+    }
+  });
+  currentStudentData = null;
+  currentSgpaData = null;
+  fetchAttendanceData(true, newSem);
+}
+
+// ── Expose globals for inline HTML event handlers ──
 if (typeof window !== 'undefined') {
+  window.initAttendance = initAttendance;
+  window.fetchAttendanceData = fetchAttendanceData;
+  window.renderStudentView = renderStudentView;
   window.switchTab = switchTab;
   window.flipCard = flipCard;
   window.fetchSgpa = fetchSgpa;
   window.onCieItemToggle = onCieItemToggle;
   window.showAttendanceDetail = showAttendanceDetail;
   window.closeAttModal = closeAttModal;
-  window.switchSem = menuSwitchSem;
-  window.menuSwitchSem = menuSwitchSem;
   window.refreshData = refreshData;
+  window.setAttendanceSemester = setAttendanceSemester;
 }

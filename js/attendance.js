@@ -261,7 +261,6 @@ export async function fetchSgpa(e) {
     const cached = JSON.parse(sessionStorage.getItem('student_sgpa_cache'));
     if (cached && cached.semesters && cached.semesters.length) {
       renderSgpaChip(cached);
-      document.getElementById('flip-inner')?.classList.toggle('flipped');
       return;
     }
   } catch (e) {}
@@ -281,8 +280,6 @@ export async function fetchSgpa(e) {
   try {
     const json = await api.getExamHistory({ cookies, usn, sem });
     renderSgpaChip(json);
-    // Smooth flip to backside
-    document.getElementById('flip-inner')?.classList.add('flipped');
   } catch (err) {
     if (btn) {
       btn.disabled = false;

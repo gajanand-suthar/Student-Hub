@@ -194,11 +194,8 @@ body.page-scrollable #view-moodle .page {
   display: block;
   overflow: visible;
   max-height: none;
-  padding: 16px 16px calc(100px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(76px + env(safe-area-inset-bottom, 0px));
   margin-bottom: 0;
-}
-#content-list {
-  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 .search-container { position: relative; margin-bottom: 20px; }

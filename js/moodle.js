@@ -608,12 +608,12 @@ export async function openCourse(idx) {
                     </a>
                   </div>
                 </div>`;
-            } else if (isPdf || isHtml || isOfficeDoc || isVideo || isAudio) {
+            } else if (isPdf || isOfficeDoc || isVideo || isAudio) {
               const onclickAction = `openDocLightbox(${escHtml(JSON.stringify(proxyUrl))},${escHtml(JSON.stringify(displayName))},${escHtml(JSON.stringify(ext))})`;
               const isMedia = isVideo || isAudio;
               const btnIcon = isMedia
                 ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
-                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
               const btnLabel = isMedia ? 'Play' : 'View';
 
               html += `
@@ -631,6 +631,7 @@ export async function openCourse(idx) {
                   </div>
                 </div>`;
             } else {
+              // HTML files, web links, and other external resources open directly in a new tab
               html += `
                 <div class="res-item">
                   <span class="res-badge ${badge.toLowerCase()}">${badge}</span>
@@ -753,25 +754,18 @@ export function openDocLightbox(url, name, ext) {
   const mediaC = document.getElementById('media-container');
   const loader = document.getElementById('doc-loader');
   const title = document.getElementById('doc-title');
-  const extBtn = document.getElementById('doc-external-link');
   const videoEl = document.getElementById('plyr-video');
   const audioEl = document.getElementById('plyr-audio');
   if (!lb || !title) return;
 
   title.textContent = name;
 
-  const isHtml = ['html', 'htm', 'xhtml'].includes(ext);
   const isMsDoc = ['doc', 'docx', 'xls', 'xlsx', 'csv'].includes(ext);
   const isGoogleDoc = ['ppt', 'pptx', 'odp', 'odt', 'ods', 'rtf'].includes(ext);
   const isPdf = ext === 'pdf';
   const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
   const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
   const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
-
-  if (extBtn) {
-    extBtn.href = url;
-    extBtn.style.display = 'inline-flex';
-  }
 
   if (ifr) ifr.style.display = 'none';
   if (pdfC) pdfC.style.display = 'none';
@@ -827,13 +821,11 @@ export function openDocLightbox(url, name, ext) {
         setTimeout(initPlyrInstance, 300);
       }
     }
-  } else if (isHtml || isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
+  } else if (isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
     if (loader) loader.style.display = 'flex';
     if (ifr) {
       ifr.style.display = 'block';
-      if (isHtml) {
-        ifr.src = url;
-      } else if (isMsDoc) {
+      if (isMsDoc) {
         ifr.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absoluteUrl);
       } else if (isGoogleDoc) {
         ifr.src = 'https://docs.google.com/gview?url=' + encodeURIComponent(absoluteUrl) + '&embedded=true';

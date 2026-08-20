@@ -22,7 +22,13 @@ export function initAttendance() {
     return;
   }
 
-  // Check session cache for attendance (persists only for current tab/PWA session)
+  // 1. In-memory check: if already loaded in this session, render instantly
+  if (currentStudentData && currentStudentData.usn === creds.usn && currentStudentData.attendance) {
+    renderStudentView(currentStudentData);
+    return;
+  }
+
+  // 2. Session cache check (persists only for current tab/PWA browser session)
   let sessionAtt = null;
   try {
     sessionAtt = JSON.parse(sessionStorage.getItem(CONFIG.ATT_SESSION_KEY));
@@ -31,12 +37,11 @@ export function initAttendance() {
   if (sessionAtt && sessionAtt.usn === creds.usn && sessionAtt.attendance) {
     currentStudentData = sessionAtt;
     renderStudentView(sessionAtt);
-    // Background refresh silently from backend
-    fetchAttendanceData(false);
-  } else {
-    // First visit in this session: fetch fresh live data
-    fetchAttendanceData(true);
+    return;
   }
+
+  // 3. First visit in this session: perform login & fetch fresh live data once
+  fetchAttendanceData(true);
 }
 
 export async function fetchAttendanceData(showLoading = true, explicitSem = null) {

@@ -359,6 +359,9 @@ export function obFinish(saveMoodle) {
   // Background auto-login test (backend uses its configured default semester)
   api.login({ usn, dob, idType, code }).then(res => {
     if (res && res.student) {
+      try {
+        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+      } catch (e) {}
       const profile = {
         name: res.student.name,
         usn: res.student.usn,

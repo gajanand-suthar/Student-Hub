@@ -112,6 +112,12 @@ export async function initMoodle() {
     if (inpPass) inpPass.value = c.moodlePass || '';
   }
 
+  // If already loaded in memory for this session, display instantly
+  if (allCourses && allCourses.length > 0) {
+    showView('courses');
+    return;
+  }
+
   // Check course Cache
   let cache = null;
   try {
@@ -133,14 +139,11 @@ export async function initMoodle() {
     buildSemDropdown(allSemesters, currentSem, hasOtherCached);
     renderCourseList(cachedCourses);
     showView('courses');
-    // Silent fetch update in background
-    if (token) fetchCoursesFromApi(false);
   } else if (cache && cache.courses && cache.courses.length > 0) {
     // Legacy cache format
     cachedCourses = cache.courses;
     renderCourseList(cachedCourses);
     showView('courses');
-    if (token) fetchCoursesFromApi(false);
   } else if (token) {
     showView('courses');
     fetchCoursesFromApi(true);

@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, escHtml, toTitleCase, loadUser, getStoredUsn } from './shared.js';
+import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn } from './shared.js';
 
 const BRANCH_NAMES = {
   'EE': 'Electrical & Electronics',
@@ -228,8 +228,6 @@ async function startGen(batch, branch) {
 }
 
 export function initResults() {
-  initTheme();
-  initPwa();
 
   const params = new URLSearchParams(window.location.search);
   let usn = params.get('usn') || '';

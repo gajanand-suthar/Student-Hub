@@ -1,24 +1,30 @@
-const CACHE_NAME = 'nie-hub-static-v8';
+const CACHE_NAME = 'nie-hub-spa-v2';
 const PRECACHE = [
   './',
   './index.html',
-  './moodle/',
-  './moodle/index.html',
-  './results/',
-  './results/index.html',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
+  './css/shared.css',
+  './css/dashboard.css',
+  './css/attendance.css',
+  './css/moodle.css',
+  './css/results.css',
   './js/config.js',
   './js/api.js',
   './js/shared.js',
+  './js/router.js',
+  './js/app.js',
   './js/dashboard.js',
   './js/attendance.js',
   './js/moodle.js',
   './js/results.js'
 ];
+
+// Known SPA routes — all resolve to index.html
+const SPA_ROUTES = ['/', '/index.html', '/moodle/', '/moodle', '/attendance/', '/attendance', '/results/', '/results'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -52,18 +58,18 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Never cache attendance — always fetch live from network
-  if (url.pathname.includes('/attendance')) {
+  // SPA Navigation Fallback: serve index.html for all known SPA routes
+  if (e.request.mode === 'navigate' && (SPA_ROUTES.includes(url.pathname) || !url.pathname.includes('.'))) {
     e.respondWith(
-      fetch(e.request).catch(() => new Response('Attendance is unavailable offline.', {
-        headers: { 'Content-Type': 'text/plain' }
-      }))
+      fetch(e.request)
+        .then(res => cacheResponse(e.request, res))
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Network-First for other JS and HTML files to avoid stale cache
-  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
+  // Network-First for JS, HTML, and CSS files to avoid stale cache
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html') || url.pathname.endsWith('.css')) {
     e.respondWith(
       fetch(e.request)
         .then(res => cacheResponse(e.request, res))

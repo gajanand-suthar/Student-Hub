@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, escHtml, toTitleCase, loadUser } from './shared.js';
+import { loadCreds, escHtml, toTitleCase, loadUser } from './shared.js';
 
 // ── State Management ──────────────────────────────────────────
 let token = '';
@@ -86,8 +86,6 @@ export function parseCourseInfo(fullname) {
 
 // ── Boot / Initialization ─────────────────────────────────────
 export async function initMoodle() {
-  initTheme();
-  initPwa();
 
   // Setup PDF.js worker
   if (typeof window.pdfjsLib !== 'undefined') {

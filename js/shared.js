@@ -4,6 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
+import { getCurrentRoute, navigate } from './router.js';
 
 // ── Theme Management ──
 export function initTheme() {
@@ -82,7 +83,7 @@ export function pickCeIdType(val, label, el) {
 }
 
 export function openCredsEditor() {
-  const isMoodle = window.location.pathname.includes('/moodle');
+  const isMoodle = getCurrentRoute() === 'moodle';
   const attCol = document.getElementById('ce-att-col');
   const moodleCol = document.getElementById('ce-moodle-col');
   const modalCard = document.getElementById('creds-modal-card');
@@ -133,7 +134,7 @@ export function closeCredsEditor() {
 }
 
 export function saveCredsEditor() {
-  const isMoodle = window.location.pathname.includes('/moodle');
+  const isMoodle = getCurrentRoute() === 'moodle';
   const code = (document.getElementById('ce-code')?.value || '').trim();
 
   if (!isMoodle) {
@@ -166,6 +167,7 @@ export function saveCredsEditor() {
   localStorage.removeItem(CONFIG.COURSES_KEY);
 
   closeCredsEditor();
+  // In SPA mode, reload the current view instead of full page reload
   window.location.reload();
 }
 
@@ -204,16 +206,16 @@ export function executeLogout() {
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
   sessionStorage.setItem(CONFIG.SKIP_AUTOLOGIN_KEY, '1');
 
-  const dest = window.location.pathname.includes('/attendance') || window.location.pathname.includes('/moodle') || window.location.pathname.includes('/results') ? '../' : './';
-
   if ('caches' in window) {
     caches.keys().then(keys => {
       Promise.all(keys.map(x => caches.delete(x))).then(() => {
-        window.location.replace(dest);
+        navigate('/');
+        window.location.reload();
       });
     });
   } else {
-    window.location.replace(dest);
+    navigate('/');
+    window.location.reload();
   }
 }
 
@@ -382,11 +384,7 @@ if (typeof window !== 'undefined') {
 
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    const isSub = window.location.pathname.includes('/attendance') ||
-                  window.location.pathname.includes('/moodle') ||
-                  window.location.pathname.includes('/results');
-    const swPath = isSub ? '../sw.js' : './sw.js';
-    navigator.serviceWorker.register(swPath).catch(() => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
   }

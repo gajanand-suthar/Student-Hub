@@ -124,13 +124,13 @@ let selectedCalSem = 'III';
 
 // ── Boot & Init ──
 export function initDashboard() {
-  initTheme();
-  initPwa();
 
   window.addEventListener('touchstart', () => (isTouchDevice = true), { capture: true, passive: true });
   window.addEventListener('mousemove', e => {
     if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
   }, { capture: true, passive: true });
+
+  initAcademicCalendar();
 
   const consent = localStorage.getItem(CONFIG.CONSENT_KEY);
   if (!consent) {

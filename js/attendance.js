@@ -4,7 +4,8 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, escHtml } from './shared.js';
+import { loadCreds, escHtml } from './shared.js';
+import { navigate } from './router.js';
 
 let sgpaLoaded = false;
 let currentStudentData = null;
@@ -13,12 +14,11 @@ let currentExplicitSem = null;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function initAttendance() {
-  initTheme();
-  initPwa();
+  sgpaLoaded = false;
 
   const creds = loadCreds();
   if (!creds || !creds.usn) {
-    window.location.replace('../');
+    navigate('/');
     return;
   }
 

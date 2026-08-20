@@ -1,0 +1,69 @@
+/* Results Specific Layout */
+#view-results .page-wrap{flex:1;width:100%;max-width:600px;margin:0 auto;padding:16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0;box-sizing:border-box}
+#view-results .page-wrap::-webkit-scrollbar{width:4px}
+#view-results .page-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+[data-theme=dark] #view-results .page-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2)}
+
+/* Header */
+.perf-header{text-align:center;padding:8px 0}
+.perf-header h1{font-size:1.4rem;font-weight:800;color:var(--text);letter-spacing:-0.5px;margin-bottom:4px}
+.perf-header .sub{color:var(--muted);font-size:.82rem;font-weight:500}
+
+/* Stats Row */
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+[data-theme=dark] .stat-card{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.stat-label{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.stat-value{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:800;color:var(--accent)}
+.stat-value.gold{color:#ca8a04}
+.stat-value.small{font-size:.9rem}
+
+/* My Rank Card */
+.my-rank-card{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-radius:16px;padding:18px 20px;color:#fff;display:flex;align-items:center;gap:16px;box-shadow:0 8px 24px rgba(37,99,235,.25)}
+.my-rank-num{font-family:'DM Mono',monospace;font-size:2rem;font-weight:800;line-height:1;opacity:.95}
+.my-rank-info{flex:1;min-width:0}
+.my-rank-name{font-size:1rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.my-rank-meta{font-size:.78rem;opacity:.75;font-weight:500;margin-top:2px}
+.my-rank-sgpa{font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;text-align:right;line-height:1}
+.my-rank-sgpa-label{font-size:.55rem;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.06em;text-align:right;margin-top:2px}
+
+/* Leaderboard List */
+.lb-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.03);display:flex;flex-direction:column;flex:1;min-height:0}
+[data-theme=dark] .lb-card{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.lb-title{font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:14px 16px 0;flex-shrink:0}
+.lb-list{padding:8px;overflow-y:auto;flex:1;min-height:0;position:relative}
+.lb-list::-webkit-scrollbar{width:6px}
+.lb-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+[data-theme=dark] .lb-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2)}
+
+.lb-row{display:grid;grid-template-columns:36px 1fr auto auto;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;transition:background .12s}
+.lb-row:hover{background:rgba(37,99,235,.04)}
+[data-theme=dark] .lb-row:hover{background:rgba(255,255,255,.04)}
+.lb-row.me{background:rgba(37,99,235,.06);border:1.5px solid rgba(37,99,235,.15)}
+[data-theme=dark] .lb-row.me{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.3)}
+.lb-row + .lb-row{margin-top:2px}
+
+.lb-rank{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:800;color:var(--muted);text-align:center;width:36px}
+.lb-rank.gold{color:#ca8a04;font-size:1.1rem}
+.lb-rank.silver{color:#6b7280;font-size:1rem}
+.lb-rank.bronze{color:#b45309;font-size:1rem}
+
+.lb-info{min-width:0}
+.lb-name{font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-usn{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);font-weight:500}
+
+.lb-cr{text-align:right;flex-shrink:0;font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;color:var(--muted);padding-right:16px}
+.lb-right{text-align:right;flex-shrink:0;width:32px}
+.lb-sgpa{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:800;color:var(--text)}
+
+.lb-fail-badge{display:inline-block;font-size:.58rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:20px;margin-left:4px}
+[data-theme=dark] .lb-fail-badge{background:rgba(220,38,38,.15);color:#f87171}
+
+/* Loading / Error States */
+.center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);gap:14px;flex:1;min-height:0;box-sizing:border-box}
+.loader{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-title{font-size:1.1rem;font-weight:800;color:var(--text)}
+.err-sub{font-size:.85rem;color:var(--muted);max-width:300px;line-height:1.5}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.85rem;border:none;cursor:pointer;transition:opacity .15s}
+.back-btn:hover{opacity:.88}

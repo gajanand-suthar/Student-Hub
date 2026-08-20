@@ -984,8 +984,8 @@ export async function fetchDepartmentData(forceRefresh = false) {
 
 export async function shareApp() {
   const shareData = {
-    title: 'Student Hub — NIE',
-    text: 'Check out Student Hub — the all-in-one portal for NIE students! Access attendance, results, moodle and more.',
+    title: 'Student Hub',
+    text: 'Check out Student Hub — the all-in-one academic portal for students! Access attendance, results, courses and more.',
     url: window.location.origin + window.location.pathname.replace(/\/index\.html$/, '')
   };
   try {

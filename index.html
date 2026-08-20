@@ -2,21 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <script>
-    // Sub-URL Redirect: if directly opening any sub-route, immediately redirect to base homepage URL
-    (function() {
-      var path = window.location.pathname;
-      var hasSubRoute = path.indexOf('/attendance') !== -1 || path.indexOf('/moodle') !== -1 || path.indexOf('/results') !== -1;
-      if (hasSubRoute) {
-        var segments = path.split('/').filter(Boolean);
-        var known = ['attendance', 'moodle', 'results', 'index.html'];
-        var base = (segments.length > 0 && known.indexOf(segments[0].toLowerCase()) === -1)
-          ? '/' + segments[0] + '/'
-          : '/';
-        window.location.replace(window.location.origin + base);
-      }
-    })();
-  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Student Hub</title>
   <meta name="theme-color" content="#2563eb">

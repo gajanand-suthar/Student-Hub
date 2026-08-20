@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Hub</title>
+  <script>
+    // GitHub Pages 404 Redirection: redirects any direct sub-path visit to the base homepage URL
+    (function() {
+      var path = window.location.pathname;
+      var parts = path.split('/').filter(Boolean);
+      var known = ['attendance', 'moodle', 'results', 'index.html'];
+      var base = (parts.length > 0 && known.indexOf(parts[0].toLowerCase()) === -1)
+        ? '/' + parts[0] + '/'
+        : '/';
+      window.location.replace(window.location.origin + base);
+    })();
+  </script>
+</head>
+<body>
+  <p style="font-family:sans-serif; text-align:center; padding-top:40px; color:#64748b;">
+    Redirecting to Student Hub...
+  </p>
+</body>
+</html>

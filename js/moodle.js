@@ -566,9 +566,11 @@ export async function openCourse(idx) {
             if (!f.fileurl) return;
             const ext = (f.filename || '').split('.').pop().toLowerCase();
             const size = f.filesize ? (f.filesize > 1048576 ? (f.filesize / 1048576).toFixed(1) + ' MB' : Math.ceil(f.filesize / 1024) + ' KB') : '';
-            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif', 'heic'].includes(ext);
             const isPdf = ext === 'pdf';
-            const isOfficeDoc = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext);
+            const isOfficeDoc = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'odt', 'ods', 'odp', 'rtf', 'txt'].includes(ext);
+            const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
+            const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
 
             // Determine file badge
             const badge = getFileBadge(f.filename, mod.modname);
@@ -602,8 +604,14 @@ export async function openCourse(idx) {
                     </a>
                   </div>
                 </div>`;
-            } else if (isPdf || isOfficeDoc) {
+            } else if (isPdf || isOfficeDoc || isVideo || isAudio) {
               const onclickAction = `openDocLightbox(${escHtml(JSON.stringify(proxyUrl))},${escHtml(JSON.stringify(displayName))},${escHtml(JSON.stringify(ext))})`;
+              const isMedia = isVideo || isAudio;
+              const btnIcon = isMedia
+                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+              const btnLabel = isMedia ? 'Play' : 'View';
+
               html += `
                 <div class="res-item">
                   <span class="res-badge ${badge.toLowerCase()}">${badge}</span>
@@ -611,7 +619,7 @@ export async function openCourse(idx) {
                   ${size ? `<span class="res-size">${size}</span>` : ''}
                   <div class="res-actions">
                     <button class="res-btn btn-view" onclick="${onclickAction}">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>View</span>
+                      ${btnIcon}<span>${btnLabel}</span>
                     </button>
                     <a href="${escHtml(downloadProxyUrl)}" class="res-btn btn-download" download>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download</span>
@@ -683,25 +691,26 @@ export function getFileBadge(filename, modname) {
   }
   const ext = filename.split('.').pop().toLowerCase();
   const map = {
+    // PDF
     pdf: 'PDF',
-    png: 'IMG',
-    jpg: 'IMG',
-    jpeg: 'IMG',
-    gif: 'IMG',
-    webp: 'IMG',
-    svg: 'IMG',
-    ppt: 'PPT',
-    pptx: 'PPT',
-    doc: 'DOC',
-    docx: 'DOC',
-    xls: 'XLS',
-    xlsx: 'XLS',
-    csv: 'XLS',
-    zip: 'ZIP',
-    rar: 'ZIP',
-    txt: 'TXT'
+    // Images
+    png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', webp: 'IMG', svg: 'IMG', bmp: 'IMG', ico: 'IMG', tiff: 'IMG', tif: 'IMG', avif: 'IMG', heic: 'IMG',
+    // Presentations
+    ppt: 'PPT', pptx: 'PPT', odp: 'PPT',
+    // Documents
+    doc: 'DOC', docx: 'DOC', odt: 'DOC', rtf: 'DOC', txt: 'TXT',
+    // Spreadsheets
+    xls: 'XLS', xlsx: 'XLS', ods: 'XLS', csv: 'XLS',
+    // Archives
+    zip: 'ZIP', rar: 'ZIP', '7z': 'ZIP', tar: 'ZIP', gz: 'ZIP',
+    // Videos
+    mp4: 'VIDEO', webm: 'VIDEO', mkv: 'VIDEO', avi: 'VIDEO', mov: 'VIDEO', wmv: 'VIDEO', flv: 'VIDEO', m4v: 'VIDEO', '3gp': 'VIDEO', ogv: 'VIDEO', ts: 'VIDEO', m2ts: 'VIDEO', vob: 'VIDEO', mpg: 'VIDEO', mpeg: 'VIDEO',
+    // Audios
+    mp3: 'AUDIO', wav: 'AUDIO', aac: 'AUDIO', ogg: 'AUDIO', m4a: 'AUDIO', flac: 'AUDIO', wma: 'AUDIO', opus: 'AUDIO', aiff: 'AUDIO', alac: 'AUDIO', mid: 'AUDIO', midi: 'AUDIO',
+    // Code & Data
+    py: 'CODE', java: 'CODE', c: 'CODE', cpp: 'CODE', cs: 'CODE', js: 'CODE', ts: 'CODE', html: 'CODE', css: 'CODE', php: 'CODE', json: 'CODE', xml: 'CODE', sql: 'CODE', sh: 'CODE', ipynb: 'NOTE', md: 'DOC'
   };
-  return map[ext] || 'FILE';
+  return map[ext] || (ext.length <= 4 ? ext.toUpperCase() : 'FILE');
 }
 
 // ── Image Lightbox Handlers ──────────────────────────────────
@@ -746,38 +755,65 @@ export function openDocLightbox(url, name, ext) {
 
   title.textContent = name;
 
-  const isMsDoc = ['doc', 'docx', 'xls', 'xlsx'].includes(ext);
-  const isGoogleDoc = ['ppt', 'pptx'].includes(ext);
+  const isMsDoc = ['doc', 'docx', 'xls', 'xlsx', 'csv'].includes(ext);
+  const isGoogleDoc = ['ppt', 'pptx', 'odp', 'odt', 'ods', 'rtf'].includes(ext);
   const isPdf = ext === 'pdf';
-  const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
-  const isAudio = ['mp3', 'wav', 'aac'].includes(ext);
+  const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
+  const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
   const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
 
   if (ifr) ifr.style.display = 'none';
   if (pdfC) pdfC.style.display = 'none';
-  if (mediaC) mediaC.style.display = 'none';
+  if (mediaC) {
+    mediaC.style.display = 'none';
+    mediaC.classList.remove('active');
+  }
   if (loader) loader.style.display = 'none';
-  if (videoEl) videoEl.style.display = 'none';
-  if (audioEl) audioEl.style.display = 'none';
+  if (videoEl) {
+    videoEl.style.display = 'none';
+    videoEl.src = '';
+  }
+  if (audioEl) {
+    audioEl.style.display = 'none';
+    audioEl.src = '';
+  }
 
   // Clean up any existing Plyr instance
   if (window.currentPlyr) {
-    window.currentPlyr.destroy();
+    try {
+      window.currentPlyr.destroy();
+    } catch(e) {}
     window.currentPlyr = null;
   }
 
   if (isVideo || isAudio) {
-    if (mediaC) mediaC.style.display = 'flex';
+    if (mediaC) {
+      mediaC.style.display = 'flex';
+      mediaC.classList.add('active');
+    }
     const targetEl = isVideo ? videoEl : audioEl;
     if (targetEl) {
       targetEl.style.display = 'block';
       targetEl.src = url;
 
+      const initPlyrInstance = () => {
+        if (typeof window.Plyr !== 'undefined' && !window.currentPlyr) {
+          try {
+            window.currentPlyr = new window.Plyr(targetEl, {
+              title: name,
+              controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+              autoplay: false
+            });
+          } catch(e) {
+            console.warn('Plyr error:', e);
+          }
+        }
+      };
+
       if (typeof window.Plyr !== 'undefined') {
-        window.currentPlyr = new window.Plyr(targetEl, {
-          title: name,
-          controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen']
-        });
+        initPlyrInstance();
+      } else {
+        setTimeout(initPlyrInstance, 300);
       }
     }
   } else if (isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
@@ -816,18 +852,34 @@ export function closeDocLightbox() {
   lb.classList.remove('show');
 
   if (window.currentPlyr) {
-    window.currentPlyr.stop();
+    try {
+      window.currentPlyr.stop();
+    } catch(e) {}
   }
 
   setTimeout(() => {
     lb.style.display = 'none';
     const ifr = document.getElementById('doc-iframe');
     const pdfC = document.getElementById('pdf-container');
+    const mediaC = document.getElementById('media-container');
+    const videoEl = document.getElementById('plyr-video');
+    const audioEl = document.getElementById('plyr-audio');
     if (ifr) ifr.src = '';
     if (pdfC) pdfC.innerHTML = '';
+    if (videoEl) {
+      videoEl.pause?.();
+      videoEl.src = '';
+    }
+    if (audioEl) {
+      audioEl.pause?.();
+      audioEl.src = '';
+    }
+    if (mediaC) mediaC.classList.remove('active');
 
     if (window.currentPlyr) {
-      window.currentPlyr.destroy();
+      try {
+        window.currentPlyr.destroy();
+      } catch(e) {}
       window.currentPlyr = null;
     }
   }, 300);

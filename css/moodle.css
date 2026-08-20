@@ -440,6 +440,10 @@ body.page-scrollable #view-moodle .page {
 [data-theme=dark] .res-badge.audio { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
 .res-badge.code { background: rgba(16, 185, 129, 0.1); color: #059669; }
 [data-theme=dark] .res-badge.code { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.res-badge.html { background: rgba(234, 88, 12, 0.08); color: #ea580c; }
+[data-theme=dark] .res-badge.html { background: rgba(234, 88, 12, 0.15); color: #fb923c; }
+.res-badge.page { background: rgba(14, 165, 233, 0.08); color: #0284c7; }
+[data-theme=dark] .res-badge.page { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
 .res-badge.txt { background: rgba(100, 116, 139, 0.1); color: #64748b; }
 [data-theme=dark] .res-badge.txt { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
 .res-badge.quiz { background: rgba(99, 102, 241, 0.08); color: #6366f1; }

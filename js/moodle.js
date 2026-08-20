@@ -571,6 +571,7 @@ export async function openCourse(idx) {
             const size = f.filesize ? (f.filesize > 1048576 ? (f.filesize / 1048576).toFixed(1) + ' MB' : Math.ceil(f.filesize / 1024) + ' KB') : '';
             const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif', 'heic'].includes(ext);
             const isPdf = ext === 'pdf';
+            const isHtml = ['html', 'htm', 'xhtml'].includes(ext);
             const isOfficeDoc = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'odt', 'ods', 'odp', 'rtf', 'txt'].includes(ext);
             const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
             const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
@@ -607,7 +608,7 @@ export async function openCourse(idx) {
                     </a>
                   </div>
                 </div>`;
-            } else if (isPdf || isOfficeDoc || isVideo || isAudio) {
+            } else if (isPdf || isHtml || isOfficeDoc || isVideo || isAudio) {
               const onclickAction = `openDocLightbox(${escHtml(JSON.stringify(proxyUrl))},${escHtml(JSON.stringify(displayName))},${escHtml(JSON.stringify(ext))})`;
               const isMedia = isVideo || isAudio;
               const btnIcon = isMedia
@@ -636,8 +637,8 @@ export async function openCourse(idx) {
                   <span class="res-name">${escHtml(displayName)}</span>
                   ${size ? `<span class="res-size">${size}</span>` : ''}
                   <div class="res-actions">
-                    <a href="${escHtml(proxyUrl)}" class="res-btn btn-view" target="_blank">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>View</span>
+                    <a href="${escHtml(proxyUrl)}" class="res-btn btn-view" target="_blank" rel="noopener">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg><span>Open</span>
                     </a>
                     <a href="${escHtml(downloadProxyUrl)}" class="res-btn btn-download" download>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download</span>
@@ -694,8 +695,8 @@ export function getFileBadge(filename, modname) {
   }
   const ext = filename.split('.').pop().toLowerCase();
   const map = {
-    // PDF
-    pdf: 'PDF',
+    // PDF & HTML
+    pdf: 'PDF', html: 'HTML', htm: 'HTML', xhtml: 'HTML',
     // Images
     png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', webp: 'IMG', svg: 'IMG', bmp: 'IMG', ico: 'IMG', tiff: 'IMG', tif: 'IMG', avif: 'IMG', heic: 'IMG',
     // Presentations
@@ -711,7 +712,7 @@ export function getFileBadge(filename, modname) {
     // Audios
     mp3: 'AUDIO', wav: 'AUDIO', aac: 'AUDIO', ogg: 'AUDIO', m4a: 'AUDIO', flac: 'AUDIO', wma: 'AUDIO', opus: 'AUDIO', aiff: 'AUDIO', alac: 'AUDIO', mid: 'AUDIO', midi: 'AUDIO',
     // Code & Data
-    py: 'CODE', java: 'CODE', c: 'CODE', cpp: 'CODE', cs: 'CODE', js: 'CODE', ts: 'CODE', html: 'CODE', css: 'CODE', php: 'CODE', json: 'CODE', xml: 'CODE', sql: 'CODE', sh: 'CODE', ipynb: 'NOTE', md: 'DOC'
+    py: 'CODE', java: 'CODE', c: 'CODE', cpp: 'CODE', cs: 'CODE', js: 'CODE', ts: 'CODE', html: 'HTML', css: 'CODE', php: 'CODE', json: 'CODE', xml: 'CODE', sql: 'CODE', sh: 'CODE', ipynb: 'NOTE', md: 'DOC'
   };
   return map[ext] || (ext.length <= 4 ? ext.toUpperCase() : 'FILE');
 }
@@ -752,18 +753,25 @@ export function openDocLightbox(url, name, ext) {
   const mediaC = document.getElementById('media-container');
   const loader = document.getElementById('doc-loader');
   const title = document.getElementById('doc-title');
+  const extBtn = document.getElementById('doc-external-link');
   const videoEl = document.getElementById('plyr-video');
   const audioEl = document.getElementById('plyr-audio');
   if (!lb || !title) return;
 
   title.textContent = name;
 
+  const isHtml = ['html', 'htm', 'xhtml'].includes(ext);
   const isMsDoc = ['doc', 'docx', 'xls', 'xlsx', 'csv'].includes(ext);
   const isGoogleDoc = ['ppt', 'pptx', 'odp', 'odt', 'ods', 'rtf'].includes(ext);
   const isPdf = ext === 'pdf';
   const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
   const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
   const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
+
+  if (extBtn) {
+    extBtn.href = url;
+    extBtn.style.display = 'inline-flex';
+  }
 
   if (ifr) ifr.style.display = 'none';
   if (pdfC) pdfC.style.display = 'none';
@@ -819,11 +827,13 @@ export function openDocLightbox(url, name, ext) {
         setTimeout(initPlyrInstance, 300);
       }
     }
-  } else if (isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
+  } else if (isHtml || isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
     if (loader) loader.style.display = 'flex';
     if (ifr) {
       ifr.style.display = 'block';
-      if (isMsDoc) {
+      if (isHtml) {
+        ifr.src = url;
+      } else if (isMsDoc) {
         ifr.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absoluteUrl);
       } else if (isGoogleDoc) {
         ifr.src = 'https://docs.google.com/gview?url=' + encodeURIComponent(absoluteUrl) + '&embedded=true';

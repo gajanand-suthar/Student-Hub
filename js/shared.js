@@ -163,6 +163,7 @@ export function saveCredsEditor() {
   localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(c));
   localStorage.removeItem(CONFIG.USER_KEY);
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+  sessionStorage.removeItem('student_sgpa_cache');
   localStorage.removeItem(CONFIG.TOKEN_KEY);
   localStorage.removeItem(CONFIG.COURSES_KEY);
 
@@ -204,6 +205,7 @@ export function executeLogout() {
   ].forEach(k => localStorage.removeItem(k));
 
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+  sessionStorage.removeItem('student_sgpa_cache');
   sessionStorage.setItem(CONFIG.SKIP_AUTOLOGIN_KEY, '1');
 
   if ('caches' in window) {

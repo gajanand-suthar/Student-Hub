@@ -206,6 +206,30 @@ export function renderStudentView(data) {
   const cieDesk = document.getElementById('desk-cie-accordion');
   if (cieMobile) cieMobile.innerHTML = cieHtml;
   if (cieDesk) cieDesk.innerHTML = cieHtml;
+
+  // Restore cached SGPA / CGPA data across tab switches
+  if (!currentSgpaData) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem('student_sgpa_cache'));
+      if (cached && cached.semesters && cached.semesters.length) {
+        currentSgpaData = cached;
+      }
+    } catch (e) {}
+  }
+
+  if (currentSgpaData) {
+    renderSgpaChip(currentSgpaData);
+  } else {
+    sgpaLoaded = false;
+    const sgpaSlot = document.getElementById('sgpa-slot');
+    if (sgpaSlot) {
+      sgpaSlot.innerHTML = `
+        <button class="sgpa-fetch-btn" id="sgpa-fetch-btn" onclick="event.stopPropagation(); fetchSgpa(event);">
+          <span class="sgpa-fetch-label">Avg SGPA</span>
+          <span class="sgpa-fetch-sub">Tap to view</span>
+        </button>`;
+    }
+  }
 }
 
 export function switchTab(id, btn) {
@@ -217,18 +241,24 @@ export function switchTab(id, btn) {
 }
 
 export function flipCard() {
+  const inner = document.getElementById('flip-inner');
+  if (!inner) return;
+
   if (sgpaLoaded) {
-    document.getElementById('flip-inner')?.classList.toggle('flipped');
+    inner.classList.toggle('flipped');
+  } else {
+    fetchSgpa();
   }
 }
 
 export async function fetchSgpa(e) {
   if (e) e.stopPropagation();
   const btn = document.getElementById('sgpa-fetch-btn');
-  if (!btn || btn.disabled) return;
-
-  btn.disabled = true;
-  btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:4px auto"></div>';
+  if (btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:4px auto"></div>';
+  }
 
   const creds = loadCreds();
   const usn = creds?.usn || '';
@@ -238,20 +268,24 @@ export async function fetchSgpa(e) {
   try {
     const json = await api.getExamHistory({ cookies, usn, sem });
     renderSgpaChip(json);
+    // Smooth flip to backside after first fetch
+    document.getElementById('flip-inner')?.classList.add('flipped');
   } catch (err) {
-    btn.disabled = false;
-    btn.innerHTML = '<span class="sgpa-fetch-label">Avg SGPA</span><span class="sgpa-fetch-sub" style="color:var(--danger)">Retry</span>';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="sgpa-fetch-label">Avg SGPA</span><span class="sgpa-fetch-sub" style="color:var(--danger)">Retry</span>';
+    }
   }
 }
 
 function renderSgpaChip(data) {
-  const frontChipSlot = document.getElementById('sgpa-fetch-btn');
+  const sgpaSlot = document.getElementById('sgpa-slot');
   const backSlot = document.getElementById('sgpa-back-slot');
 
   if (!data || !data.semesters || !data.semesters.length || data.cgpa === null) {
-    if (frontChipSlot) {
-      frontChipSlot.outerHTML = `
-        <div class="sgpa-chip" style="color:var(--muted);background:var(--bg);border-color:var(--border);margin-left:auto">
+    if (sgpaSlot) {
+      sgpaSlot.innerHTML = `
+        <div class="sgpa-chip" style="color:var(--muted);background:var(--bg);border-color:var(--border)">
           <span class="sgpa-fetch-label">Avg SGPA</span>
           <span class="sgpa-chip-val" style="font-size:1rem">—</span>
           <span class="sgpa-chip-hint">not available</span>
@@ -265,9 +299,9 @@ function renderSgpaChip(data) {
   if (cgpa < 6) { chipColor = '#dc2626'; chipBg = '#fff1f2'; chipBorder = '#fecdd3'; chipDark = 'red'; }
   else if (cgpa < 7.5) { chipColor = '#b45309'; chipBg = '#fffbeb'; chipBorder = '#fde68a'; chipDark = 'amber'; }
 
-  if (frontChipSlot) {
-    frontChipSlot.outerHTML = `
-      <div class="sgpa-chip" data-color="${chipDark}" style="color:${chipColor};background:${chipBg};border-color:${chipBorder};margin-left:auto">
+  if (sgpaSlot) {
+    sgpaSlot.innerHTML = `
+      <div class="sgpa-chip" data-color="${chipDark}" style="color:${chipColor};background:${chipBg};border-color:${chipBorder}">
         <span class="sgpa-fetch-label">Avg SGPA</span>
         <span class="sgpa-chip-val">${cgpa.toFixed(2)}</span>
         <span class="sgpa-chip-hint">tap to flip</span>
@@ -304,6 +338,13 @@ function renderSgpaChip(data) {
 
   if (backSlot) backSlot.innerHTML = gridHtml;
   sgpaLoaded = true;
+  currentSgpaData = data;
+  try {
+    sessionStorage.setItem('student_sgpa_cache', JSON.stringify(data));
+  } catch (e) {}
+
+  const flipWrap = document.getElementById('flip-wrap');
+  if (flipWrap) flipWrap.style.cursor = 'pointer';
 }
 
 export async function onCieItemToggle(detailEl) {

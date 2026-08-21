@@ -66,111 +66,7 @@ export function getStoredUsn() {
   }
 }
 
-export function toggleCeDd() {
-  const dd = document.getElementById('ce-idtype-dd');
-  if (dd) dd.classList.toggle('open');
-}
 
-export function pickCeIdType(val, label, el) {
-  const input = document.getElementById('ce-idtype');
-  const labelEl = document.getElementById('ce-idtype-label');
-  if (input) input.value = val;
-  if (labelEl) labelEl.textContent = label;
-  document.querySelectorAll('.ce-dd-opt').forEach(opt => opt.classList.remove('selected'));
-  if (el) el.classList.add('selected');
-  const dd = document.getElementById('ce-idtype-dd');
-  if (dd) dd.classList.remove('open');
-}
-
-export function openCredsEditor() {
-  const isMoodle = getCurrentRoute() === 'moodle';
-  const attCol = document.getElementById('ce-att-col');
-  const moodleCol = document.getElementById('ce-moodle-col');
-  const modalCard = document.getElementById('creds-modal-card');
-  const modalTitle = document.getElementById('ce-modal-title');
-
-  if (isMoodle) {
-    if (attCol) attCol.style.display = 'none';
-    if (moodleCol) moodleCol.style.display = 'block';
-    if (modalCard) modalCard.style.width = 'min(360px, 100%)';
-    if (modalTitle) modalTitle.textContent = 'Moodle Settings';
-  } else {
-    if (attCol) attCol.style.display = 'block';
-    if (moodleCol) moodleCol.style.display = 'none';
-    if (modalCard) modalCard.style.width = 'min(360px, 100%)';
-    if (modalTitle) modalTitle.textContent = 'Attendance Settings';
-  }
-
-  const c = loadCreds() || {};
-  const usnEl = document.getElementById('ce-usn');
-  const dobEl = document.getElementById('ce-dob');
-  const codeEl = document.getElementById('ce-code');
-  const mPrefix = document.getElementById('ce-moodle-prefix');
-  const mPass = document.getElementById('ce-moodle-pass');
-
-  if (usnEl) usnEl.value = c.usn || '';
-  if (dobEl) dobEl.value = c.dob || '';
-  if (codeEl) codeEl.value = c.code || '';
-
-  const idt = c.idType || '1';
-  const label = idt === '2' ? "Mother's Last 4 Digits" : idt === '5' ? "Guardian's Last 4 Digits" : "Father's Last 4 Digits";
-  const el = document.querySelector(`.ce-dd-opt[onclick*="'${idt}'"]`);
-  if (el) pickCeIdType(idt, label, el);
-
-  const email = c.moodleEmail || '';
-  if (mPrefix) mPrefix.value = email.split('@')[0];
-  if (mPass) mPass.value = c.moodlePass || '';
-
-  const errEl = document.getElementById('ce-err-code');
-  if (errEl) errEl.style.display = 'none';
-
-  const modal = document.getElementById('creds-modal');
-  if (modal) modal.classList.add('active');
-}
-
-export function closeCredsEditor() {
-  const modal = document.getElementById('creds-modal');
-  if (modal) modal.classList.remove('active');
-}
-
-export function saveCredsEditor() {
-  const isMoodle = getCurrentRoute() === 'moodle';
-  const code = (document.getElementById('ce-code')?.value || '').trim();
-
-  if (!isMoodle) {
-    if (code.length !== 4 || !/^[0-9]{4}$/.test(code)) {
-      const e = document.getElementById('ce-err-code');
-      if (e) e.style.display = 'block';
-      else alert('Verification code must be exactly 4 digits.');
-      return;
-    }
-  }
-
-  const errEl = document.getElementById('ce-err-code');
-  if (errEl) errEl.style.display = 'none';
-
-  const c = loadCreds() || {};
-  c.usn = (document.getElementById('ce-usn')?.value || '').trim().toUpperCase();
-  c.dob = document.getElementById('ce-dob')?.value || '';
-  c.idType = document.getElementById('ce-idtype')?.value || '1';
-  c.code = code;
-
-  const pfxRaw = (document.getElementById('ce-moodle-prefix')?.value || '').trim();
-  const pfx = pfxRaw.split('@')[0];
-  c.moodleEmail = pfx ? pfx + '@nie.ac.in' : '';
-  c.moodlePass = document.getElementById('ce-moodle-pass')?.value || '';
-
-  localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(c));
-  localStorage.removeItem(CONFIG.USER_KEY);
-  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
-  sessionStorage.removeItem('student_sgpa_cache');
-  localStorage.removeItem(CONFIG.TOKEN_KEY);
-  localStorage.removeItem(CONFIG.COURSES_KEY);
-
-  closeCredsEditor();
-  // In SPA mode, reload the current view instead of full page reload
-  window.location.reload();
-}
 
 // ── Drawer Menu ──
 export function toggleDrawer(open) {
@@ -585,11 +481,6 @@ function fmtDate(d) {
 // Expose on window for easy inline event binding
 if (typeof window !== 'undefined') {
   window.toggleTheme = toggleTheme;
-  window.openCredsEditor = openCredsEditor;
-  window.closeCredsEditor = closeCredsEditor;
-  window.saveCredsEditor = saveCredsEditor;
-  window.toggleCeDd = toggleCeDd;
-  window.pickCeIdType = pickCeIdType;
   window.toggleDrawer = toggleDrawer;
   window.confirmLogout = confirmLogout;
   window.closeLogoutConfirm = closeLogoutConfirm;

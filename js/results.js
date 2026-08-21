@@ -237,7 +237,7 @@ export function initResults() {
   }
 
   if (!usn) {
-    showError('No USN Found', 'Please set your USN on the homepage or in settings first.');
+    showError('No USN Found', 'Please enter your USN on the homepage first.');
     return;
   }
   

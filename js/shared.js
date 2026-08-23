@@ -478,6 +478,65 @@ function fmtDate(d) {
   }
 }
 
+// ── Cloudflare Turnstile Helper ──────────────────────────────
+// Renders an invisible Turnstile widget, waits for a token,
+// then removes the widget. Returns a Promise<string>.
+export function getTurnstileToken(action) {
+  return new Promise(function(resolve, reject) {
+    // Wait up to 5s for the Turnstile script to load
+    var attempts = 0;
+    var maxAttempts = 50;
+
+    function tryRender() {
+      if (window.turnstile) {
+        renderWidget();
+        return;
+      }
+      attempts++;
+      if (attempts >= maxAttempts) {
+        reject(new Error('Turnstile not loaded'));
+        return;
+      }
+      setTimeout(tryRender, 100);
+    }
+
+    function renderWidget() {
+      var container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.bottom = '0';
+      container.style.right = '0';
+      container.style.zIndex = '-1';
+      container.style.opacity = '0';
+      container.style.pointerEvents = 'none';
+      document.body.appendChild(container);
+
+      var widgetId = window.turnstile.render(container, {
+        sitekey: CONFIG.TURNSTILE_SITEKEY,
+        action: action || 'default',
+        callback: function(token) {
+          cleanup();
+          resolve(token);
+        },
+        'error-callback': function() {
+          cleanup();
+          reject(new Error('Bot verification failed. Please try again.'));
+        },
+        'expired-callback': function() {
+          cleanup();
+          reject(new Error('Verification expired. Please try again.'));
+        }
+      });
+
+      function cleanup() {
+        try { window.turnstile.remove(widgetId); } catch(e) {}
+        try { container.remove(); } catch(e) {}
+      }
+    }
+
+    tryRender();
+  });
+}
+
 // Expose on window for easy inline event binding
 if (typeof window !== 'undefined') {
   window.toggleTheme = toggleTheme;

@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml } from './shared.js';
+import { loadCreds, escHtml, getTurnstileToken } from './shared.js';
 import { navigate } from './router.js';
 
 let sgpaLoaded = false;
@@ -64,6 +64,13 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
       code: creds.code
     };
     if (currentExplicitSem) payload.sem = currentExplicitSem;
+
+    // Get Turnstile token for bot protection
+    try {
+      payload.turnstileToken = await getTurnstileToken('attendance');
+    } catch (e) {
+      console.warn('[TURNSTILE] Could not get token:', e.message);
+    }
 
     const res = await api.login(payload);
 

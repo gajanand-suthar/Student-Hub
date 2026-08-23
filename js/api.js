@@ -36,6 +36,7 @@ export const api = {
     fd.append('code', creds.code || '');
     if (creds.sem) fd.append('sem', creds.sem);
     if (creds.cookies) fd.append('cookies', creds.cookies);
+    if (creds.turnstileToken) fd.append('cf-turnstile-response', creds.turnstileToken);
 
     const res = await fetch(this.getApiUrl('/auth'), {
       method: 'POST',
@@ -235,8 +236,10 @@ export const api = {
   },
 
   // ── Results & Leaderboard ──
-  async getResultsPerformance(usn) {
-    const res = await fetch(this.getApiUrl('/api/results/performance?usn=' + encodeURIComponent(usn)));
+  async getResultsPerformance(usn, turnstileToken) {
+    const headers = {};
+    if (turnstileToken) headers['X-Turnstile-Token'] = turnstileToken;
+    const res = await fetch(this.getApiUrl('/api/results/performance?usn=' + encodeURIComponent(usn)), { headers });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },

@@ -17,7 +17,10 @@ export const CONFIG = {
   ATT_SESSION_KEY: 'nie_att_session',
   SKIP_AUTOLOGIN_KEY: 'nie_skip_autologin',
   PWA_SNOOZED_KEY: 'nie_hub_pwa_snoozed',
-  PWA_IOS_SHOWN_KEY: 'nie_hub_pwa_ios_shown'
+  PWA_IOS_SHOWN_KEY: 'nie_hub_pwa_ios_shown',
+
+  // Cloudflare Turnstile
+  TURNSTILE_SITEKEY: '0x4AAAAAAEZUdM32KhssuZm4'
 };
 
 Object.freeze(CONFIG);

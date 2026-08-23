@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn } from './shared.js';
+import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn, getTurnstileToken } from './shared.js';
 
 const BRANCH_NAMES = {
   'EE': 'Electrical & Electronics',
@@ -134,19 +134,20 @@ function renderLeaderboard(data) {
   }, 300);
 }
 
-function checkLeaderboard() {
+async function checkLeaderboard() {
   if (pollRetries >= MAX_POLL_RETRIES) return;
   pollRetries++;
 
-  api.getResultsPerformance(currentUsn)
-    .then(function(data) {
-      if (data.generating || data.empty) {
-        setTimeout(checkLeaderboard, 5000);
-      } else if (!data.error) {
-        renderLeaderboard(data);
-      }
-    })
-    .catch(function() {});
+  try {
+    var token = '';
+    try { token = await getTurnstileToken('results'); } catch(e) {}
+    var data = await api.getResultsPerformance(currentUsn, token);
+    if (data.generating || data.empty) {
+      setTimeout(checkLeaderboard, 5000);
+    } else if (!data.error) {
+      renderLeaderboard(data);
+    }
+  } catch(e) {}
 }
 
 function setupGenerate(batch, branch) {
@@ -227,7 +228,7 @@ async function startGen(batch, branch) {
   }
 }
 
-export function initResults() {
+export async function initResults() {
 
   const params = new URLSearchParams(window.location.search);
   let usn = params.get('usn') || '';
@@ -243,31 +244,34 @@ export function initResults() {
   
   currentUsn = usn;
 
-  api.getResultsPerformance(usn)
-    .then(function(data) {
-      if (data.error) {
-        showError('Error', data.error);
-        return;
-      }
-      if (data.empty) {
-        setupGenerate(data.batch, data.branch);
-        showState('empty-state');
-        return;
-      }
-      if (data.generating) {
-        showState('gen-state');
-        const genTitle = document.getElementById('gen-title');
-        const genSub = document.getElementById('gen-sub');
-        if (genTitle) genTitle.textContent = 'Please Wait';
-        if (genSub) genSub.textContent = 'Another student is currently generating the leaderboard. This updates automatically...';
-        setTimeout(checkLeaderboard, 5000);
-        return;
-      }
-      renderLeaderboard(data);
-    })
-    .catch(function() {
-      showError('Connection Error', 'Could not load leaderboard data. Please check your connection.');
-    });
+  try {
+    // Get Turnstile token for bot protection
+    var turnstileToken = '';
+    try { turnstileToken = await getTurnstileToken('results'); } catch(e) {}
+
+    var data = await api.getResultsPerformance(usn, turnstileToken);
+    if (data.error) {
+      showError('Error', data.error);
+      return;
+    }
+    if (data.empty) {
+      setupGenerate(data.batch, data.branch);
+      showState('empty-state');
+      return;
+    }
+    if (data.generating) {
+      showState('gen-state');
+      const genTitle = document.getElementById('gen-title');
+      const genSub = document.getElementById('gen-sub');
+      if (genTitle) genTitle.textContent = 'Please Wait';
+      if (genSub) genSub.textContent = 'Another student is currently generating the leaderboard. This updates automatically...';
+      setTimeout(checkLeaderboard, 5000);
+      return;
+    }
+    renderLeaderboard(data);
+  } catch(e) {
+    showError('Connection Error', 'Could not load leaderboard data. Please check your connection.');
+  }
 }
 
 if (typeof window !== 'undefined') {

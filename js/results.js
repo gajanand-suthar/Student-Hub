@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn, getTurnstileToken } from './shared.js';
+import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn, getSessionToken, ensureHumanSession } from './shared.js';
 
 const BRANCH_NAMES = {
   'EE': 'Electrical & Electronics',
@@ -139,9 +139,7 @@ async function checkLeaderboard() {
   pollRetries++;
 
   try {
-    var token = '';
-    try { token = await getTurnstileToken('results'); } catch(e) {}
-    var data = await api.getResultsPerformance(currentUsn, token);
+    var data = await api.getResultsPerformance(currentUsn, getSessionToken());
     if (data.generating || data.empty) {
       setTimeout(checkLeaderboard, 5000);
     } else if (!data.error) {
@@ -245,11 +243,10 @@ export async function initResults() {
   currentUsn = usn;
 
   try {
-    // Get Turnstile token for bot protection
-    var turnstileToken = '';
-    try { turnstileToken = await getTurnstileToken('results'); } catch(e) {}
+    // Ensure session is ready (instant if already solved on homepage)
+    await ensureHumanSession();
 
-    var data = await api.getResultsPerformance(usn, turnstileToken);
+    var data = await api.getResultsPerformance(usn, getSessionToken());
     if (data.error) {
       showError('Error', data.error);
       return;

@@ -1,7 +1,7 @@
 // Student Hub — SPA App Shell
 
 import { initRouter, navigate, getCurrentRoute } from './router.js';
-import { initTheme, initPwa, checkSugUnread } from './shared.js';
+import { initTheme, initPwa, checkSugUnread, ensureHumanSession } from './shared.js';
 import { initDashboard } from './dashboard.js';
 import { initAttendance } from './attendance.js';
 import { initMoodle } from './moodle.js';
@@ -134,6 +134,9 @@ function boot() {
   // Initialize shared services once
   initTheme();
   initPwa();
+  
+  // Solve Turnstile in background (invisible, happens while user sees homepage)
+  ensureHumanSession();
   
   // Check for unread suggestion replies
   setTimeout(() => checkSugUnread(), 1500);

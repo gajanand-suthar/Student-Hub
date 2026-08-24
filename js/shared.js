@@ -478,14 +478,30 @@ function fmtDate(d) {
   }
 }
 
-// ── Cloudflare Turnstile Helper ──────────────────────────────
-// Renders an invisible Turnstile widget, waits for a token,
-// then removes the widget. Returns a Promise<string>.
-export function getTurnstileToken(action) {
-  return new Promise(function(resolve, reject) {
-    // Wait up to 5s for the Turnstile script to load
+// ── Cloudflare Turnstile — Solve Once on Homepage ────────────
+// Solves Turnstile once, exchanges for a session token, caches it.
+// All subsequent API calls use the cached session token (instant).
+
+var _sessionTokenPromise = null;
+
+export function getSessionToken() {
+  try {
+    return sessionStorage.getItem('nie_session_token') || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+export function ensureHumanSession() {
+  // Already have a valid token in storage
+  if (getSessionToken()) return Promise.resolve();
+
+  // Already in progress (avoid duplicate solves)
+  if (_sessionTokenPromise) return _sessionTokenPromise;
+
+  _sessionTokenPromise = new Promise(function(resolve) {
+    // Wait for Turnstile script to load (up to 10s)
     var attempts = 0;
-    var maxAttempts = 50;
 
     function tryRender() {
       if (window.turnstile) {
@@ -493,8 +509,9 @@ export function getTurnstileToken(action) {
         return;
       }
       attempts++;
-      if (attempts >= maxAttempts) {
-        reject(new Error('Turnstile not loaded'));
+      if (attempts >= 100) {
+        console.warn('[TURNSTILE] Script did not load');
+        resolve(); // Don't block the app
         return;
       }
       setTimeout(tryRender, 100);
@@ -512,18 +529,20 @@ export function getTurnstileToken(action) {
 
       var widgetId = window.turnstile.render(container, {
         sitekey: CONFIG.TURNSTILE_SITEKEY,
-        action: action || 'default',
-        callback: function(token) {
+        action: 'session',
+        callback: function(turnstileToken) {
           cleanup();
-          resolve(token);
+          exchangeForSession(turnstileToken).then(resolve);
         },
         'error-callback': function() {
           cleanup();
-          reject(new Error('Bot verification failed. Please try again.'));
+          console.warn('[TURNSTILE] Challenge failed');
+          resolve(); // Don't block the app
         },
         'expired-callback': function() {
           cleanup();
-          reject(new Error('Verification expired. Please try again.'));
+          console.warn('[TURNSTILE] Token expired');
+          resolve();
         }
       });
 
@@ -535,6 +554,26 @@ export function getTurnstileToken(action) {
 
     tryRender();
   });
+
+  _sessionTokenPromise.finally(function() { _sessionTokenPromise = null; });
+  return _sessionTokenPromise;
+}
+
+async function exchangeForSession(turnstileToken) {
+  try {
+    var res = await fetch(api.getApiUrl('/api/verify-human'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: turnstileToken })
+    });
+    if (!res.ok) return;
+    var data = await res.json();
+    if (data.sessionToken) {
+      try { sessionStorage.setItem('nie_session_token', data.sessionToken); } catch(e) {}
+    }
+  } catch (e) {
+    console.warn('[TURNSTILE] Session exchange failed:', e.message);
+  }
 }
 
 // Expose on window for easy inline event binding

@@ -996,7 +996,7 @@ export async function shareApp() {
       await navigator.share(shareData);
     } else {
       await navigator.clipboard.writeText(shareData.url);
-      const btn = document.querySelector('.share-btn');
+      const btn = document.querySelector('button.share-btn');
       if (btn) {
         const original = btn.innerHTML;
         btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';

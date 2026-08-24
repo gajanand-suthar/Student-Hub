@@ -486,7 +486,15 @@ var _sessionTokenPromise = null;
 
 export function getSessionToken() {
   try {
-    return sessionStorage.getItem('nie_session_token') || '';
+    var token = localStorage.getItem('nie_session_token') || '';
+    if (!token) return '';
+    // Token format: expiry.nonce.signature — check if expired
+    var expiry = parseInt(token.split('.')[0], 10);
+    if (isNaN(expiry) || Date.now() > expiry) {
+      localStorage.removeItem('nie_session_token');
+      return '';
+    }
+    return token;
   } catch (e) {
     return '';
   }
@@ -569,7 +577,7 @@ async function exchangeForSession(turnstileToken) {
     if (!res.ok) return;
     var data = await res.json();
     if (data.sessionToken) {
-      try { sessionStorage.setItem('nie_session_token', data.sessionToken); } catch(e) {}
+      try { localStorage.setItem('nie_session_token', data.sessionToken); } catch(e) {}
     }
   } catch (e) {
     console.warn('[TURNSTILE] Session exchange failed:', e.message);

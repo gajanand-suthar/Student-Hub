@@ -17,8 +17,6 @@ const BRANCH_NAMES = {
 };
 
 let currentUsn = '';
-let pollRetries = 0;
-const MAX_POLL_RETRIES = 60;
 
 function fmtVal(val, decimals = 2) {
   return val !== null && val !== undefined ? Number(val).toFixed(decimals) : '—';
@@ -39,7 +37,7 @@ function getRankClass(rank) {
 }
 
 function showState(stateId) {
-  ['loading-state','error-state','main-content','empty-state','gen-state'].forEach(function(id) {
+  ['loading-state','error-state','main-content'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.style.display = id === stateId ? 'flex' : 'none';
   });
@@ -55,7 +53,6 @@ function showError(title, sub) {
 
 function renderLeaderboard(data) {
   showState('main-content');
-  pollRetries = 0; // Reset retries on successful render
 
   const branchName = BRANCH_NAMES[data.branch] || data.branch;
   const perfTitle = document.getElementById('perf-title');
@@ -134,98 +131,6 @@ function renderLeaderboard(data) {
   }, 300);
 }
 
-async function checkLeaderboard() {
-  if (pollRetries >= MAX_POLL_RETRIES) return;
-  pollRetries++;
-
-  try {
-    var data = await api.getResultsPerformance(currentUsn, getSessionToken());
-    if (data.generating || data.empty) {
-      setTimeout(checkLeaderboard, 5000);
-    } else if (!data.error) {
-      renderLeaderboard(data);
-    }
-  } catch(e) {}
-}
-
-function setupGenerate(batch, branch) {
-  const btn = document.getElementById('start-gen-btn');
-  if (btn) {
-    btn.onclick = function() {
-      showState('gen-state');
-      const progWrap = document.getElementById('gen-prog-wrap');
-      if (progWrap) progWrap.style.display = 'block';
-      startGen(batch, branch);
-    };
-  }
-}
-
-function pad(n) { return ('000' + n).slice(-3); }
-
-async function startGen(batch, branch) {
-  const year = batch.slice(-2);
-  const fill = document.getElementById('gen-fill');
-  const sub = document.getElementById('gen-sub');
-  
-  try {
-    const startRes = await api.post('/api/results/generate-start', { year: year, branch: branch, usn: currentUsn });
-    
-    const regularPrefix = '4NI' + year + branch;
-    const lateralYear = String(parseInt(year, 10) + 1).padStart(2, '0');
-    const lateralPrefix = '4NI' + lateralYear + branch;
-
-    const chunkSize = 10;
-    const totalMaxChunks = 70;
-    let chunkIndex = 0;
-
-    // Fetch Regular
-    for (let s = 1; s <= 600; s += chunkSize) {
-      const chunk = [];
-      for (let i = 0; i < chunkSize; i++) chunk.push(regularPrefix + pad(s + i));
-      chunkIndex++;
-      if (sub) sub.textContent = 'Fetching USN ' + chunk[0] + ' to ' + chunk[chunk.length-1];
-      
-      const data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
-      if (fill) fill.style.width = Math.round((chunkIndex / totalMaxChunks) * 100) + '%';
-      if (data.count === 0) {
-        chunkIndex += Math.floor((600 - s) / chunkSize);
-        break;
-      }
-    }
-
-    // Fetch Lateral
-    for (let s = 400; s <= 500; s += chunkSize) {
-      const chunk = [];
-      for (let i = 0; i < chunkSize; i++) chunk.push(lateralPrefix + pad(s + i));
-      chunkIndex++;
-      if (sub) sub.textContent = 'Fetching USN ' + chunk[0] + ' to ' + chunk[chunk.length-1];
-      
-      const data = await api.post('/api/results/generate-chunk', { year: year, branch: branch, usns: chunk });
-      if (fill) fill.style.width = Math.round((chunkIndex / totalMaxChunks) * 100) + '%';
-      if (data.count === 0) break;
-    }
-
-    // End
-    if (fill) fill.style.width = '100%';
-    if (sub) sub.textContent = 'Finalizing...';
-    await api.post('/api/results/generate-end', { year: year, branch: branch, usn: currentUsn });
-    
-    checkLeaderboard();
-
-  } catch(e) {
-    if (e.message && e.message.includes('Already generating')) {
-      const genTitle = document.getElementById('gen-title');
-      if (genTitle) genTitle.textContent = 'Please Wait';
-      if (sub) sub.textContent = 'Someone else started generating! Waiting for them to finish...';
-      const progWrap = document.getElementById('gen-prog-wrap');
-      if (progWrap) progWrap.style.display = 'none';
-      setTimeout(checkLeaderboard, 5000);
-      return;
-    }
-    showError('Generation Failed', e.message);
-  }
-}
-
 export async function initResults() {
 
   const params = new URLSearchParams(window.location.search);
@@ -251,23 +156,9 @@ export async function initResults() {
       showError('Error', data.error);
       return;
     }
-    if (data.empty) {
-      setupGenerate(data.batch, data.branch);
-      showState('empty-state');
-      return;
-    }
-    if (data.generating) {
-      showState('gen-state');
-      const genTitle = document.getElementById('gen-title');
-      const genSub = document.getElementById('gen-sub');
-      if (genTitle) genTitle.textContent = 'Please Wait';
-      if (genSub) genSub.textContent = 'Another student is currently generating the leaderboard. This updates automatically...';
-      setTimeout(checkLeaderboard, 5000);
-      return;
-    }
     renderLeaderboard(data);
   } catch(e) {
-    showError('Connection Error', 'Could not load leaderboard data. Please check your connection.');
+    showError('Results Unavailable', 'Results for your branch are not yet available. Please check back later.');
   }
 }
 

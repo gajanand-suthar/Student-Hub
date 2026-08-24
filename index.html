@@ -615,29 +615,8 @@
       </a>
     </div>
 
-    <!-- Empty / Generate State -->
-    <div class="center-state" id="empty-state" style="display:none">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;max-width:340px;width:100%;box-shadow:0 4px 16px rgba(0,0,0,.03)">
-        <div style="width:56px;height:56px;border-radius:16px;background:rgba(37,99,235,.08);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        </div>
-        <div class="err-title" style="margin-bottom:8px">No Results Yet</div>
-        <div class="err-sub" style="margin:0 auto 24px">The leaderboard for your branch hasn't been fetched yet. Be the first to generate it!</div>
-        <button class="back-btn" id="start-gen-btn" style="width:100%;justify-content:center;height:48px;font-size:.95rem">Generate Leaderboard</button>
-      </div>
-    </div>
 
-    <!-- Generating State -->
-    <div class="center-state" id="gen-state" style="display:none">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;max-width:340px;width:100%;box-shadow:0 4px 16px rgba(0,0,0,.03)">
-        <div class="loader" style="margin:0 auto 16px;border-color:var(--border);border-top-color:var(--accent)"></div>
-        <div class="err-title" id="gen-title" style="margin-bottom:8px">Generating...</div>
-        <div class="err-sub" id="gen-sub" style="margin:0 auto 20px">Fetching results for your branch. This might take 10-20 seconds.</div>
-        <div id="gen-prog-wrap" style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:none">
-          <div id="gen-fill" style="height:100%;width:0;background:var(--accent);transition:width .25s"></div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- Main Content -->
     <div class="page-wrap" id="main-content" style="display:none">

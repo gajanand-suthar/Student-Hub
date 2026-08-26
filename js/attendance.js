@@ -291,7 +291,7 @@ function renderSgpaChip(data) {
   const sgpaSlot = document.getElementById('sgpa-slot');
   const backSlot = document.getElementById('sgpa-back-slot');
 
-  if (!data || !data.semesters || !data.semesters.length || data.cgpa === null) {
+  if (!data || !data.semesters || !data.semesters.length) {
     const fallbackHtml = `
       <div class="sgpa-chip" style="color:var(--muted);background:var(--bg);border-color:var(--border);margin-left:auto">
         <span class="sgpa-fetch-label">CGPA</span>
@@ -304,14 +304,22 @@ function renderSgpaChip(data) {
   }
 
   const { semesters, cgpa } = data;
+  const hasCgpa = cgpa !== null && cgpa !== undefined && !isNaN(cgpa);
+  const displayVal = hasCgpa ? cgpa.toFixed(2) : '—';
+
   let chipColor = '#16a34a', chipBg = '#f0fdf4', chipBorder = '#bbf7d0', chipDark = 'green';
-  if (cgpa < 6) { chipColor = '#dc2626'; chipBg = '#fff1f2'; chipBorder = '#fecdd3'; chipDark = 'red'; }
-  else if (cgpa < 7.5) { chipColor = '#b45309'; chipBg = '#fffbeb'; chipBorder = '#fde68a'; chipDark = 'amber'; }
+  if (!hasCgpa) {
+    chipColor = 'var(--muted)'; chipBg = 'var(--bg)'; chipBorder = 'var(--border)'; chipDark = 'gray';
+  } else if (cgpa < 6) {
+    chipColor = '#dc2626'; chipBg = '#fff1f2'; chipBorder = '#fecdd3'; chipDark = 'red';
+  } else if (cgpa < 7.5) {
+    chipColor = '#b45309'; chipBg = '#fffbeb'; chipBorder = '#fde68a'; chipDark = 'amber';
+  }
 
   const chipHtml = `
     <div class="sgpa-chip" data-color="${chipDark}" style="color:${chipColor};background:${chipBg};border-color:${chipBorder};margin-left:auto">
       <span class="sgpa-fetch-label">CGPA</span>
-      <span class="sgpa-chip-val">${cgpa.toFixed(2)}</span>
+      <span class="sgpa-chip-val">${displayVal}</span>
       <span class="sgpa-chip-hint">tap to flip</span>
     </div>`;
 

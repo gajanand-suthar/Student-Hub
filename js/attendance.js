@@ -233,7 +233,7 @@ export function renderStudentView(data) {
     if (sgpaSlot) {
       sgpaSlot.innerHTML = `
         <button class="sgpa-fetch-btn" id="sgpa-fetch-btn" onclick="event.stopPropagation(); fetchSgpa(event);">
-          <span class="sgpa-fetch-label">Avg SGPA</span>
+          <span class="sgpa-fetch-label">CGPA</span>
           <span class="sgpa-fetch-sub">Tap to view</span>
         </button>`;
     }
@@ -282,7 +282,7 @@ export async function fetchSgpa(e) {
     renderSgpaChip(json);
   } catch (err) {
     btn.disabled = false;
-    btn.innerHTML = '<span class="sgpa-fetch-label">Avg SGPA</span><span class="sgpa-fetch-sub" style="color:var(--danger)">Retry</span>';
+    btn.innerHTML = '<span class="sgpa-fetch-label">CGPA</span><span class="sgpa-fetch-sub" style="color:var(--danger)">Retry</span>';
   }
 }
 
@@ -294,7 +294,7 @@ function renderSgpaChip(data) {
   if (!data || !data.semesters || !data.semesters.length || data.cgpa === null) {
     const fallbackHtml = `
       <div class="sgpa-chip" style="color:var(--muted);background:var(--bg);border-color:var(--border);margin-left:auto">
-        <span class="sgpa-fetch-label">Avg SGPA</span>
+        <span class="sgpa-fetch-label">CGPA</span>
         <span class="sgpa-chip-val" style="font-size:1rem">—</span>
         <span class="sgpa-chip-hint">not available</span>
       </div>`;
@@ -310,7 +310,7 @@ function renderSgpaChip(data) {
 
   const chipHtml = `
     <div class="sgpa-chip" data-color="${chipDark}" style="color:${chipColor};background:${chipBg};border-color:${chipBorder};margin-left:auto">
-      <span class="sgpa-fetch-label">Avg SGPA</span>
+      <span class="sgpa-fetch-label">CGPA</span>
       <span class="sgpa-chip-val">${cgpa.toFixed(2)}</span>
       <span class="sgpa-chip-hint">tap to flip</span>
     </div>`;

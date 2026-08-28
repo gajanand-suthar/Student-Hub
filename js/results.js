@@ -85,9 +85,10 @@ function renderLeaderboard(data) {
     const rankName = document.getElementById('my-rank-name');
     const rankMeta = document.getElementById('my-rank-meta');
     const rankSgpa = document.getElementById('my-rank-sgpa');
+    const usnText = me.usn || data.myUsn || '';
     if (rankNum) rankNum.textContent = '#' + me.rank;
     if (rankName) rankName.textContent = toTitleCase(me.name);
-    if (rankMeta) rankMeta.textContent = me.usn + (me.creditsEarned !== null && me.creditsEarned !== undefined ? ' · Cr: ' + me.creditsEarned + '/' + me.creditsRegistered : '');
+    if (rankMeta) rankMeta.textContent = (usnText ? usnText + ' · ' : '') + (me.creditsEarned !== null && me.creditsEarned !== undefined ? 'Cr: ' + me.creditsEarned + '/' + me.creditsRegistered : '');
     if (rankSgpa) rankSgpa.textContent = fmtVal(me.sgpa);
   }
 
@@ -107,7 +108,7 @@ function renderLeaderboard(data) {
       + '<div class="lb-rank ' + rankClass + '">' + medal + '</div>'
       + '<div class="lb-info">'
       +   '<div class="lb-name">' + escHtml(displayName) + '</div>'
-      +   '<div class="lb-usn">' + escHtml(s.usn) + '</div>'
+      +   (s.usn ? '<div class="lb-usn">' + escHtml(s.usn) + '</div>' : '')
       + '</div>'
       + '<div class="lb-cr">' + (s.creditsEarned !== null && s.creditsEarned !== undefined ? s.creditsEarned + '/' + s.creditsRegistered : '') + '</div>'
       + '<div class="lb-right">'

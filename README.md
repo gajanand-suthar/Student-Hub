@@ -16,11 +16,14 @@ This codebase was **100% vibe coded**. Because of this, it may contain quirks, e
 
 ---
 
-## Backend Communication & Deployment Note
+## Backend API & Development Note
 
-The backend of this application is hosted on Cloudflare Workers and is maintained privately.
+> [!NOTE]
+> The production backend API is hosted on Cloudflare Workers and is **strictly domain-locked** to the official live deployment (`https://gajanand-suthar.github.io`). 
 
-To communicate with the backend, the frontend must be deployed on GitHub Pages. Running the application locally will not communicate with the backend.
+- **Forking / Local Execution:** Running the app on `localhost` or from a personal fork will not communicate with the live production backend.
+- **Contribution Scope:** Contributions are focused on **UI/UX design, CSS styling, responsiveness, accessibility, dark/light themes, and client-side performance**. 
+- You can freely test layout improvements, component designs, and styling locally using a standard web server (`npx serve .` or Python `http.server`).
 
 ---
 
@@ -67,33 +70,6 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 - Client-side History API router for instant tab transitions without full page reloads.
 - Built-in Dark and Light mode theme toggle.
 
----
-
-## Project Structure
-
-```
-student-hub/
-├── index.html              # SPA shell with view containers and shared modals
-├── _redirects              # SPA rewrite configuration
-├── sw.js                   # Service worker for offline caching and navigation fallback
-├── manifest.json           # Web App Manifest
-├── css/
-│   ├── shared.css          # Theme variables, resets, navigation, drawer, modals
-│   ├── dashboard.css       # Calendar, onboarding, notices styling
-│   ├── attendance.css      # Attendance cards, progress bars, CIE accordion
-│   ├── moodle.css          # Course listings, content viewer, lightboxes
-│   └── results.css         # Leaderboard cards, stats rows, state banners
-└── js/
-    ├── config.js           # Configuration and storage keys
-    ├── api.js              # Centralized API client
-    ├── router.js           # History API client-side router
-    ├── app.js              # App bootstrap and view lifecycle controller
-    ├── shared.js           # Shared utilities (theme, credentials, drawer, PWA)
-    ├── dashboard.js        # Academic calendar and dashboard logic
-    ├── attendance.js       # Attendance fetching, calculations, CIE logic
-    ├── moodle.js           # Moodle course loader and media lightboxes
-    └── results.js          # Results and leaderboard display logic
-```
 
 ---
 

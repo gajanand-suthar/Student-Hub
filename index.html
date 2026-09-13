@@ -35,6 +35,19 @@
       var _t = localStorage.getItem('nie_theme') || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
       document.documentElement.setAttribute('data-theme', _t);
     } catch(e) {}
+    try {
+      var _parts = window.location.pathname.split('/').filter(Boolean);
+      var _known = ['attendance', 'moodle', 'results', 'index.html', '404.html'];
+      var _base = (_parts.length > 0 && _known.indexOf(_parts[0].toLowerCase()) === -1) ? '/' + _parts[0] + '/' : '/';
+      var _m = document.querySelector('link[rel="manifest"]');
+      if (_m) _m.href = window.location.origin + _base + 'manifest.json';
+      document.querySelectorAll('link[rel*="icon"]').forEach(function(l) {
+        var h = l.getAttribute('href');
+        if (h && h.startsWith('./')) {
+          l.href = window.location.origin + _base + h.slice(2);
+        }
+      });
+    } catch(e) {}
   </script>
 
   <!-- Cloudflare Turnstile (Bot Protection) -->
@@ -498,7 +511,7 @@
               <input type="text" id="inp-email" class="auth-input" placeholder="college-mail" autocorrect="off" autocapitalize="none"/>
               <div class="auth-email-suffix">@nie.ac.in</div>
             </div>
-            <input type="password" id="inp-pass" class="auth-input" placeholder="Password" style="margin-bottom: 16px;"/>
+            <input type="password" id="inp-pass" class="auth-input" placeholder="Password" style="margin-bottom: 0;"/>
             <button class="auth-btn" id="moodle-signin-btn" onclick="doLogin()">Sign In</button>
           </div>
         </div>
@@ -575,7 +588,7 @@
       </div>
       <div class="doc-body" id="doc-body">
         <div id="doc-loader"><div class="spinner" style="margin-bottom: 16px;"></div>Loading document...</div>
-        <iframe id="doc-iframe" src="" frameborder="0" onload="hideDocLoader()"></iframe>
+        <iframe id="doc-iframe" src="" frameborder="0" onload="if(window.hideDocLoader)hideDocLoader()"></iframe>
         <div id="pdf-container"></div>
         <div id="media-container" class="media-container">
           <video id="plyr-video" playsinline controls></video>

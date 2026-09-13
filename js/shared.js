@@ -134,6 +134,7 @@ export function executeLogout() {
 
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
   sessionStorage.removeItem('student_sgpa_cache');
+  sessionStorage.removeItem('sug_unread_checked');
   sessionStorage.setItem(CONFIG.SKIP_AUTOLOGIN_KEY, '1');
 
   if ('caches' in window) {
@@ -264,9 +265,19 @@ export function closeSugToast() {
   if (t) t.classList.remove('show');
 }
 
-export function checkSugUnread() {
+export function checkSugUnread(force = false) {
+  if (!force) {
+    try {
+      if (sessionStorage.getItem('sug_unread_checked') === '1') return;
+    } catch (e) {}
+  }
+
   const token = getIdentityToken();
   if (!token) return;
+
+  try {
+    sessionStorage.setItem('sug_unread_checked', '1');
+  } catch (e) {}
 
   api
     .getUnreadSuggestions()

@@ -183,6 +183,7 @@
 }
 #courses-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 #view-auth { overflow-y: auto; flex: 1; }
+#view-auth.active { display: flex; flex-direction: column; }
 
 body.page-scrollable {
   height: auto !important;
@@ -510,13 +511,14 @@ body.page-scrollable #view-moodle .page {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 200px);
+  flex: 1;
+  min-height: 100%;
   width: 100%;
 }
 .auth-card {
   background: #fff;
   border-radius: 22px;
-  padding: 32px 26px 24px;
+  padding: 30px 24px 24px;
   width: 100%;
   max-width: 340px;
   box-shadow: 0 32px 80px rgba(15,23,42,.3);
@@ -576,7 +578,8 @@ body.page-scrollable #view-moodle .page {
   border-radius: 12px;
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
-  margin-bottom: 10px;
+  margin-top: 24px;
+  margin-bottom: 0;
 }
 .auth-btn:hover { background: var(--accent-h); }
 .auth-btn:active { transform: scale(0.98); }

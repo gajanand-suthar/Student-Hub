@@ -832,6 +832,7 @@ export function openDocLightbox(url, name, ext) {
     if (loader) loader.style.display = 'flex';
     if (ifr) {
       ifr.style.display = 'block';
+      ifr.onload = () => hideDocLoader();
       if (isMsDoc) {
         ifr.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(absoluteUrl);
       } else if (isGoogleDoc) {

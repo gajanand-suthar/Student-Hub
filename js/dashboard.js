@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, checkSugUnread, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
+import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
 
 function getTodayISO() {
   const d = new Date();
@@ -186,7 +186,6 @@ function continueBoot() {
   }
 
   initAcademicCalendar();
-  checkSugUnread();
 
   const creds = loadCreds();
   if (!creds || !creds.usn) {

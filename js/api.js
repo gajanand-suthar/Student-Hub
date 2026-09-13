@@ -6,6 +6,18 @@ import { CONFIG } from './config.js';
 
 const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
 
+function getAuthHeaders(extraHeaders = {}) {
+  const headers = { ...extraHeaders };
+  try {
+    const token = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
+    if (token) {
+      headers['X-Identity-Token'] = token;
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch (e) {}
+  return headers;
+}
+
 export const api = {
   getApiUrl(path) {
     const cleanPath = path.startsWith('/') ? path : '/' + path;
@@ -104,6 +116,7 @@ export const api = {
 
     const res = await fetch(this.getApiUrl('/api/hallticket'), {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: fd
     });
 
@@ -220,13 +233,17 @@ export const api = {
   },
 
   async getMySuggestions(usn) {
-    const res = await fetch(this.getApiUrl('/api/suggestions/my?usn=' + encodeURIComponent(usn)));
+    const res = await fetch(this.getApiUrl('/api/suggestions/my' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
   async getUnreadSuggestions(usn) {
-    const res = await fetch(this.getApiUrl('/api/suggestions/unread?usn=' + encodeURIComponent(usn)));
+    const res = await fetch(this.getApiUrl('/api/suggestions/unread' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) return { unread: 0 };
     return res.json();
   },
@@ -237,17 +254,20 @@ export const api = {
 
   // ── Results & Leaderboard ──
   async getResultsPerformance(usn, sessionToken) {
-    const headers = {};
+    const headers = getAuthHeaders();
     if (sessionToken) headers['X-Session-Token'] = sessionToken;
-    const res = await fetch(this.getApiUrl('/api/results/performance?usn=' + encodeURIComponent(usn)), { headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetch(this.getApiUrl('/api/results/performance' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
     return res.json();
   },
 
   async post(path, data) {
     const res = await fetch(this.getApiUrl(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data)
     });
     if (!res.ok) {

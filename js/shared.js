@@ -66,7 +66,37 @@ export function getStoredUsn() {
   }
 }
 
+// ── Identity Token Management ──
+export function getIdentityToken() {
+  try {
+    const token = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
+    if (!token) return '';
+    const parts = token.split('.');
+    if (parts.length !== 4) return '';
+    const expiry = parseInt(parts[0], 10);
+    if (isNaN(expiry) || Date.now() > expiry) {
+      localStorage.removeItem(CONFIG.IDENTITY_TOKEN_KEY);
+      return '';
+    }
+    return token;
+  } catch (e) {
+    return '';
+  }
+}
 
+export function setIdentityToken(token) {
+  if (token && typeof token === 'string') {
+    try {
+      localStorage.setItem(CONFIG.IDENTITY_TOKEN_KEY, token);
+    } catch (e) {}
+  }
+}
+
+export function clearIdentityToken() {
+  try {
+    localStorage.removeItem(CONFIG.IDENTITY_TOKEN_KEY);
+  } catch (e) {}
+}
 
 // ── Drawer Menu ──
 export function toggleDrawer(open) {
@@ -97,7 +127,8 @@ export function executeLogout() {
     CONFIG.CRED_KEY,
     CONFIG.USER_KEY,
     CONFIG.TOKEN_KEY,
-    CONFIG.COURSES_KEY
+    CONFIG.COURSES_KEY,
+    CONFIG.IDENTITY_TOKEN_KEY
   ].forEach(k => localStorage.removeItem(k));
 
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);

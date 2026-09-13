@@ -18,6 +18,7 @@ export const CONFIG = {
   SKIP_AUTOLOGIN_KEY: 'nie_skip_autologin',
   PWA_SNOOZED_KEY: 'nie_hub_pwa_snoozed',
   PWA_IOS_SHOWN_KEY: 'nie_hub_pwa_ios_shown',
+  IDENTITY_TOKEN_KEY: 'nie_identity_token',
 
   // Cloudflare Turnstile
   TURNSTILE_SITEKEY: '0x4AAAAAAEZUdM32KhssuZm4'

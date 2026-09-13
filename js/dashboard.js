@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, checkSugUnread, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn } from './shared.js';
+import { loadCreds, checkSugUnread, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
 
 function getTodayISO() {
   const d = new Date();
@@ -58,6 +58,7 @@ function closeAnimatedModal(modalId, backdropId) {
 }
 
 let obStep = 0;
+let isVerifying = false;
 let isTouchDevice = false;
 
 // ── Academic Events Database (Client-Side Static) ──
@@ -196,6 +197,10 @@ function continueBoot() {
   if (obCard) {
     obCard.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
+        if (isVerifying) {
+          e.preventDefault();
+          return;
+        }
         const activeId = document.activeElement ? document.activeElement.id : '';
         if (obStep === 0 && activeId === 'ob-usn') {
           e.preventDefault();
@@ -250,6 +255,9 @@ export function obShow(idx) {
   document.getElementById('ob-back')?.classList.toggle('hide', idx === 0);
   obStep = idx;
 
+  // Clear all step errors on navigation
+  document.querySelectorAll('.ob-err').forEach(el => el.style.display = 'none');
+
   for (let i = 0; i < 4; i++) {
     const dot = document.getElementById('od-' + i);
     if (!dot) continue;
@@ -263,10 +271,13 @@ export function obShow(idx) {
 }
 
 export function obBack() {
+  if (isVerifying) return;
   if (obStep > 0) obShow(obStep - 1);
 }
 
-export function obNext() {
+export async function obNext() {
+  if (isVerifying) return;
+
   if (obStep === 0) {
     const usn = (document.getElementById('ob-usn')?.value || '').trim();
     const e = document.getElementById('ob-err-0');
@@ -280,36 +291,146 @@ export function obNext() {
     if (e) e.style.display = 'none';
     obShow(1);
   } else if (obStep === 1) {
-    const d = document.getElementById('ob-dob')?.value || '';
-    if (d.length !== 10 || !d.includes('/')) {
-      const e = document.getElementById('ob-err-1');
+    const d = (document.getElementById('ob-dob')?.value || '').trim();
+    const e = document.getElementById('ob-err-1');
+    if (d.length !== 10 || !d.includes('/') || d.split('/').length !== 3) {
       if (e) {
         e.textContent = 'Enter DD/MM/YYYY';
         e.style.display = 'block';
       }
       return;
     }
-    document.getElementById('ob-err-1').style.display = 'none';
-    obShow(2);
-  } else if (obStep === 2) {
-    const code = (document.getElementById('ob-code')?.value || '').trim();
-    if (!/^[0-9]{4}$/.test(code)) {
-      const e = document.getElementById('ob-err-2');
+    const [dd, mm, yyyy] = d.split('/').map(Number);
+    if (!dd || !mm || !yyyy || dd < 1 || dd > 31 || mm < 1 || mm > 12 || yyyy < 1970 || yyyy > 2030) {
       if (e) {
-        e.textContent = 'Enter exactly 4 digits';
+        e.textContent = 'Enter a valid date (DD/MM/YYYY)';
         e.style.display = 'block';
-      } else {
-        alert('Verification code must be exactly 4 digits.');
       }
       return;
     }
-    document.getElementById('ob-err-2').style.display = 'none';
+    if (e) e.style.display = 'none';
+    obShow(2);
+  } else if (obStep === 2) {
+    const usn = (document.getElementById('ob-usn')?.value || '').trim().toUpperCase();
+    const dob = (document.getElementById('ob-dob')?.value || '').trim();
+    const idType = (document.getElementById('ob-idtype')?.value || '1').trim();
+    const code = (document.getElementById('ob-code')?.value || '').trim();
+    const e = document.getElementById('ob-err-2');
 
-    const existing = loadCreds();
-    if (existing && existing.moodleEmail && existing.moodlePass) {
-      obFinish(false);
-    } else {
-      obShow(3);
+    if (!/^[0-9]{4}$/.test(code)) {
+      if (e) {
+        e.textContent = 'Enter exactly 4 digits';
+        e.style.display = 'block';
+      }
+      return;
+    }
+
+    if (!usn) {
+      obShow(0);
+      return;
+    }
+    if (dob.length !== 10) {
+      obShow(1);
+      return;
+    }
+
+    const btn = document.getElementById('ob-btn-verify') || document.querySelector('#ob-2 .ob-btn');
+    const backBtn = document.getElementById('ob-back');
+    const codeInp = document.getElementById('ob-code');
+    const originalBtnHtml = btn ? btn.innerHTML : 'Verify & Continue';
+
+    isVerifying = true;
+    if (e) e.style.display = 'none';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="ob-spinner"></span> Verifying...';
+    }
+    if (codeInp) codeInp.disabled = true;
+    if (backBtn) backBtn.style.pointerEvents = 'none';
+
+    try {
+      // Ensure bot protection session token
+      await ensureHumanSession();
+      const sessionToken = getSessionToken();
+
+      const res = await api.login({
+        action: 'login',
+        usn,
+        dob,
+        idType,
+        code,
+        sessionToken
+      });
+
+      if (!res || !res.student) {
+        throw new Error(res?.error || 'Verification failed. Please check your details.');
+      }
+
+      // Store 7-day cryptographic identity token
+      const token = res.identityToken || res.student?.identityToken;
+      if (token) setIdentityToken(token);
+
+      // Gate authentication succeeded: store verified student profile and attendance cache
+      const profile = {
+        name: res.student.name,
+        usn: res.student.usn,
+        program: res.student.program,
+        semNum: res.student.semNum || '',
+        section: res.student.section || '',
+        photoUri: res.student.photoUri || null,
+        sem: res.student.sem || ''
+      };
+      localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+
+      try {
+        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+      } catch (err) {}
+
+      // Store verified credentials
+      const creds = { usn, dob, idType, code };
+      const existingCreds = loadCreds();
+      if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
+        creds.moodleEmail = existingCreds.moodleEmail;
+        creds.moodlePass = existingCreds.moodlePass;
+      }
+      localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
+
+      // Update greeting name immediately
+      const gName = document.getElementById('greeting-name');
+      if (gName && res.student.name) gName.textContent = toTitleCase(res.student.name);
+
+      // If Moodle credentials already exist, finish onboarding; otherwise proceed to Step 3
+      if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
+        obFinish(false);
+      } else {
+        obShow(3);
+      }
+    } catch (err) {
+      let errMsg = err.message || 'Verification failed. Please check your details.';
+      if (errMsg.includes('Invalid USN') || errMsg.includes('Authentication failed') || errMsg.includes('401')) {
+        errMsg = 'Invalid USN, Date of Birth, or Verification Code.';
+      } else if (errMsg.includes('Verification failed. Please refresh') || errMsg.includes('403')) {
+        errMsg = 'Security check failed. Please refresh the page and try again.';
+      } else if (errMsg.includes('Cannot reach portal') || errMsg.includes('502')) {
+        errMsg = 'College portal is temporarily unavailable. Please try again later.';
+      } else if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('Load failed')) {
+        errMsg = 'Network error. Please check your connection and try again.';
+      }
+      if (e) {
+        e.textContent = errMsg;
+        e.style.display = 'block';
+      }
+    } finally {
+      isVerifying = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnHtml;
+      }
+      if (codeInp) {
+        codeInp.disabled = false;
+        codeInp.focus();
+      }
+      if (backBtn) backBtn.style.pointerEvents = '';
     }
   }
 }
@@ -331,17 +452,7 @@ export function pickObIdType(val, label, el) {
 }
 
 export function obFinish(saveMoodle) {
-  const usn = (document.getElementById('ob-usn')?.value || '').trim().toUpperCase();
-  const dob = document.getElementById('ob-dob')?.value || '';
-  const idType = document.getElementById('ob-idtype')?.value || '1';
-  const code = (document.getElementById('ob-code')?.value || '').trim();
-
-  const creds = { usn, dob, idType, code };
-  const existingCreds = loadCreds();
-  if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
-    creds.moodleEmail = existingCreds.moodleEmail;
-    creds.moodlePass = existingCreds.moodlePass;
-  }
+  const creds = loadCreds() || {};
 
   if (saveMoodle) {
     const pfxRaw = (document.getElementById('ob-moodle-email')?.value || '').trim();
@@ -350,34 +461,48 @@ export function obFinish(saveMoodle) {
     if (pfx && pw) {
       creds.moodleEmail = pfx + '@nie.ac.in';
       creds.moodlePass = pw;
+      localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
     }
   }
 
-  localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
   document.getElementById('onboarding')?.classList.remove('active');
-
-  // Background auto-login test (backend uses its configured default semester)
-  api.login({ usn, dob, idType, code }).then(res => {
-    if (res && res.student) {
-      try {
-        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
-      } catch (e) {}
-      const profile = {
-        name: res.student.name,
-        usn: res.student.usn,
-        program: res.student.program,
-        semNum: res.student.semNum || '',
-        section: res.student.section || '',
-        photoUri: res.student.photoUri || null,
-        sem: res.student.sem || ''
-      };
-      localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
-      const gName = document.getElementById('greeting-name');
-      if (gName && res.student.name) gName.textContent = toTitleCase(res.student.name);
-    }
-  }).catch(() => {});
-
   initAcademicCalendar();
+}
+
+export function openCredentialsModal() {
+  const creds = loadCreds() || {};
+  if (creds.usn) {
+    const usnInp = document.getElementById('ob-usn');
+    if (usnInp) usnInp.value = creds.usn;
+  }
+  if (creds.dob) {
+    const dobInp = document.getElementById('ob-dob');
+    if (dobInp) dobInp.value = creds.dob;
+  }
+  if (creds.idType) {
+    const labels = {
+      '1': "Father's Last 4 Digits",
+      '2': "Mother's Last 4 Digits",
+      '5': "Guardian's Last 4 Digits"
+    };
+    const optEl = document.querySelector(`.ob-dd-opt[onclick*="'${creds.idType}'"]`);
+    pickObIdType(creds.idType, labels[creds.idType] || "Father's Last 4 Digits", optEl);
+  }
+  if (creds.code) {
+    const codeInp = document.getElementById('ob-code');
+    if (codeInp) codeInp.value = creds.code;
+  }
+  if (creds.moodleEmail) {
+    const moodleInp = document.getElementById('ob-moodle-email');
+    if (moodleInp) moodleInp.value = creds.moodleEmail.split('@')[0];
+  }
+  if (creds.moodlePass) {
+    const passInp = document.getElementById('ob-moodle-pass');
+    if (passInp) passInp.value = creds.moodlePass;
+  }
+  obShow(0);
+  const ob = document.getElementById('onboarding');
+  if (ob) ob.classList.add('active');
 }
 
 // ── Calendar Carousel ──
@@ -1032,4 +1157,5 @@ if (typeof window !== 'undefined') {
   window.pickCalSem = pickCalSem;
   window.scrollToCalCard = scrollToCalCard;
   window.updateCalCarouselDots = updateCalCarouselDots;
+  window.openCredentialsModal = openCredentialsModal;
 }

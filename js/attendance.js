@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml, getSessionToken, ensureHumanSession } from './shared.js';
+import { loadCreds, escHtml, getSessionToken, ensureHumanSession, setIdentityToken } from './shared.js';
 import { navigate } from './router.js';
 
 let sgpaLoaded = false;
@@ -73,6 +73,8 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
     if (res && res.student) {
       currentStudentData = res.student;
+      const token = res.identityToken || res.student?.identityToken;
+      if (token) setIdentityToken(token);
       // Cache attendance for this particular session only
       try {
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
@@ -96,7 +98,16 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
     }
   } catch (err) {
     if (showLoading) {
-      alert('Could not fetch attendance data: ' + err.message);
+      if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
+        const nameEl = document.getElementById('stu-name-el');
+        if (nameEl) nameEl.textContent = 'Authentication Failed';
+        const progEl = document.getElementById('stu-prog-el');
+        if (progEl) {
+          progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span> · <a href="javascript:void(0)" onclick="if(window.openCredentialsModal)window.openCredentialsModal()" style="color:var(--accent);text-decoration:underline;font-weight:700">Update Details</a>';
+        }
+      } else {
+        alert('Could not fetch attendance data: ' + err.message);
+      }
     }
   } finally {
     if (overlay) overlay.classList.remove('active');

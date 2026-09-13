@@ -159,7 +159,11 @@ export async function initResults() {
     }
     renderLeaderboard(data);
   } catch(e) {
-    showError('Results Unavailable', 'Results for your branch are not yet available. Please check back later.');
+    if (e.message && (e.message.includes('Authentication required') || e.message.includes('401'))) {
+      showError('Authentication Required', 'Please verify your details on the homepage to view your performance.');
+    } else {
+      showError('Results Unavailable', 'Results for your branch are not yet available. Please check back later.');
+    }
   }
 }
 

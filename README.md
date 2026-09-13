@@ -46,7 +46,7 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 ### 1. Academic Calendar
 - Monthly academic calendar with highlighted exams, deadlines, and events.
 - Holiday list with dates and descriptions.
-- Semester-wise filter (Sem III, Sem V, Sem VII).
+- Semester-wise filter (Sem I, Sem III, Sem V, Sem VII).
   
 ### 2. Attendance and CIE Tracker
 - Real-time attendance percentage with visual indicator bars and threshold markers (<75%, 75-84%, >=85%).

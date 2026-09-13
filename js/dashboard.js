@@ -63,22 +63,27 @@ let isTouchDevice = false;
 
 // ── Academic Events Database (Client-Side Static) ──
 const ACADEMIC_EVENTS = [
+  // Sem III, V, VII Events
   { startDate: '2026-08-10', endDate: '2026-08-11', title: 'Course Registration (Physical)', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-08-10', endDate: '2026-08-14', title: 'Placement Activity for V semester students', sems: ['V'], isExam: false },
   { startDate: '2026-08-10', endDate: '2026-08-10', title: 'Commencement of classes for III & VII semester students', sems: ['III', 'VII'], isExam: false },
+  { startDate: '2026-08-10', endDate: '2026-08-14', title: 'Proctorship 1', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-08-12', endDate: '2026-08-13', title: 'Course registration with late fee', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-08-17', endDate: '2026-08-17', title: 'Commencement of classes for V semester students', sems: ['V'], isExam: false },
   { startDate: '2026-08-21', endDate: '2026-08-22', title: 'Add/Dropping of Courses', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-09-16', endDate: '2026-09-18', title: 'Minor & Major Project – Review 1 – Evaluation 1', sems: ['III', 'V', 'VII'], isExam: false },
-  { startDate: '2026-09-23', endDate: '2026-09-25', title: 'Test 1', sems: ['III', 'V', 'VII'], isExam: true },
-  { startDate: '2026-10-01', endDate: '2026-10-01', title: 'Announcement of marks of Test 1 and CIE Review', sems: ['III', 'V', 'VII'], isExam: false },
+  { startDate: '2026-10-01', endDate: '2026-10-03', title: 'Proctorship 2', sems: ['III', 'V', 'VII'], isExam: false },
+  // Rescheduled dates as per Circular No: NIE/Dean (AA)-102/2026-27/Odd/21 dated 04.09.2026
+  { startDate: '2026-10-07', endDate: '2026-10-09', title: 'Test 1', sems: ['III', 'V', 'VII'], isExam: true },
   { startDate: '2026-10-12', endDate: '2026-10-14', title: 'Review of Activity Points', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-10-14', endDate: '2026-10-16', title: 'Minor & Major Project – Review 2 – Evaluation 2', sems: ['III', 'V', 'VII'], isExam: false },
+  { startDate: '2026-10-16', endDate: '2026-10-16', title: 'Announcement of marks of Test 1 and CIE Review', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-11-16', endDate: '2026-11-18', title: 'Test 2', sems: ['III', 'V', 'VII'], isExam: true },
   { startDate: '2026-11-19', endDate: '2026-11-19', title: 'Withdrawal from a course', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-11-19', endDate: '2026-11-25', title: 'Test for Laboratory courses', sems: ['III', 'V', 'VII'], isExam: true },
   { startDate: '2026-11-23', endDate: '2026-11-26', title: 'Quiz (With Regular Classes)', sems: ['III', 'V', 'VII'], isExam: true },
   { startDate: '2026-11-26', endDate: '2026-11-26', title: 'Announcement of marks of Test 2 and CIE Review', sems: ['III', 'V', 'VII'], isExam: false },
+  { startDate: '2026-11-26', endDate: '2026-11-28', title: 'Proctorship 3', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-11-28', endDate: '2026-11-28', title: 'Announcement of CIE', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-11-28', endDate: '2026-11-28', title: 'Last working day', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-11-30', endDate: '2026-12-05', title: 'Semester End Test for laboratories', sems: ['III', 'V', 'VII'], isExam: true },
@@ -88,27 +93,47 @@ const ACADEMIC_EVENTS = [
   { startDate: '2026-12-21', endDate: '2026-12-21', title: 'Commencement of VIII semester 2026–27 (Tentative)', sems: ['VII'], isExam: false },
   { startDate: '2027-01-04', endDate: '2027-01-04', title: 'Announcement of SEE Result and Paper seeing', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2027-01-04', endDate: '2027-01-04', title: 'Commencement of IV & VI semesters 2026–27 & Registration', sems: ['III', 'V'], isExam: false },
-  // Proctorship
-  { startDate: '2026-08-10', endDate: '2026-08-14', title: 'Proctorship 1', sems: ['III', 'V', 'VII'], isExam: false },
-  { startDate: '2026-10-01', endDate: '2026-10-03', title: 'Proctorship 2', sems: ['III', 'V', 'VII'], isExam: false },
-  { startDate: '2026-11-26', endDate: '2026-11-28', title: 'Proctorship 3', sems: ['III', 'V', 'VII'], isExam: false }
+
+  // Sem I Events (AY 2026-27 Odd Semester admitted batch)
+  { startDate: '2026-09-06', endDate: '2026-09-15', title: 'Student Induction Programme', sems: ['I'], isExam: false },
+  { startDate: '2026-09-15', endDate: '2026-09-17', title: 'Course Registration (Physical)', sems: ['I'], isExam: false },
+  { startDate: '2026-09-15', endDate: '2026-09-15', title: 'Commencement of classes', sems: ['I'], isExam: false },
+  { startDate: '2026-09-15', endDate: '2026-09-17', title: 'Proctorship 1', sems: ['I'], isExam: false },
+  { startDate: '2026-09-30', endDate: '2026-09-30', title: 'Dropping of courses', sems: ['I'], isExam: false },
+  { startDate: '2026-11-04', endDate: '2026-11-06', title: 'Test 1', sems: ['I'], isExam: true },
+  { startDate: '2026-11-13', endDate: '2026-11-13', title: 'Announcement of marks of Test 1', sems: ['I'], isExam: false },
+  { startDate: '2026-11-13', endDate: '2026-11-16', title: 'Proctorship 2', sems: ['I'], isExam: false },
+  { startDate: '2026-11-16', endDate: '2026-11-21', title: 'Review of Activity Points', sems: ['I'], isExam: false },
+  { startDate: '2026-12-28', endDate: '2026-12-30', title: 'Test 2', sems: ['I'], isExam: true },
+  { startDate: '2026-12-31', endDate: '2027-01-01', title: 'Quiz', sems: ['I'], isExam: true },
+  { startDate: '2027-01-02', endDate: '2027-01-04', title: 'Proctorship 3', sems: ['I'], isExam: false },
+  { startDate: '2027-01-04', endDate: '2027-01-08', title: 'Test for laboratory courses', sems: ['I'], isExam: true },
+  { startDate: '2027-01-07', endDate: '2027-01-07', title: 'Announcement of marks of Test 2', sems: ['I'], isExam: false },
+  { startDate: '2027-01-08', endDate: '2027-01-08', title: 'Announcement of CIE', sems: ['I'], isExam: false },
+  { startDate: '2027-01-09', endDate: '2027-01-09', title: 'Last working day', sems: ['I'], isExam: false },
+  { startDate: '2027-01-11', endDate: '2027-01-16', title: 'Semester End Test for Laboratory (SET)', sems: ['I'], isExam: true },
+  { startDate: '2027-01-19', endDate: '2027-01-19', title: 'Commencement of Semester End Exam (SEE)', sems: ['I'], isExam: true },
+  { startDate: '2027-02-08', endDate: '2027-02-08', title: 'Commencement of Even Semester 2026–27', sems: ['I'], isExam: false }
 ];
 
 ACADEMIC_EVENTS.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
 const HOLIDAYS_LIST = [
-  { date: '2026-08-15', title: 'Independence Day', day: 'Saturday' },
-  { date: '2026-08-26', title: 'Id-e-Melad', day: 'Wednesday' },
-  { date: '2026-09-14', title: 'Ganesh Chaturthi', day: 'Monday' },
-  { date: '2026-10-02', title: 'Gandhi Jayanti', day: 'Friday' },
-  { date: '2026-10-10', title: 'Mahalaya Amavasya', day: 'Saturday' },
-  { date: '2026-10-20', title: 'Maha Navami / Ayudha Pooja', day: 'Tuesday' },
-  { date: '2026-10-21', title: 'Vijaya Dashami', day: 'Wednesday' },
-  { date: '2026-10-25', title: 'Valmiki Jayanthi', day: 'Sunday' },
-  { date: '2026-11-01', title: 'Rajyotsava Day', day: 'Sunday' },
-  { date: '2026-11-08', title: 'Naraka Chaturdashi', day: 'Sunday' },
-  { date: '2026-11-10', title: 'Balipadyami', day: 'Tuesday' },
-  { date: '2026-11-27', title: 'Kanakadasa Jayanthi', day: 'Friday' }
+  { date: '2026-08-15', title: 'Independence Day', day: 'Saturday', sems: ['III', 'V', 'VII'] },
+  { date: '2026-08-26', title: 'Id-e-Melad', day: 'Wednesday', sems: ['III', 'V', 'VII'] },
+  { date: '2026-09-14', title: 'Ganesh Chaturthi', day: 'Monday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-10-02', title: 'Gandhi Jayanti', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-10-10', title: 'Mahalaya Amavasya', day: 'Saturday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-10-20', title: 'Maha Navami / Ayudha Pooja', day: 'Tuesday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-10-21', title: 'Vijaya Dashami', day: 'Wednesday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-10-25', title: 'Valmiki Jayanthi', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-11-01', title: 'Rajyotsava Day', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-11-08', title: 'Naraka Chaturdashi', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-11-10', title: 'Balipadyami', day: 'Tuesday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-11-27', title: 'Kanakadasa Jayanthi', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2026-12-25', title: 'Christmas', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2027-01-15', title: 'Makara Sankranti', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
+  { date: '2027-01-26', title: 'Republic Day', day: 'Tuesday', sems: ['I', 'III', 'V', 'VII'] }
 ];
 
 const CAL_MONTHS = [
@@ -117,7 +142,8 @@ const CAL_MONTHS = [
   { year: 2026, month: 9, label: 'Oct' },
   { year: 2026, month: 10, label: 'Nov' },
   { year: 2026, month: 11, label: 'Dec' },
-  { year: 2027, month: 0, label: 'Jan' }
+  { year: 2027, month: 0, label: 'Jan' },
+  { year: 2027, month: 1, label: 'Feb' }
 ];
 
 let currentCalMonthIdx = 0;
@@ -490,6 +516,7 @@ function getInferredSemFromUsn(usn) {
   const baseSem = isLateral ? 3 : 1;
   const sem = baseSem + yearDiff * 2 + (isOddSem ? 0 : 1);
 
+  if (sem <= 1) return 'I';
   if (sem <= 3) return 'III';
   if (sem <= 5) return 'V';
   return 'VII';
@@ -502,7 +529,8 @@ export function initAcademicCalendar() {
   const user = loadUser();
   if (user.semNum) {
     const num = parseInt(user.semNum, 10) || 0;
-    if (num <= 3) selectedCalSem = 'III';
+    if (num <= 1) selectedCalSem = 'I';
+    else if (num <= 3) selectedCalSem = 'III';
     else if (num <= 5) selectedCalSem = 'V';
     else selectedCalSem = 'VII';
     resolved = true;
@@ -561,6 +589,7 @@ export function pickCalSem(sem) {
   syncCalSemDropdownUI();
   closeCalSemDropdown();
   renderCalMonth();
+  renderCalHolidays();
   renderCalEvents();
 }
 
@@ -586,7 +615,7 @@ function getEventsForDate(dateStr) {
     }
   });
   HOLIDAYS_LIST.forEach(hol => {
-    if (hol.date === dateStr) {
+    if ((!hol.sems || hol.sems.includes(selectedCalSem)) && hol.date === dateStr) {
       results.push({ title: hol.title + ' (Holiday)', isExam: false, isHoliday: true });
     }
   });
@@ -758,7 +787,9 @@ function renderCalHolidays() {
   const todayISO = getTodayISO();
   let firstUpcomingEl = null;
 
-  HOLIDAYS_LIST.forEach(h => {
+  const semHolidays = HOLIDAYS_LIST.filter(h => !h.sems || h.sems.includes(selectedCalSem));
+
+  semHolidays.forEach(h => {
     const item = document.createElement('div');
     item.className = 'cal-item';
     const isPast = h.date < todayISO;

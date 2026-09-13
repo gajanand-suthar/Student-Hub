@@ -103,7 +103,7 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
         if (nameEl) nameEl.textContent = 'Authentication Failed';
         const progEl = document.getElementById('stu-prog-el');
         if (progEl) {
-          progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span> · <a href="javascript:void(0)" onclick="if(window.openCredentialsModal)window.openCredentialsModal()" style="color:var(--accent);text-decoration:underline;font-weight:700">Update Details</a>';
+          progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span>';
         }
       } else {
         alert('Could not fetch attendance data: ' + err.message);

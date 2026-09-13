@@ -165,7 +165,10 @@ function continueBoot() {
   const creds = loadCreds();
   if (!creds || !creds.usn) {
     const ob = document.getElementById('onboarding');
-    if (ob) ob.classList.add('active');
+    if (ob) {
+      ob.classList.add('active');
+      setTimeout(() => document.getElementById('ob-usn')?.focus(), 150);
+    }
   }
 
   const obUsn = document.getElementById('ob-usn');
@@ -469,42 +472,6 @@ export function obFinish(saveMoodle) {
   initAcademicCalendar();
 }
 
-export function openCredentialsModal() {
-  const creds = loadCreds() || {};
-  if (creds.usn) {
-    const usnInp = document.getElementById('ob-usn');
-    if (usnInp) usnInp.value = creds.usn;
-  }
-  if (creds.dob) {
-    const dobInp = document.getElementById('ob-dob');
-    if (dobInp) dobInp.value = creds.dob;
-  }
-  if (creds.idType) {
-    const labels = {
-      '1': "Father's Last 4 Digits",
-      '2': "Mother's Last 4 Digits",
-      '5': "Guardian's Last 4 Digits"
-    };
-    const optEl = document.querySelector(`.ob-dd-opt[onclick*="'${creds.idType}'"]`);
-    pickObIdType(creds.idType, labels[creds.idType] || "Father's Last 4 Digits", optEl);
-  }
-  if (creds.code) {
-    const codeInp = document.getElementById('ob-code');
-    if (codeInp) codeInp.value = creds.code;
-  }
-  if (creds.moodleEmail) {
-    const moodleInp = document.getElementById('ob-moodle-email');
-    if (moodleInp) moodleInp.value = creds.moodleEmail.split('@')[0];
-  }
-  if (creds.moodlePass) {
-    const passInp = document.getElementById('ob-moodle-pass');
-    if (passInp) passInp.value = creds.moodlePass;
-  }
-  obShow(0);
-  const ob = document.getElementById('onboarding');
-  if (ob) ob.classList.add('active');
-}
-
 // ── Calendar Carousel ──
 function getInferredSemFromUsn(usn) {
   if (!usn) return null;
@@ -789,11 +756,17 @@ function renderCalHolidays() {
   list.innerHTML = '';
 
   const todayISO = getTodayISO();
+  let firstUpcomingEl = null;
 
   HOLIDAYS_LIST.forEach(h => {
     const item = document.createElement('div');
     item.className = 'cal-item';
-    if (h.date < todayISO) item.classList.add('past');
+    const isPast = h.date < todayISO;
+    if (isPast) {
+      item.classList.add('past');
+    } else if (!firstUpcomingEl) {
+      firstUpcomingEl = item;
+    }
 
     const parts = h.date.split('-');
     const d = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -806,6 +779,13 @@ function renderCalHolidays() {
       <div class="cal-item-date-right">${dateLabel}</div>`;
     list.appendChild(item);
   });
+
+  if (firstUpcomingEl) {
+    setTimeout(() => {
+      const offset = firstUpcomingEl.offsetTop || (firstUpcomingEl.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop);
+      list.scrollTop = Math.max(0, offset);
+    }, 50);
+  }
 }
 
 function formatDateRange(start, end) {
@@ -831,18 +811,31 @@ function renderCalEvents() {
 
   const todayISO = getTodayISO();
   const semEvents = ACADEMIC_EVENTS.filter(ev => ev.sems.includes(selectedCalSem));
+  let firstUpcomingEl = null;
 
   semEvents.forEach(ev => {
     const item = document.createElement('div');
     item.className = 'cal-item';
     if (ev.isExam) item.classList.add('is-exam');
-    if (ev.endDate < todayISO) item.classList.add('past');
+    const isPast = ev.endDate < todayISO;
+    if (isPast) {
+      item.classList.add('past');
+    } else if (!firstUpcomingEl) {
+      firstUpcomingEl = item;
+    }
 
     item.innerHTML = `
       <div class="cal-item-title">${ev.title}</div>
       <div class="cal-item-date-right">${formatDateRange(ev.startDate, ev.endDate)}</div>`;
     list.appendChild(item);
   });
+
+  if (firstUpcomingEl) {
+    setTimeout(() => {
+      const offset = firstUpcomingEl.offsetTop || (firstUpcomingEl.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop);
+      list.scrollTop = Math.max(0, offset);
+    }, 50);
+  }
 }
 
 // ── Hall Ticket Download ──
@@ -1031,10 +1024,10 @@ function getDepartmentSlug() {
   return null;
 }
 
-export function openDepartmentModal(tab) {
-  currentDeptTab = tab;
+export function openDepartmentModal(tab = 'syllabus') {
+  currentDeptTab = 'syllabus';
   const titleEl = document.getElementById('dept-modal-title');
-  if (titleEl) titleEl.textContent = tab === 'syllabus' ? 'Syllabus' : 'Time Table';
+  if (titleEl) titleEl.textContent = 'Syllabus';
 
   openAnimatedModal('department-modal', 'department-backdrop', '.dept-btn-wide, .dept-btn-compact');
   fetchDepartmentData(false);
@@ -1070,7 +1063,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
     const name = user.name || '';
 
     try {
-      const data = await api.getDepartment(slug, currentDeptTab);
+      const data = await api.getDepartment(slug, 'syllabus');
       cachedDeptData = data.department;
     } catch (err) {
       loader.classList.remove('show');
@@ -1083,9 +1076,9 @@ export async function fetchDepartmentData(forceRefresh = false) {
   loader.classList.remove('show');
   list.innerHTML = '';
 
-  const items = currentDeptTab === 'syllabus' ? cachedDeptData?.syllabus_files : cachedDeptData?.timetable_files;
+  const items = cachedDeptData?.syllabus_files;
   if (!items || !items.length) {
-    list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted);">No ${currentDeptTab} files found.</div>`;
+    list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted);">No syllabus files found.</div>`;
   } else {
     items.forEach((item, idx) => {
       const card = document.createElement('a');
@@ -1157,5 +1150,4 @@ if (typeof window !== 'undefined') {
   window.pickCalSem = pickCalSem;
   window.scrollToCalCard = scrollToCalCard;
   window.updateCalCarouselDots = updateCalCarouselDots;
-  window.openCredentialsModal = openCredentialsModal;
 }

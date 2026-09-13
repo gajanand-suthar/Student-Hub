@@ -80,6 +80,18 @@ export function initRouter(callback) {
 
   // Listen for back/forward
   window.addEventListener('popstate', (e) => {
+    // If inside Moodle course content and popping back, return to courses list
+    const contentEl = document.getElementById('view-content');
+    if (contentEl && contentEl.classList.contains('active')) {
+      if (typeof window.showCourses === 'function') {
+        window.showCourses(true);
+      }
+      if (e.state?.route === 'moodle' || resolveRoute(window.location.pathname) === 'moodle') {
+        currentRoute = 'moodle';
+        return;
+      }
+    }
+
     const route = e.state?.route || resolveRoute(window.location.pathname);
     const oldRoute = currentRoute;
     currentRoute = route;

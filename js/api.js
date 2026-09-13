@@ -220,8 +220,8 @@ export const api = {
     return res.json();
   },
 
-  async getDepartment(slug, tab) {
-    const params = new URLSearchParams({ slug, tab: tab || 'syllabus' });
+  async getDepartment(slug) {
+    const params = new URLSearchParams({ slug, tab: 'syllabus' });
     const res = await fetch(this.getApiUrl('/api/department?' + params.toString()), {
       headers: getAuthHeaders()
     });

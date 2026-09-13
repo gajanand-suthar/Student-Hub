@@ -177,7 +177,7 @@
   gap: 10px;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: 16px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -194,7 +194,7 @@ body.page-scrollable #view-moodle .page {
   display: block;
   overflow: visible;
   max-height: none;
-  padding: 16px 16px calc(76px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 16px);
   margin-bottom: 0;
 }
 

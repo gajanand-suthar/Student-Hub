@@ -153,14 +153,6 @@
             <path d="M11 8h5v5"/>
           </svg>
         </button>
-        <button class="notices-btn-wide" style="margin: 0; padding: 10px 4px; justify-content: center; gap: 4px; flex: 1; min-width: 0; border-radius: 12px;" onclick="openDepartmentModal('timetable')">
-          <span class="btn-lbl">Timetable</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex-shrink: 0;">
-            <rect x="4" y="4" width="16" height="16" rx="4"/>
-            <path d="M10 14L16 8"/>
-            <path d="M11 8h5v5"/>
-          </svg>
-        </button>
         <button class="notices-btn-wide" style="margin: 0; padding: 10px 4px; justify-content: center; gap: 4px; flex: 1; min-width: 0; border-radius: 12px;" onclick="openNoticesModal()">
           <span class="btn-lbl">Notices</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: 0.6; flex-shrink: 0;">
@@ -191,7 +183,7 @@
           <div class="ob-hint">Enter your details to get started</div>
           <div class="ob-err" id="ob-err-0"></div>
 
-          <input type="text" id="ob-usn" class="ob-input" placeholder="e.g. 4NI24EE001" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" style="margin-bottom: 12px;"/>
+          <input type="text" id="ob-usn" class="ob-input" placeholder="e.g. 4NI24EE001" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" autofocus/>
           
           <button type="button" class="ob-btn" onclick="obNext()">Continue</button>
         </div>
@@ -201,7 +193,7 @@
           <div class="ob-err" id="ob-err-1"></div>
           <div class="ob-input-wrap">
             <label class="ob-lbl">Date of Birth</label>
-            <input type="text" id="ob-dob" class="ob-input" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric" style="margin-bottom: 12px;"/>
+            <input type="text" id="ob-dob" class="ob-input" placeholder="DD/MM/YYYY" maxlength="10" inputmode="numeric"/>
           </div>
           <button type="button" class="ob-btn" onclick="obNext()">Continue</button>
         </div>
@@ -226,7 +218,7 @@
           </div>
           <div class="ob-input-wrap">
             <label class="ob-lbl">Code</label>
-            <input type="text" id="ob-code" class="ob-input" placeholder="4-digit code" maxlength="4" autocomplete="off" inputmode="numeric" style="font-family:'DM Mono',monospace;letter-spacing:3px;text-align:center;margin-bottom:12px;"/>
+            <input type="text" id="ob-code" class="ob-input" placeholder="4-digit code" maxlength="4" autocomplete="off" inputmode="numeric" style="font-family:'DM Mono',monospace;letter-spacing:3px;text-align:center;"/>
           </div>
           <button type="button" class="ob-btn" id="ob-btn-verify" onclick="obNext()">Verify & Continue</button>
         </div>
@@ -240,7 +232,7 @@
           </div>
           <div class="ob-input-wrap">
             <label class="ob-lbl">Password</label>
-            <input type="password" id="ob-moodle-pass" class="ob-input" placeholder="Password" style="margin-bottom: 12px;"/>
+            <input type="password" id="ob-moodle-pass" class="ob-input" placeholder="Password"/>
           </div>
           <button type="button" class="ob-btn" onclick="obFinish(true)">Done</button>
           <button type="button" class="ob-skip" onclick="obFinish(false)">Skip for now</button>
@@ -779,17 +771,6 @@
         <a class="drawer-menu-item" style="padding:10px 14px; font-size:0.85rem;" href="https://drive.google.com/drive/folders/1XZpAFYe1jOU9Znb2y0iF6n5q_BbpsUI5?usp=share_link" target="_blank" rel="noopener">1st Year</a>
         <a class="drawer-menu-item" style="padding:10px 14px; font-size:0.85rem;" href="https://drive.google.com/drive/folders/1xjvyP2X6HE8aiHln6waaGo6rg1D_KHN8?usp=sharing" target="_blank" rel="noopener">2nd-4th Year</a>
       </div>
-      <div class="drawer-divider"></div>
-
-      <button class="drawer-menu-item" onclick="openCredentialsModal(); toggleDrawer(false);">
-        <span class="drawer-menu-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-        </span>
-        <span class="drawer-menu-label">Update Login Details</span>
-      </button>
-
       <button class="drawer-menu-item danger" onclick="confirmLogout()">
         <span class="drawer-menu-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

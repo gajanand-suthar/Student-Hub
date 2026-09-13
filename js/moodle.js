@@ -504,7 +504,11 @@ export function refreshCourses() {
   fetchCoursesFromApi(true);
 }
 
-export function showCourses() {
+export function showCourses(fromPopState = false) {
+  if (!fromPopState && history.state?.subview === 'content') {
+    history.back();
+    return;
+  }
   showView('courses');
 }
 
@@ -531,6 +535,9 @@ export async function openCourse(idx) {
   if (titleEl) titleEl.textContent = info.name;
   if (listEl) listEl.innerHTML = loadingHtml();
   showView('content');
+  if (history.state?.subview !== 'content') {
+    history.pushState({ route: 'moodle', subview: 'content' }, '', window.location.pathname + window.location.search);
+  }
 
   try {
     const sections = await api.moodleCall(token, 'core_course_get_contents', { courseid: course.id });

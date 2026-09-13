@@ -47,7 +47,8 @@ html, body {
   line-height: 1.2;
 }
 
-.share-btn {
+.share-btn,
+.header-icon-btn {
   width: 38px;
   height: 38px;
   border-radius: 12px;
@@ -65,19 +66,23 @@ html, body {
   text-decoration: none;
   box-sizing: border-box;
 }
-.share-btn:hover {
+.share-btn:hover,
+.header-icon-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: rgba(37, 99, 235, 0.06);
 }
-.share-btn:active {
+.share-btn:active,
+.header-icon-btn:active {
   transform: scale(0.92);
 }
-[data-theme=dark] .share-btn {
+[data-theme=dark] .share-btn,
+[data-theme=dark] .header-icon-btn {
   background: var(--surface);
   border-color: var(--border);
 }
-[data-theme=dark] .share-btn:hover {
+[data-theme=dark] .share-btn:hover,
+[data-theme=dark] .header-icon-btn:hover {
   background: rgba(37, 99, 235, 0.15);
   color: #93c5fd;
   border-color: #93c5fd;
@@ -558,10 +563,39 @@ html, body {
 .nm-title { font-size: 1.4rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
 .nm-controls { display: flex; gap: 12px; align-items: center; }
 .nm-icon-btn {
-  background: var(--surface); border: 1px solid var(--border); width: 36px; height: 36px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); transition: 0.2s;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.2s ease;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
-.nm-icon-btn:hover { background: var(--border); }
+.nm-icon-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--muted);
+}
+.nm-icon-btn:active {
+  transform: scale(0.92);
+}
+[data-theme=dark] .nm-icon-btn {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--muted);
+}
+[data-theme=dark] .nm-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #64748b;
+  color: #fff;
+}
 
 .nm-list { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
 .notice-card {

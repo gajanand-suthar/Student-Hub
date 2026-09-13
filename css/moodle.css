@@ -12,7 +12,7 @@
   flex-direction: column;
   overflow: hidden;
   padding: 16px 16px 0;
-  margin: 0 auto calc(60px + env(safe-area-inset-bottom, 0px));
+  margin: 0 auto calc(58px + env(safe-area-inset-bottom, 0px));
   max-width: 600px;
   width: 100%;
   min-height: 0;
@@ -143,7 +143,7 @@
   border: 1.5px solid var(--border);
   width: 38px;
   height: 38px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,6 +152,7 @@
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: var(--shadow);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 .btn-refresh:hover { background: var(--bg); color: var(--text); border-color: var(--muted); }
 .btn-refresh:active { transform: scale(0.92); }
@@ -175,7 +176,7 @@
   gap: 10px;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 24px;
+  padding-bottom: 16px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -192,7 +193,7 @@ body.page-scrollable #view-moodle .page {
   display: block;
   overflow: visible;
   max-height: none;
-  padding: 16px 16px calc(60px + env(safe-area-inset-bottom, 0px) + 20px);
+  padding: 16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 16px);
   margin: 0 auto;
 }
 
@@ -320,20 +321,21 @@ body.page-scrollable #view-moodle .page {
   border: 1.5px solid var(--border);
   width: 38px;
   height: 38px;
-  border-radius: 50%;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
+  color: var(--muted);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: var(--shadow);
   flex-shrink: 0;
   padding: 0;
   z-index: 2;
+  box-sizing: border-box;
 }
-.ch-back:hover { border-color: var(--accent); color: var(--accent); }
-.ch-back:active { background: var(--bg); }
+.ch-back:hover { border-color: var(--muted); color: var(--text); background: var(--bg); }
+.ch-back:active { transform: translateY(calc(-50% + 5px)) scale(0.92); }
 .ch-back svg { transition: transform 0.2s ease; }
 .ch-back:hover svg { transform: translateX(-3px); }
 .ch-course-details { width: 100%; padding: 0 48px; text-align: center; min-width: 0; }
@@ -645,20 +647,74 @@ body.page-scrollable #view-moodle .page {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: rgba(255,255,255,0.1);
-  border: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   cursor: pointer;
   z-index: 2;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0;
+  box-sizing: border-box;
 }
-.lightbox-close:hover { background: rgba(255,255,255,0.2); }
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+.lightbox-close:active {
+  transform: scale(0.92);
+}
+
+.doc-header .lightbox-close,
+.doc-close-btn {
+  position: static;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.doc-header .lightbox-close:hover,
+.doc-close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--muted);
+}
+.doc-header .lightbox-close:active,
+.doc-close-btn:active {
+  transform: scale(0.92);
+}
+[data-theme=dark] .doc-header .lightbox-close,
+[data-theme=dark] .doc-close-btn {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--muted);
+}
+[data-theme=dark] .doc-header .lightbox-close:hover,
+[data-theme=dark] .doc-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #64748b;
+  color: #fff;
+}
 .lightbox-body {
   flex: 1;
   display: flex;
@@ -804,5 +860,5 @@ body.page-scrollable #view-moodle .page {
   }
   .res-name { font-size: 0.84rem; }
   .res-btn span { display: none; }
-  .res-btn { padding: 8px; border-radius: 50%; }
+  .res-btn { padding: 8px; border-radius: 10px; }
 }

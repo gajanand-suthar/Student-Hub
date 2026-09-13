@@ -1111,11 +1111,21 @@ export async function shareApp() {
   };
   try {
     if (navigator.share) {
+      if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
       await navigator.share(shareData);
     } else {
       await navigator.clipboard.writeText(shareData.url);
-      const btn = document.querySelector('button.share-btn');
-      if (btn) {
+      const label = document.getElementById('drawer-share-label');
+      if (label) {
+        const original = label.textContent;
+        label.textContent = 'Link Copied!';
+        setTimeout(() => {
+          label.textContent = original;
+          if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
+        }, 1200);
+      }
+      const btn = document.querySelector('.drawer-share-btn, button.share-btn');
+      if (btn && !label) {
         const original = btn.innerHTML;
         btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
         setTimeout(() => (btn.innerHTML = original), 1500);

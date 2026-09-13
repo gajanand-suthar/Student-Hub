@@ -102,12 +102,12 @@ export const api = {
   // ── Hall Ticket ──
   async downloadHallTicket(params) {
     const fd = new FormData();
-    fd.append('usn', (params.usn || '').toUpperCase());
     if (params.name) fd.append('name', params.name);
 
     if (params.bypass) {
       fd.append('bypass', 'true');
     } else {
+      fd.append('usn', (params.usn || '').toUpperCase());
       fd.append('dob', params.dob || '');
       fd.append('idType', params.idType || '1');
       fd.append('code', params.code || '');
@@ -208,21 +208,23 @@ export const api = {
   },
 
   // ── Notices & Department ──
-  async getNotices(force = false, usn = '', name = '') {
+  async getNotices(force = false) {
     const params = new URLSearchParams();
     if (force) params.set('force', 'true');
-    if (usn) params.set('usn', usn);
-    if (name) params.set('name', name);
 
     const qs = params.toString();
-    const res = await fetch(this.getApiUrl('/api/notices' + (qs ? '?' + qs : '')));
+    const res = await fetch(this.getApiUrl('/api/notices' + (qs ? '?' + qs : '')), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
-  async getDepartment(slug, tab, usn = '', name = '') {
-    const params = new URLSearchParams({ slug, tab: tab || 'syllabus', usn, name });
-    const res = await fetch(this.getApiUrl('/api/department?' + params.toString()));
+  async getDepartment(slug, tab) {
+    const params = new URLSearchParams({ slug, tab: tab || 'syllabus' });
+    const res = await fetch(this.getApiUrl('/api/department?' + params.toString()), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
@@ -232,31 +234,31 @@ export const api = {
     return this.post('/api/suggestions', data);
   },
 
-  async getMySuggestions(usn) {
-    const res = await fetch(this.getApiUrl('/api/suggestions/my' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), {
+  async getMySuggestions() {
+    const res = await fetch(this.getApiUrl('/api/suggestions/my'), {
       headers: getAuthHeaders()
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
-  async getUnreadSuggestions(usn) {
-    const res = await fetch(this.getApiUrl('/api/suggestions/unread' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), {
+  async getUnreadSuggestions() {
+    const res = await fetch(this.getApiUrl('/api/suggestions/unread'), {
       headers: getAuthHeaders()
     });
     if (!res.ok) return { unread: 0 };
     return res.json();
   },
 
-  async markSuggestionsSeen(usn) {
-    return this.post('/api/suggestions/mark-seen', { usn });
+  async markSuggestionsSeen() {
+    return this.post('/api/suggestions/mark-seen', {});
   },
 
   // ── Results & Leaderboard ──
-  async getResultsPerformance(usn, sessionToken) {
+  async getResultsPerformance(sessionToken) {
     const headers = getAuthHeaders();
     if (sessionToken) headers['X-Session-Token'] = sessionToken;
-    const res = await fetch(this.getApiUrl('/api/results/performance' + (usn ? '?usn=' + encodeURIComponent(usn) : '')), { headers });
+    const res = await fetch(this.getApiUrl('/api/results/performance'), { headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${res.status}`);

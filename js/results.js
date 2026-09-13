@@ -133,30 +133,16 @@ function renderLeaderboard(data) {
 }
 
 export async function initResults() {
-
-  const params = new URLSearchParams(window.location.search);
-  let usn = params.get('usn') || '';
-
-  if (!usn) {
-    usn = getStoredUsn();
-  }
-
-  if (!usn) {
-    showError('No USN Found', 'Please enter your USN on the homepage first.');
-    return;
-  }
-  
-  currentUsn = usn;
-
   try {
     // Ensure session is ready (instant if already solved on homepage)
     await ensureHumanSession();
 
-    var data = await api.getResultsPerformance(usn, getSessionToken());
+    var data = await api.getResultsPerformance(getSessionToken());
     if (data.error) {
       showError('Error', data.error);
       return;
     }
+    currentUsn = data.myUsn || '';
     renderLeaderboard(data);
   } catch(e) {
     if (e.message && (e.message.includes('Authentication required') || e.message.includes('401'))) {

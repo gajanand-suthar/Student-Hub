@@ -128,7 +128,8 @@ export function executeLogout() {
     CONFIG.USER_KEY,
     CONFIG.TOKEN_KEY,
     CONFIG.COURSES_KEY,
-    CONFIG.IDENTITY_TOKEN_KEY
+    CONFIG.IDENTITY_TOKEN_KEY,
+    'nie_session_token'
   ].forEach(k => localStorage.removeItem(k));
 
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
@@ -192,12 +193,10 @@ export async function submitSugModal() {
   }
 
   const u = loadUser();
-  const creds = loadCreds() || {};
   const name = u.name || 'Anonymous';
-  const usn = creds.usn || 'Unknown';
 
   try {
-    await api.submitSuggestion({ name, usn, suggestion: text });
+    await api.submitSuggestion({ name, suggestion: text });
     const formEl = document.getElementById('sug-modal-form');
     const successEl = document.getElementById('sug-modal-success');
     if (formEl) formEl.style.display = 'none';
@@ -213,18 +212,18 @@ export async function submitSugModal() {
 }
 
 export async function loadSugHistory() {
-  const usn = getStoredUsn();
+  const token = getIdentityToken();
 
   const list = document.getElementById('sug-history-list');
   if (!list) return;
 
-  if (!usn) {
+  if (!token) {
     list.innerHTML = '<div class="sug-history-empty">Log in to see your past suggestions.</div>';
     return;
   }
 
   try {
-    const data = await api.getMySuggestions(usn);
+    const data = await api.getMySuggestions();
     const items = data.suggestions || [];
     if (!items.length) {
       list.innerHTML = '<div class="sug-history-empty">No suggestions sent yet.</div>';
@@ -252,7 +251,7 @@ export async function loadSugHistory() {
       })
       .join('');
 
-    api.markSuggestionsSeen(usn).catch(() => {});
+    api.markSuggestionsSeen().catch(() => {});
     const dot = document.getElementById('sug-unread-dot');
     if (dot) dot.style.display = 'none';
   } catch (e) {
@@ -266,11 +265,11 @@ export function closeSugToast() {
 }
 
 export function checkSugUnread() {
-  const usn = getStoredUsn();
-  if (!usn) return;
+  const token = getIdentityToken();
+  if (!token) return;
 
   api
-    .getUnreadSuggestions(usn)
+    .getUnreadSuggestions()
     .then(data => {
       if (data && data.unread && data.unread > 0) {
         const msg = data.unread === 1 ? 'You have a new reply to your feedback!' : `You have ${data.unread} new replies to your feedback!`;

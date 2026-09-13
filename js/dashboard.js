@@ -986,7 +986,7 @@ export async function fetchNotices(forceRefresh = false) {
   const name = user.name || '';
 
   try {
-    const notices = await api.getNotices(forceRefresh, usn, name);
+    const notices = await api.getNotices(forceRefresh);
     loader.classList.remove('show');
     list.innerHTML = '';
 
@@ -1070,7 +1070,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
     const name = user.name || '';
 
     try {
-      const data = await api.getDepartment(slug, currentDeptTab, usn, name);
+      const data = await api.getDepartment(slug, currentDeptTab);
       cachedDeptData = data.department;
     } catch (err) {
       loader.classList.remove('show');

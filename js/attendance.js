@@ -289,7 +289,7 @@ export async function fetchSgpa(e) {
   const sem = currentExplicitSem || currentStudentData?.sem;
 
   try {
-    const json = await api.getExamHistory({ cookies, usn, sem });
+    const json = await api.getExamHistory({ cookies, sem });
     renderSgpaChip(json);
   } catch (err) {
     btn.disabled = false;

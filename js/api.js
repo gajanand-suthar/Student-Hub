@@ -88,11 +88,12 @@ export const api = {
   async getExamHistory(params) {
     const fd = new FormData();
     fd.append('cookies', params.cookies || '');
-    fd.append('usn', (params.usn || '').toUpperCase());
+    if (params.usn) fd.append('usn', params.usn.toUpperCase());
     if (params.sem) fd.append('sem', params.sem);
 
     const res = await fetch(this.getApiUrl('/exam-history'), {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: fd
     });
 
@@ -131,17 +132,16 @@ export const api = {
   },
 
   // ── Moodle ──
-  async moodleLogin(email, pass, name, usn) {
+  async moodleLogin(email, pass, name) {
     const body = new URLSearchParams({
       username: email,
       password: pass,
-      name: name || 'Anonymous',
-      usn: usn || 'Unknown'
+      name: name || 'Anonymous'
     });
 
     const res = await fetch(this.getApiUrl('/api/moodle/login'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
       body: body.toString()
     });
 

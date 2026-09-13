@@ -201,7 +201,7 @@ export async function doLogin() {
 
 export async function doLoginWithCreds(email, pass) {
   try {
-    const data = await api.moodleLogin(email, pass, userName, userUsn);
+    const data = await api.moodleLogin(email, pass, userName);
     if (!data.token) throw new Error('No token received');
     token = data.token;
     localStorage.setItem(CONFIG.TOKEN_KEY, token);

@@ -17,13 +17,10 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;transition:color .15s}
 .nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--accent)}
 
-/* ── Standalone PWA safe-area fixes (iOS status bar overlap) ── */
-@media all and (display-mode: standalone) {
-  body{padding-top:env(safe-area-inset-top, 0px)}
-  .nav-tab{padding:5px 4px}
-}
+/* ── Standalone PWA safe-area fixes (iOS only — status bar + bottom nav) ── */
 @supports (-webkit-touch-callout: none) {
   body.pwa-standalone{padding-top:env(safe-area-inset-top, 0px)}
+  body.pwa-standalone .bottom-nav{padding:6px 0}
   body.pwa-standalone .nav-tab{padding:5px 4px}
 }
 

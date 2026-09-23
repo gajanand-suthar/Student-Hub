@@ -17,11 +17,30 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;transition:color .15s}
 .nav-tab:hover{color:var(--text)}.nav-tab.active{color:var(--accent)}
 
-/* ── Standalone PWA safe-area fixes (iOS only — status bar + bottom nav) ── */
+/* ── Standalone PWA safe-area fixes (iOS only — status bar + bottom nav + content) ── */
 @supports (-webkit-touch-callout: none) {
+  /* Status bar: push body content below the notch */
   body.pwa-standalone{padding-top:env(safe-area-inset-top, 0px)}
+
+  /* Drawer menu: don't extend behind status bar */
+  body.pwa-standalone .drawer-content{padding-top:env(safe-area-inset-top, 0px)}
+
+  /* Bottom nav: flat padding, no extra safe-area gutter */
   body.pwa-standalone .bottom-nav{padding:6px 0}
   body.pwa-standalone .nav-tab{padding:5px 4px}
+
+  /* Content areas: remove safe-area-inset-bottom (match Android where it's 0) */
+  body.pwa-standalone .hub-container{margin-bottom:58px}
+  body.pwa-standalone #view-moodle .page{margin:0 auto 58px}
+  body.pwa-standalone #view-attendance .page{padding-bottom:calc(58px + 16px)}
+  body.pwa-standalone #view-results .page-wrap{padding-bottom:calc(58px + 16px)}
+  body.pwa-standalone .center-state{padding-bottom:calc(58px + 20px)}
+  body.pwa-standalone #auth-overlay{bottom:58px}
+  body.pwa-standalone #notices-modal,body.pwa-standalone #department-modal{bottom:76px}
+}
+/* Moodle scrollable mode override */
+@supports (-webkit-touch-callout: none) {
+  body.pwa-standalone.page-scrollable #view-moodle .page{padding-bottom:calc(58px + 16px);margin-bottom:0}
 }
 
 

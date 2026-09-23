@@ -336,7 +336,11 @@ export function initPwa() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                        window.navigator.standalone === true ||
                        (typeof document !== 'undefined' && document.referrer.includes('android-app://'));
-  if (isStandalone) return;
+  if (isStandalone) {
+    // Apply safe-area body class for iOS standalone PWA (status bar overlap fix)
+    document.body.classList.add('pwa-standalone');
+    return;
+  }
 
   const ua = (navigator.userAgent || '').toLowerCase();
   const isIos = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -425,8 +429,8 @@ export function initPwa() {
     const installBtn = document.getElementById('pwa-install-btn');
     const laterBtn = document.getElementById('pwa-later-btn');
 
-    if (titleEl) titleEl.textContent = 'Add to Home Screen';
-    if (subEl) subEl.textContent = 'Add Student Hub to your iPhone/iPad for instant, fast access.';
+    if (titleEl) titleEl.textContent = 'Install Student Hub';
+    if (subEl) subEl.textContent = 'Install the app on your iPhone/iPad for a full-screen, app-like experience.';
     if (iosGuide) iosGuide.style.display = 'block';
     if (installBtn) {
       installBtn.textContent = 'Got It';

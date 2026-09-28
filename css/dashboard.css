@@ -881,6 +881,22 @@ html, body {
   stroke: #fff;
 }
 
+#btn-tt-week {
+  min-width: 76px;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+#btn-tt-week svg {
+  flex-shrink: 0;
+}
+
+#tt-week-btn-text {
+  display: inline-block;
+  text-align: center;
+  min-width: 38px;
+}
+
 /* Day Selector Nav */
 .tt-day-nav {
   display: flex;

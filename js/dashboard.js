@@ -1396,6 +1396,10 @@ export function openTtUploadModal(mode = 'upload') {
     if (btnEl) {
       btnEl.textContent = (mode === 'edit') ? 'Submit Correction' : 'Submit for Review';
       btnEl.setAttribute('data-mode', mode);
+      btnEl.disabled = false;
+      btnEl.style.background = '';
+      btnEl.style.borderColor = '';
+      btnEl.style.color = '';
     }
 
     selectedTtFile = null;
@@ -1476,17 +1480,25 @@ export async function submitTimetableUpload(e) {
   try {
     await api.uploadTimetable(file, { branch, semester, section, batch });
     if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.color = '#10b981';
-      statusEl.textContent = 'Submitted';
+      statusEl.style.display = 'none';
+      statusEl.textContent = '';
+    }
+    if (btn) {
+      btn.textContent = 'Submitted';
+      btn.style.background = '#10b981';
+      btn.style.borderColor = '#10b981';
+      btn.style.color = '#ffffff';
     }
     setTimeout(() => {
       closeTtUploadModal();
       if (btn) {
         btn.disabled = false;
         btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
       }
-    }, 2000);
+    }, 1000);
   } catch (err) {
     if (statusEl) {
       statusEl.style.display = 'block';
@@ -1496,6 +1508,9 @@ export async function submitTimetableUpload(e) {
     if (btn) {
       btn.disabled = false;
       btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
     }
   }
 }

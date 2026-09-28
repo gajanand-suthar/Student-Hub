@@ -78,6 +78,10 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
       // Cache attendance for this particular session only
       try {
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+        const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
+        if (enrolledCodes.length > 0) {
+          localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+        }
       } catch (e) {}
 
       // Persist student profile in localStorage for app functionality (greeting, calendar, notices)

@@ -294,5 +294,42 @@ export const api = {
     const res = await fetch(this.getApiUrl('/api/results/status'));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
+  },
+
+  // ── Timetable ──
+  async uploadTimetable(file, metadata = {}) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (metadata.branch) fd.append('branch', metadata.branch);
+    if (metadata.semester) fd.append('semester', metadata.semester);
+    if (metadata.section) fd.append('section', metadata.section);
+    if (metadata.batch) fd.append('batch', metadata.batch);
+
+    const res = await fetch(this.getApiUrl('/api/timetable/upload'), {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: fd
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Upload failed: HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async getTimetable({ branch, semester, section, batch } = {}) {
+    const params = new URLSearchParams();
+    if (branch) params.set('branch', branch);
+    if (semester) params.set('semester', semester);
+    if (section) params.set('section', section);
+    if (batch) params.set('batch', batch);
+
+    const qs = params.toString();
+    const res = await fetch(this.getApiUrl('/api/timetable' + (qs ? '?' + qs : '')), {
+      headers: getAuthHeaders()
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
   }
 };

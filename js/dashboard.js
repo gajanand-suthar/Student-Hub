@@ -157,7 +157,9 @@ export function initDashboard() {
     if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
   }, { capture: true, passive: true });
 
+  initHomeToggleListeners();
   initAcademicCalendar();
+  initTimetable();
 
   const consent = localStorage.getItem(CONFIG.CONSENT_KEY);
   if (!consent) {
@@ -186,6 +188,7 @@ function continueBoot() {
   }
 
   initAcademicCalendar();
+  initTimetable();
 
   const creds = loadCreds();
   if (!creds || !creds.usn) {
@@ -495,6 +498,7 @@ export function obFinish(saveMoodle) {
 
   document.getElementById('onboarding')?.classList.remove('active');
   initAcademicCalendar();
+  initTimetable();
 }
 
 // ── Calendar Carousel ──
@@ -563,6 +567,28 @@ export function initAcademicCalendar() {
   renderCalMonth();
   renderCalHolidays();
   renderCalEvents();
+  updateCalendarLayout();
+}
+
+export function updateCalendarLayout() {
+  const carousel = document.getElementById('calendar-carousel');
+  const actionBar = document.querySelector('.dash-action-bar');
+  if (!carousel || !actionBar) return;
+
+  const btnWidth = actionBar.clientWidth;
+  if (!btnWidth) return;
+
+  // When the 3 calendar cards have greater cumulative width than the three buttons
+  // (requires ~930px for 3-column layout without clipping/overflow),
+  // show the mobile view styled calendar to eliminate horizontal overflow.
+  if (btnWidth < 930) {
+    carousel.classList.add('force-mobile-cal');
+  } else {
+    carousel.classList.remove('force-mobile-cal');
+    if (carousel.scrollWidth > btnWidth + 4) {
+      carousel.classList.add('force-mobile-cal');
+    }
+  }
 }
 
 export function syncCalSemDropdownUI() {
@@ -946,18 +972,719 @@ function resetHtBtn() {
   btn.disabled = false;
 }
 
-// ── Department & Notices Modals ──
+// ═══════════════════════════════════════════════════════════════
+//  DYNAMIC HOME SECTIONS & TIMETABLE
+// ═══════════════════════════════════════════════════════════════
+
+let currentHomeSection = 'timetable';
+let currentTtDay = 'monday';
+let currentTimetableData = null;
+let selectedTtFile = null;
+let isTtWeekViewActive = false;
+
+export function toggleHomeSection(section) {
+  const btnCalendar = document.getElementById('btn-toggle-calendar');
+  const btnNotices = document.getElementById('btn-toggle-notices');
+  const btnSyllabus = document.getElementById('btn-toggle-syllabus');
+
+  const panelTimetable = document.getElementById('panel-timetable');
+  const panelCalendar = document.getElementById('panel-calendar');
+  const panelNotices = document.getElementById('panel-notices');
+  const panelSyllabus = document.getElementById('panel-syllabus');
+
+  // If already active or explicitly timetable, toggle off -> back to timetable
+  if (currentHomeSection === section || section === 'timetable') {
+    currentHomeSection = 'timetable';
+
+    btnCalendar?.classList.remove('active');
+    btnNotices?.classList.remove('active');
+    btnSyllabus?.classList.remove('active');
+
+    btnCalendar?.setAttribute('aria-selected', 'false');
+    btnNotices?.setAttribute('aria-selected', 'false');
+    btnSyllabus?.setAttribute('aria-selected', 'false');
+
+    panelTimetable?.classList.add('active');
+    panelCalendar?.classList.remove('active');
+    panelNotices?.classList.remove('active');
+    panelSyllabus?.classList.remove('active');
+    return;
+  }
+
+  // Activate selected section
+  currentHomeSection = section;
+
+  btnCalendar?.classList.toggle('active', section === 'calendar');
+  btnNotices?.classList.toggle('active', section === 'notices');
+  btnSyllabus?.classList.toggle('active', section === 'syllabus');
+
+  btnCalendar?.setAttribute('aria-selected', section === 'calendar' ? 'true' : 'false');
+  btnNotices?.setAttribute('aria-selected', section === 'notices' ? 'true' : 'false');
+  btnSyllabus?.setAttribute('aria-selected', section === 'syllabus' ? 'true' : 'false');
+
+  panelTimetable?.classList.remove('active');
+  panelCalendar?.classList.toggle('active', section === 'calendar');
+  panelNotices?.classList.toggle('active', section === 'notices');
+  panelSyllabus?.classList.toggle('active', section === 'syllabus');
+
+  if (section === 'calendar') {
+    initAcademicCalendar();
+    requestAnimationFrame(() => updateCalendarLayout());
+  } else if (section === 'notices') {
+    if (!noticesLoaded) fetchNotices(false);
+  } else if (section === 'syllabus') {
+    fetchDepartmentData(false);
+  }
+}
+
+export function initHomeToggleListeners() {
+  ['calendar', 'notices', 'syllabus'].forEach(sec => {
+    const btn = document.getElementById(`btn-toggle-${sec}`);
+    if (btn && !btn._toggleBound) {
+      btn._toggleBound = true;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleHomeSection(sec);
+      });
+    }
+  });
+}
+
+// Guarantee immediate availability of toggleHomeSection for inline onclick & event delegation
+if (typeof window !== 'undefined') {
+  window.toggleHomeSection = toggleHomeSection;
+  window.initHomeToggleListeners = initHomeToggleListeners;
+}
+
+if (typeof document !== 'undefined' && !document._dashToggleBound) {
+  document._dashToggleBound = true;
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dash-toggle-btn');
+    if (btn) {
+      const id = btn.id || '';
+      if (id.includes('calendar')) toggleHomeSection('calendar');
+      else if (id.includes('notices')) toggleHomeSection('notices');
+      else if (id.includes('syllabus')) toggleHomeSection('syllabus');
+    }
+  });
+}
+
+function getRegisteredCourseCodes() {
+  try {
+    const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
+    if (session.attendance && Array.isArray(session.attendance)) {
+      const codes = session.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
+      if (codes.length) return codes;
+    }
+  } catch (e) {}
+  try {
+    const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
+    if (Array.isArray(cached) && cached.length) return cached;
+  } catch (e) {}
+  return [];
+}
+
+function getStudentTimetableParams() {
+  const creds = loadCreds() || {};
+  const user = loadUser() || {};
+  const usn = creds.usn || user.usn || '';
+
+  let branch = user.branch || '';
+  if (!branch && user.program) {
+    const prog = user.program.toUpperCase();
+    if (prog.includes('ELECTRICAL')) branch = 'EE';
+    else if (prog.includes('ELECTRONICS') && prog.includes('COMMUNICATION')) branch = 'EC';
+    else if (prog.includes('COMPUTER')) branch = 'CS';
+    else if (prog.includes('INFORMATION')) branch = 'IS';
+    else if (prog.includes('AI') || prog.includes('MACHINE LEARNING')) branch = 'CI';
+    else if (prog.includes('MECHANICAL')) branch = 'ME';
+    else if (prog.includes('CIVIL')) branch = 'CV';
+  }
+  if (!branch && usn) {
+    const m = usn.toUpperCase().match(/^\d[A-Z]{2}(\d{2})([A-Z]{2})(\d{3})/);
+    if (m && m[2]) branch = m[2];
+  }
+
+  let semester = user.semNum || '';
+  if (!semester && user.sem) {
+    const roman = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
+    semester = roman[user.sem.toUpperCase()] || '';
+  }
+  if (!semester && usn) {
+    const inf = getInferredSemFromUsn(usn);
+    const roman = { I: 1, III: 3, V: 5, VII: 7 };
+    semester = roman[inf] || 5;
+  }
+
+  let section = user.section || 'A';
+  let batch = user.batch || '';
+  if (!batch && usn) {
+    const m = usn.toUpperCase().match(/^\d[A-Z]{2}(\d{2})/);
+    if (m && m[1]) batch = '20' + m[1];
+  }
+
+  return {
+    branch: (branch || 'CS').toUpperCase(),
+    semester: parseInt(semester, 10) || 5,
+    section: (section || 'A').toUpperCase(),
+    batch: batch || ''
+  };
+}
+
+export async function initTimetable() {
+  const heading = document.getElementById('tt-day-heading');
+  const subheading = document.getElementById('tt-date-subheading');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (heading && !isTtWeekViewActive) heading.textContent = "Today's Classes";
+  if (subheading && !isTtWeekViewActive) subheading.textContent = dateStr;
+
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const todayIdx = now.getDay();
+  currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
+
+  updateTtDayNavUI();
+
+  const params = getStudentTimetableParams();
+  const badgeEl = document.getElementById('tt-section-badge');
+  if (badgeEl) {
+    badgeEl.textContent = `${params.branch} • Sem ${params.semester} (${params.section})`;
+  }
+
+  // Pre-populate upload modal inputs
+  const upBranch = document.getElementById('tt-up-branch');
+  const upSem = document.getElementById('tt-up-sem');
+  const upSec = document.getElementById('tt-up-section');
+  const upBatch = document.getElementById('tt-up-batch');
+  if (upBranch && !upBranch.value) upBranch.value = params.branch;
+  if (upSem && !upSem.value) upSem.value = params.semester;
+  if (upSec && !upSec.value) upSec.value = params.section;
+  if (upBatch && !upBatch.value) upBatch.value = params.batch;
+
+  // Render from cache first for instant UX
+  const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      currentTimetableData = JSON.parse(cached);
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    }
+  } catch (e) {}
+
+  // Fetch updated timetable from backend
+  try {
+    const data = await api.getTimetable(params);
+    if (data && data.schedule) {
+      currentTimetableData = data;
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (e) {}
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else {
+      if (!currentTimetableData) {
+        showEmptyTimetable(params);
+      }
+    }
+  } catch (err) {
+    if (!currentTimetableData) {
+      showEmptyTimetable(params);
+    }
+  }
+}
+
+export function selectTtDay(dayName) {
+  currentTtDay = dayName;
+  updateTtDayNavUI();
+  if (currentTimetableData) {
+    renderTodaySchedule(currentTimetableData, currentTtDay);
+  }
+}
+
+function updateTtDayNavUI() {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const todayDayName = days[new Date().getDay()];
+
+  document.querySelectorAll('.tt-day-chip').forEach(btn => {
+    const day = btn.getAttribute('data-day');
+    btn.classList.toggle('active', day === currentTtDay);
+    btn.classList.toggle('is-today', day === todayDayName);
+  });
+}
+
+export function renderTodaySchedule(timetable, dayName = currentTtDay) {
+  const container = document.getElementById('tt-schedule-body');
+  const heading = document.getElementById('tt-day-heading');
+  const subheading = document.getElementById('tt-date-subheading');
+  const editBtn = document.getElementById('btn-tt-edit');
+  if (editBtn) editBtn.style.display = 'inline-flex';
+
+  if (!container) return;
+
+  const now = new Date();
+
+  if (heading) {
+    heading.textContent = `Today's Classes`;
+  }
+  if (subheading) {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    subheading.textContent = now.toLocaleDateString('en-US', options);
+  }
+
+  const schedule = timetable?.schedule?.[dayName] || [];
+  if (!schedule.length) {
+    container.innerHTML = `
+      <div class="tt-empty">
+        <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
+        <div class="tt-empty-title">No Classes Scheduled Today</div>
+        <div class="tt-empty-desc">Enjoy your day off or tap Week above to see your full schedule.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const regCodes = getRegisteredCourseCodes();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let html = '';
+
+  schedule.forEach(slot => {
+    if (slot.type === 'break' || slot.isBreak) {
+      const breakName = slot.name || (slot.start === '13:30' ? 'Lunch Break' : 'Tea Break');
+      const icon = breakName.toLowerCase().includes('lunch') ? '🍱' : '☕';
+      html += `
+        <div class="tt-break-slot">
+          <span>${icon}</span>
+          <span>${escHtml(breakName)} (${slot.start} – ${slot.end})</span>
+        </div>
+      `;
+      return;
+    }
+
+    // Resolve elective options against registered courses
+    let displayCode = slot.code || '';
+    let displayFaculty = slot.faculty || '';
+    let displayRoom = slot.room || timetable.metadata?.roomNo || '';
+    let isElective = (slot.type === 'elective');
+
+    if (slot.options && slot.options.length > 0) {
+      isElective = true;
+      if (regCodes.length > 0) {
+        const matched = slot.options.find(opt => regCodes.includes((opt.code || '').toUpperCase().trim()));
+        if (matched) {
+          displayCode = matched.code;
+          if (matched.faculty) displayFaculty = matched.faculty;
+          if (matched.room) displayRoom = matched.room;
+        } else {
+          displayCode = slot.options.map(o => o.code).filter(Boolean).join(' / ');
+          displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
+        }
+      } else {
+        displayCode = slot.options.map(o => o.code).filter(Boolean).join(' / ');
+        displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
+      }
+    }
+
+    // Resolve subject title from subjects table if available
+    let subjectTitle = slot.name || '';
+    if (!subjectTitle && timetable.subjects && Array.isArray(timetable.subjects)) {
+      const primaryCode = (displayCode || '').split('/')[0].trim();
+      const sub = timetable.subjects.find(s => (s.code || '').toUpperCase() === primaryCode.toUpperCase());
+      if (sub) {
+        subjectTitle = sub.name || sub.title || '';
+        if (!displayFaculty && (sub.faculty || sub.initials || sub.instructor)) {
+          displayFaculty = sub.faculty || sub.initials || sub.instructor;
+        }
+      }
+    }
+    if (!subjectTitle) subjectTitle = displayCode || 'Class';
+
+    // Parse start & end in minutes
+    let isNow = false;
+    let isPast = false;
+    if (slot.start && slot.end) {
+      const [sh, sm] = slot.start.split(':').map(Number);
+      const [eh, em] = slot.end.split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+
+      if (isViewingToday) {
+        if (nowMinutes >= startMin && nowMinutes < endMin) {
+          isNow = true;
+        } else if (nowMinutes >= endMin) {
+          isPast = true;
+        }
+      }
+    }
+
+    const isLab = (slot.type === 'lab');
+
+    html += `
+      <div class="tt-slot ${isNow ? 'is-now' : ''} ${isPast ? 'is-past' : ''}">
+        <div class="tt-slot-time">
+          <div class="tt-time-start">${escHtml(slot.start || '')}</div>
+          <div class="tt-time-end">${escHtml(slot.end || '')}</div>
+        </div>
+        <div class="tt-slot-divider">
+          ${isNow ? '<div class="tt-now-dot"></div>' : ''}
+        </div>
+        <div class="tt-slot-content">
+          <div class="tt-slot-title-row">
+            <div class="tt-slot-title" title="${escAttr(subjectTitle)}">${escHtml(subjectTitle)}</div>
+            ${isNow ? '<span class="tt-slot-tag tt-tag-now">NOW</span>' : ''}
+            ${!isNow && isElective ? '<span class="tt-slot-tag tt-tag-elective">Elective</span>' : ''}
+            ${!isNow && isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
+          </div>
+          <div class="tt-slot-meta">
+            ${displayCode ? `<span class="tt-code-pill">${escHtml(displayCode)}</span>` : ''}
+            ${displayRoom ? `<span class="tt-room">📍 ${escHtml(displayRoom)}</span>` : ''}
+            ${displayFaculty ? `<span class="tt-fac">👤 ${escHtml(displayFaculty)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function showEmptyTimetable(params) {
+  const container = document.getElementById('tt-schedule-body');
+  const editBtn = document.getElementById('btn-tt-edit');
+  const heading = document.getElementById('tt-day-heading');
+  const subheading = document.getElementById('tt-date-subheading');
+  if (editBtn) editBtn.style.display = 'none';
+
+  if (isTtWeekViewActive) {
+    isTtWeekViewActive = false;
+    updateTtSubView();
+  }
+
+  if (heading) heading.textContent = "Today's Classes";
+  if (subheading) {
+    const now = new Date();
+    subheading.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="tt-empty">
+      <div class="tt-empty-title">Timetable Not Available Yet</div>
+      <div class="tt-empty-desc">
+        We don't have the timetable for your section yet. Help your classmates out by uploading a copy!
+      </div>
+      <button type="button" class="tt-empty-btn" onclick="openTtUploadModal('upload')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Upload Timetable</span>
+      </button>
+    </div>
+  `;
+}
+
+export function openTtUploadModal(mode = 'upload') {
+  const modal = document.getElementById('tt-upload-modal');
+  if (modal) {
+    const titleEl = document.getElementById('tt-upload-modal-title');
+    const btnEl = document.getElementById('tt-upload-btn');
+    if (titleEl) {
+      titleEl.textContent = (mode === 'edit') ? 'Suggest Timetable Edit' : 'Upload Timetable';
+    }
+    if (btnEl) {
+      btnEl.textContent = (mode === 'edit') ? 'Submit Correction' : 'Submit for Review';
+      btnEl.setAttribute('data-mode', mode);
+    }
+
+    selectedTtFile = null;
+    const fileInput = document.getElementById('tt-file-input');
+    if (fileInput) fileInput.value = '';
+    const label = document.getElementById('tt-dropzone-label');
+    if (label) label.textContent = 'Click to select timetable file';
+
+    const status = document.getElementById('tt-upload-status');
+    if (status) { status.style.display = 'none'; status.textContent = ''; }
+
+    modal.classList.add('active');
+
+    const dropzone = document.getElementById('tt-dropzone');
+    if (dropzone && !dropzone._dragInit) {
+      dropzone._dragInit = true;
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+      dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = ''; });
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.style.borderColor = '';
+        if (e.dataTransfer?.files?.[0]) {
+          handleTtFileChange({ files: e.dataTransfer.files });
+        }
+      });
+    }
+  }
+}
+
+export function closeTtUploadModal() {
+  const modal = document.getElementById('tt-upload-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+export function handleTtFileChange(input) {
+  const file = input.files?.[0];
+  const label = document.getElementById('tt-dropzone-label');
+  if (file && label) {
+    selectedTtFile = file;
+    label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+  }
+}
+
+export async function submitTimetableUpload(e) {
+  if (e) e.preventDefault();
+  const fileInput = document.getElementById('tt-file-input');
+  const file = selectedTtFile || fileInput?.files?.[0];
+
+  const statusEl = document.getElementById('tt-upload-status');
+  const btn = document.getElementById('tt-upload-btn');
+  const isEdit = btn?.getAttribute('data-mode') === 'edit';
+
+  if (!file) {
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'Please choose a timetable file (PDF or image).';
+    }
+    return;
+  }
+
+  // Get student params automatically from local storage
+  const studentParams = getStudentTimetableParams();
+  const branch = studentParams.branch;
+  const semester = studentParams.semester;
+  const section = studentParams.section;
+  const batch = studentParams.batch;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = isEdit ? 'Submitting Correction...' : 'Parsing & Uploading...';
+  }
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Uploading to server and parsing with Gemini...';
+  }
+
+  try {
+    await api.uploadTimetable(file, { branch, semester, section, batch });
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = '#10b981';
+      statusEl.textContent = isEdit 
+        ? 'Correction submitted successfully! It will be verified shortly.' 
+        : 'Uploaded successfully! It has been submitted for admin verification.';
+    }
+    setTimeout(() => {
+      closeTtUploadModal();
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+      }
+    }, 2000);
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = err.message || 'Upload failed. Please try again.';
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+    }
+  }
+}
+
+export function toggleTtWeekView() {
+  isTtWeekViewActive = !isTtWeekViewActive;
+  updateTtSubView();
+}
+
+export function updateTtSubView() {
+  const scheduleBody = document.getElementById('tt-schedule-body');
+  const weekBody = document.getElementById('tt-week-body');
+  const weekBtn = document.getElementById('btn-tt-week');
+  const weekBtnText = document.getElementById('tt-week-btn-text');
+  const heading = document.getElementById('tt-day-heading');
+  const subheading = document.getElementById('tt-date-subheading');
+
+  if (isTtWeekViewActive) {
+    if (scheduleBody) {
+      scheduleBody.style.display = 'none';
+      scheduleBody.classList.remove('active');
+    }
+    if (weekBody) {
+      weekBody.style.display = 'flex';
+      weekBody.classList.add('active');
+    }
+    if (weekBtn) weekBtn.classList.add('is-active');
+    if (weekBtnText) weekBtnText.textContent = 'Today';
+    if (heading) heading.textContent = 'Weekly Schedule';
+    if (subheading) {
+      if (currentTimetableData?.metadata) {
+        const m = currentTimetableData.metadata;
+        subheading.textContent = `${m.branch || ''} Sem ${m.semester || ''} (${m.section || ''})${m.roomNo ? ' • Room ' + m.roomNo : ''}`;
+      } else {
+        const p = getStudentTimetableParams();
+        subheading.textContent = `${p.branch} Sem ${p.semester} (${p.section})`;
+      }
+    }
+    renderWeekScheduleInline();
+  } else {
+    if (weekBody) {
+      weekBody.style.display = 'none';
+      weekBody.classList.remove('active');
+    }
+    if (scheduleBody) {
+      scheduleBody.style.display = 'flex';
+      scheduleBody.classList.add('active');
+    }
+    if (weekBtn) weekBtn.classList.remove('is-active');
+    if (weekBtnText) weekBtnText.textContent = 'Week';
+    if (heading) heading.textContent = "Today's Classes";
+    if (subheading) {
+      const now = new Date();
+      subheading.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    if (currentTimetableData) {
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    }
+  }
+}
+
+export function renderWeekScheduleInline() {
+  const wrap = document.getElementById('tt-week-table-wrap');
+  if (!wrap) return;
+
+  const data = currentTimetableData;
+  if (!data || !data.schedule) {
+    wrap.innerHTML = `
+      <div class="tt-empty">
+        <div class="tt-empty-title">Timetable Not Available Yet</div>
+        <div class="tt-empty-desc">We don't have the timetable for your section yet. Help your classmates out by uploading a copy!</div>
+        <button type="button" class="tt-empty-btn" onclick="openTtUploadModal('upload')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Upload Timetable</span>
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
+
+  let timeSlots = data.timeSlots;
+  if (!timeSlots || !timeSlots.length) {
+    const slotSet = new Set();
+    days.forEach(d => {
+      (data.schedule[d] || []).forEach(s => {
+        if (s.start && s.end) slotSet.add(`${s.start}-${s.end}`);
+      });
+    });
+    timeSlots = Array.from(slotSet).sort();
+    if (!timeSlots.length) {
+      timeSlots = [
+        '09:00-10:00',
+        '10:00-11:00',
+        '11:00-11:30',
+        '11:30-12:30',
+        '12:30-13:30',
+        '13:30-14:30',
+        '14:30-15:30',
+        '15:30-16:30'
+      ];
+    }
+  }
+
+  const regCodes = getRegisteredCourseCodes();
+
+  let html = `<table class="tt-week-table"><thead><tr><th>Time</th>`;
+  days.forEach((d, idx) => {
+    const isToday = (d === todayDayName);
+    html += `<th class="${isToday ? 'is-today-col' : ''}">${dayLabels[idx]}${isToday ? ' •' : ''}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  timeSlots.forEach(ts => {
+    const [tstart] = ts.split('-');
+    const isBreak = (tstart === '11:00' || tstart === '13:30');
+    html += `<tr><td class="is-time-col">${ts}</td>`;
+
+    if (isBreak) {
+      const bLabel = tstart === '13:30' ? '🍱 Lunch Break' : '☕ Tea Break';
+      html += `<td colspan="6" style="text-align:center; color:var(--muted); font-weight:700; background:rgba(0,0,0,0.02);">${bLabel}</td>`;
+    } else {
+      days.forEach(day => {
+        const slotsForDay = data.schedule[day] || [];
+        const slot = slotsForDay.find(s => s.start === tstart);
+        const isToday = (day === todayDayName);
+        if (!slot) {
+          html += `<td class="${isToday ? 'is-today-col' : ''}"></td>`;
+        } else {
+          let code = slot.code || '';
+          let fac = slot.faculty || '';
+          if (slot.options && slot.options.length) {
+            const matched = slot.options.find(o => regCodes.includes((o.code || '').toUpperCase().trim()));
+            if (matched) {
+              code = matched.code;
+              fac = matched.faculty || fac;
+            } else {
+              code = slot.options.map(o => o.code).join('/');
+            }
+          }
+          html += `
+            <td class="${isToday ? 'is-today-col' : ''}">
+              <div class="tt-week-cell-slot">
+                <div class="tt-week-code">${escHtml(code)}</div>
+                ${fac ? `<div class="tt-week-fac">${escHtml(fac)}</div>` : ''}
+              </div>
+            </td>
+          `;
+        }
+      });
+    }
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+export function openTtWeekModal() {
+  toggleTtWeekView();
+}
+
+export function closeTtWeekModal() {
+  if (isTtWeekViewActive) {
+    toggleTtWeekView();
+  }
+}
+
+// ── Department & Notices Sections ──
 let noticesLoaded = false;
 let currentDeptTab = 'syllabus';
 let cachedDeptData = null;
 
 export function openNoticesModal() {
-  openAnimatedModal('notices-modal', 'notices-backdrop', '.notices-btn-wide, .notices-btn-compact');
-  if (!noticesLoaded) fetchNotices(false);
+  toggleHomeSection('notices');
 }
 
 export function closeNoticesModal() {
-  closeAnimatedModal('notices-modal', 'notices-backdrop');
+  if (currentHomeSection === 'notices') toggleHomeSection('timetable');
 }
 
 function getNoticeIconSvg(link, idPrefix = 'n') {
@@ -1014,7 +1741,7 @@ export async function fetchNotices(forceRefresh = false) {
     list.innerHTML = '';
 
     if (!notices || !notices.length) {
-      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted);">No notices found.</div>';
+      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted); margin: auto 0;">No notices found.</div>';
     } else {
       notices.forEach((n, idx) => {
         const card = document.createElement('a');
@@ -1037,7 +1764,7 @@ export async function fetchNotices(forceRefresh = false) {
     noticesLoaded = true;
   } catch (err) {
     loader.classList.remove('show');
-    list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--danger);">Failed to load notices.</div>';
+    list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--danger); margin: auto 0;">Failed to load notices.</div>';
   } finally {
     if (forceRefresh && refreshIcon) refreshIcon.classList.remove('spin');
   }
@@ -1057,14 +1784,12 @@ function getDepartmentSlug() {
 export function openDepartmentModal(tab = 'syllabus') {
   currentDeptTab = 'syllabus';
   const titleEl = document.getElementById('dept-modal-title');
-  if (titleEl) titleEl.textContent = 'Syllabus';
-
-  openAnimatedModal('department-modal', 'department-backdrop', '.dept-btn-wide, .dept-btn-compact');
-  fetchDepartmentData(false);
+  if (titleEl) titleEl.textContent = 'Department Syllabus';
+  toggleHomeSection('syllabus');
 }
 
 export function closeDepartmentModal() {
-  closeAnimatedModal('department-modal', 'department-backdrop');
+  if (currentHomeSection === 'syllabus') toggleHomeSection('timetable');
 }
 
 export async function fetchDepartmentData(forceRefresh = false) {
@@ -1082,7 +1807,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
     const slug = getDepartmentSlug();
     if (!slug) {
       loader.classList.remove('show');
-      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted);">Unable to detect your department from USN.</div>';
+      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted); margin: auto 0;">Unable to detect your department from USN.</div>';
       if (forceRefresh && refreshIcon) refreshIcon.classList.remove('spin');
       return;
     }
@@ -1097,7 +1822,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
       cachedDeptData = data.department;
     } catch (err) {
       loader.classList.remove('show');
-      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--danger);">Failed to load data.</div>';
+      list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--danger); margin: auto 0;">Failed to load data.</div>';
       if (forceRefresh && refreshIcon) refreshIcon.classList.remove('spin');
       return;
     }
@@ -1108,7 +1833,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
 
   const items = cachedDeptData?.syllabus_files;
   if (!items || !items.length) {
-    list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted);">No syllabus files found.</div>`;
+    list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted); margin: auto 0;">No syllabus files found.</div>`;
   } else {
     items.forEach((item, idx) => {
       const card = document.createElement('a');
@@ -1190,4 +1915,27 @@ if (typeof window !== 'undefined') {
   window.pickCalSem = pickCalSem;
   window.scrollToCalCard = scrollToCalCard;
   window.updateCalCarouselDots = updateCalCarouselDots;
+  window.toggleHomeSection = toggleHomeSection;
+  window.selectTtDay = selectTtDay;
+  window.initTimetable = initTimetable;
+  window.openTtUploadModal = openTtUploadModal;
+  window.closeTtUploadModal = closeTtUploadModal;
+  window.handleTtFileChange = handleTtFileChange;
+  window.submitTimetableUpload = submitTimetableUpload;
+  window.toggleTtWeekView = toggleTtWeekView;
+  window.renderWeekScheduleInline = renderWeekScheduleInline;
+  window.openTtWeekModal = openTtWeekModal;
+  window.closeTtWeekModal = closeTtWeekModal;
+  window.updateCalendarLayout = updateCalendarLayout;
+
+  window.addEventListener('resize', updateCalendarLayout);
+  if (typeof ResizeObserver !== 'undefined') {
+    const calRo = new ResizeObserver(() => {
+      updateCalendarLayout();
+    });
+    const calSec = document.querySelector('.cal-section');
+    if (calSec) calRo.observe(calSec);
+    const ab = document.querySelector('.dash-action-bar');
+    if (ab) calRo.observe(ab);
+  }
 }

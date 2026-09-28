@@ -1478,9 +1478,7 @@ export async function submitTimetableUpload(e) {
     if (statusEl) {
       statusEl.style.display = 'block';
       statusEl.style.color = '#10b981';
-      statusEl.textContent = isEdit 
-        ? 'Correction submitted successfully! It will be verified shortly.' 
-        : 'Uploaded successfully! It has been submitted for admin verification.';
+      statusEl.textContent = 'Submitted';
     }
     setTimeout(() => {
       closeTtUploadModal();

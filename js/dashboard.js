@@ -1466,12 +1466,11 @@ export async function submitTimetableUpload(e) {
 
   if (btn) {
     btn.disabled = true;
-    btn.textContent = isEdit ? 'Submitting Correction...' : 'Parsing & Uploading...';
+    btn.textContent = isEdit ? 'Submitting...' : 'Uploading...';
   }
   if (statusEl) {
-    statusEl.style.display = 'block';
-    statusEl.style.color = 'var(--muted)';
-    statusEl.textContent = 'Uploading to server and parsing with Gemini...';
+    statusEl.style.display = 'none';
+    statusEl.textContent = '';
   }
 
   try {

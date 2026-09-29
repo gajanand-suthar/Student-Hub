@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
+import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken, showAppNoticeToast } from './shared.js';
 
 function getTodayISO() {
   const d = new Date();
@@ -1975,10 +1975,18 @@ export async function submitTimetableUpload(e) {
       }
     }, 1000);
   } catch (err) {
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.color = 'var(--danger)';
-      statusEl.textContent = err.message || 'Upload failed. Please try again.';
+    if (err.alreadyPending || err.status === 409) {
+      closeTtUploadModal();
+      showAppNoticeToast(
+        'Submission Already Pending',
+        err.message || 'A timetable submission for this class is already pending review in the admin panel.'
+      );
+    } else {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = err.message || 'Upload failed. Please try again.';
+      }
     }
     if (btn) {
       btn.disabled = false;

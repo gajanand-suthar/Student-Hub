@@ -1,4 +1,4 @@
-const CACHE_NAME = 'student-hub-spa-v6';
+const CACHE_NAME = 'student-hub-spa-v8';
 const PRECACHE = [
   './',
   './index.html',

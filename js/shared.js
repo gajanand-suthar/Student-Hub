@@ -265,6 +265,47 @@ export function closeSugToast() {
   if (t) t.classList.remove('show');
 }
 
+let appNoticeTimer = null;
+
+export function showAppNoticeToast(title, message, duration = 8500) {
+  const toast = document.getElementById('app-notice-toast');
+  const titleEl = document.getElementById('app-notice-title');
+  const msgEl = document.getElementById('app-notice-msg');
+  if (!toast) return;
+
+  if (titleEl) titleEl.textContent = title || 'Submission Already Pending';
+  if (msgEl) msgEl.textContent = message || '';
+
+  toast.style.display = 'flex';
+  void toast.offsetWidth;
+
+  if (appNoticeTimer) clearTimeout(appNoticeTimer);
+
+  setTimeout(() => toast.classList.add('show'), 20);
+
+  if (duration > 0) {
+    appNoticeTimer = setTimeout(() => {
+      closeAppNoticeToast();
+    }, duration);
+  }
+}
+
+export function closeAppNoticeToast() {
+  const toast = document.getElementById('app-notice-toast');
+  if (toast) {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      if (!toast.classList.contains('show')) {
+        toast.style.display = 'none';
+      }
+    }, 400);
+  }
+  if (appNoticeTimer) {
+    clearTimeout(appNoticeTimer);
+    appNoticeTimer = null;
+  }
+}
+
 export function checkSugUnread(force = false) {
   if (!force) {
     try {
@@ -642,4 +683,6 @@ if (typeof window !== 'undefined') {
   window.submitSugModal = submitSugModal;
   window.closeSugToast = closeSugToast;
   window.checkSugUnread = checkSugUnread;
+  window.showAppNoticeToast = showAppNoticeToast;
+  window.closeAppNoticeToast = closeAppNoticeToast;
 }

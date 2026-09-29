@@ -1011,8 +1011,8 @@ html, body {
 .tt-body {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 8px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;

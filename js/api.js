@@ -312,7 +312,10 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `Upload failed: HTTP ${res.status}`);
+      const error = new Error(err.error || `Upload failed: HTTP ${res.status}`);
+      error.status = res.status;
+      error.alreadyPending = Boolean(err.alreadyPending);
+      throw error;
     }
     return res.json();
   },

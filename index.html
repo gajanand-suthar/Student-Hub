@@ -94,25 +94,18 @@
             <!-- Timetable Top Bar -->
             <div class="tt-topbar">
               <div class="tt-topbar-left">
-                <div class="tt-heading" id="tt-day-heading">Today's Classes</div>
-                <div class="tt-subheading" id="tt-date-subheading"></div>
-                <script>
-                  (function() {
-                    try {
-                      var el = document.getElementById('tt-date-subheading');
-                      if (el) el.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                    } catch (e) {}
-                  })();
-                </script>
+                <div class="tt-heading" id="tt-day-heading">Schedule</div>
               </div>
               <div class="tt-topbar-right">
-                <div class="tt-batch-dropdown-wrap" id="tt-batch-dropdown-wrap" title="Select your practical/lab batch">
-                  <select id="tt-batch-select" class="tt-batch-select" onchange="onTtBatchChange(this.value)" aria-label="Select Batch">
-                    <option value="All">All Batches</option>
-                    <option value="A1">Batch A1</option>
-                    <option value="A2">Batch A2</option>
-                    <option value="A3">Batch A3</option>
-                  </select>
+                <div class="sem-dropdown tt-batch-dropdown" id="tt-batch-dropdown">
+                  <div class="sem-backdrop" onclick="closeTtBatchDropdown()"></div>
+                  <div class="sem-trigger" onclick="toggleTtBatchDropdown()">
+                    <span class="sem-trigger-label" id="tt-batch-trigger-label">Batch A1</span>
+                    <span class="sem-trigger-chevron">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                  </div>
+                  <div class="sem-menu" id="tt-batch-menu"></div>
                 </div>
                 <button type="button" class="tt-action-btn tt-icon-btn" id="btn-tt-edit" onclick="openTtUploadModal('edit')" title="Timetable incorrect? Suggest an edit" aria-label="Suggest edit" style="display: none;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

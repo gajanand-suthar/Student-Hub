@@ -1277,45 +1277,61 @@ export function extractAvailableBatches(timetable) {
   return Array.from(batches).sort();
 }
 
-export function updateTtBatchDropdownUI(timetable) {
-  const select = document.getElementById('tt-batch-select');
-  if (!select) return;
-
-  const currentBatch = getUserLabBatch();
-  const available = extractAvailableBatches(timetable);
-
-  let html = `<option value="All">All Batches</option>`;
-  available.forEach(b => {
-    html += `<option value="${b}">Batch ${b}</option>`;
-  });
-  select.innerHTML = html;
-
-  if (currentBatch === 'ALL' || currentBatch === 'All') {
-    select.value = 'All';
-  } else if (available.includes(currentBatch)) {
-    select.value = currentBatch;
-  } else if (available.length > 0) {
-    select.value = available[0];
-    setUserLabBatch(available[0]);
-  }
+export function toggleTtBatchDropdown() {
+  const dd = document.getElementById('tt-batch-dropdown');
+  if (dd) dd.classList.toggle('open');
 }
 
-export function onTtBatchChange(newBatch) {
-  setUserLabBatch(newBatch);
+export function closeTtBatchDropdown() {
+  const dd = document.getElementById('tt-batch-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+export function pickTtBatch(batch) {
+  setUserLabBatch(batch);
+  closeTtBatchDropdown();
+  const label = document.getElementById('tt-batch-trigger-label');
+  if (label) {
+    label.textContent = (batch === 'ALL' || batch === 'All') ? 'All Batches' : ('Batch ' + batch);
+  }
   if (currentTimetableData) {
     renderTodaySchedule(currentTimetableData, currentTtDay);
   }
 }
 
+export const onTtBatchChange = pickTtBatch;
+
+export function updateTtBatchDropdownUI(timetable) {
+  const menu = document.getElementById('tt-batch-menu');
+  const label = document.getElementById('tt-batch-trigger-label');
+  if (!menu) return;
+
+  const currentBatch = getUserLabBatch();
+  const available = extractAvailableBatches(timetable);
+
+  let activeBatch = currentBatch;
+  if (activeBatch !== 'ALL' && activeBatch !== 'All' && !available.includes(activeBatch) && available.length > 0) {
+    activeBatch = available[0];
+    setUserLabBatch(activeBatch);
+  }
+
+  let html = `<button type="button" class="sem-option ${(activeBatch === 'All' || activeBatch === 'ALL') ? 'active' : ''}" onclick="pickTtBatch('All')">All Batches</button>`;
+  available.forEach(b => {
+    const isAct = (activeBatch === b);
+    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}')">Batch ${b}</button>`;
+  });
+  menu.innerHTML = html;
+
+  const displayBatch = (activeBatch === 'ALL' || activeBatch === 'All') ? 'All Batches' : ('Batch ' + activeBatch);
+  if (label) label.textContent = displayBatch;
+}
+
 export async function initTimetable() {
   const heading = document.getElementById('tt-day-heading');
-  const subheading = document.getElementById('tt-date-subheading');
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  if (heading) heading.textContent = "Today's Classes";
-  if (subheading) subheading.textContent = dateStr;
+  if (heading) heading.textContent = "Schedule";
 
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
   const todayIdx = now.getDay();
   currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
 
@@ -1583,7 +1599,6 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
       <div class="tt-slot-content">
         <div class="tt-slot-title-row">
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-          ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
         </div>
         <div class="tt-slot-meta">
           ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
@@ -1619,16 +1634,11 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
       <div class="tt-slot-time">
         <div class="tt-time-start">${pA.labelStart}</div>
         <div class="tt-time-end">${pB.labelEnd}</div>
-        <div class="tt-time-duration">2 hrs</div>
       </div>
       <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
       <div class="tt-slot-content">
         <div class="tt-slot-title-row">
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-          <div class="tt-slot-tags">
-            ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
-            <span class="tt-slot-tag tt-tag-2hr">2 Hours</span>
-          </div>
         </div>
         <div class="tt-slot-meta">
           ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
@@ -1642,33 +1652,13 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
 export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   const container = document.getElementById('tt-schedule-body');
   const heading = document.getElementById('tt-day-heading');
-  const subheading = document.getElementById('tt-date-subheading');
   const editBtn = document.getElementById('btn-tt-edit');
   if (editBtn) editBtn.style.display = 'inline-flex';
 
   if (!container) return;
 
-  const now = new Date();
-  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const isViewingToday = (dayName === daysOfWeek[now.getDay()]);
-  const dayDisplayNames = {
-    monday: 'Monday',
-    tuesday: 'Tuesday',
-    wednesday: 'Wednesday',
-    thursday: 'Thursday',
-    friday: 'Friday',
-    saturday: 'Saturday',
-    sunday: 'Sunday'
-  };
-
   if (heading) {
-    heading.textContent = isViewingToday ? "Today's Classes" : (dayDisplayNames[dayName] || dayName);
-  }
-  if (subheading) {
-    const options = { weekday: 'short', month: 'short', day: 'numeric' };
-    subheading.textContent = isViewingToday
-      ? now.toLocaleDateString('en-US', options)
-      : (timetable?.metadata ? `${timetable.metadata.branch || ''} Sem ${timetable.metadata.semester || ''} (${timetable.metadata.section || ''})` : '');
+    heading.textContent = "Schedule";
   }
 
   // Sunday holiday check
@@ -1719,16 +1709,15 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     const canMerge = hasClassA && hasClassB && (
       (classA.rawSlot && classB.rawSlot && classA.rawSlot === classB.rawSlot) ||
       (
+        Boolean(cleanCourseCode(classA.code)) &&
         cleanCourseCode(classA.code) === cleanCourseCode(classB.code) &&
-        cleanBatch(classA.batch) === cleanBatch(classB.batch) &&
-        (
-          classA.isLab || classB.isLab ||
-          (classA.code || '').toLowerCase().includes('lab') ||
-          (classA.name || '').toLowerCase().includes('lab') ||
-          (classA.code || '').toLowerCase().includes('tutorial') ||
-          (classA.name || '').toLowerCase().includes('tutorial') ||
-          (classB.code || '').toLowerCase().includes('tutorial')
-        )
+        cleanBatch(classA.batch) === cleanBatch(classB.batch)
+      ) ||
+      (
+        !classA.code && !classB.code &&
+        classA.name && classB.name &&
+        classA.name.trim().toLowerCase() === classB.name.trim().toLowerCase() &&
+        cleanBatch(classA.batch) === cleanBatch(classB.batch)
       )
     );
 
@@ -1747,14 +1736,9 @@ function showEmptyTimetable(params) {
   const container = document.getElementById('tt-schedule-body');
   const editBtn = document.getElementById('btn-tt-edit');
   const heading = document.getElementById('tt-day-heading');
-  const subheading = document.getElementById('tt-date-subheading');
   if (editBtn) editBtn.style.display = 'none';
 
-  if (heading) heading.textContent = "Today's Classes";
-  if (subheading) {
-    const now = new Date();
-    subheading.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
+  if (heading) heading.textContent = "Schedule";
 
   if (!container) return;
 
@@ -2165,6 +2149,9 @@ if (typeof window !== 'undefined') {
   window.handleTtFileChange = handleTtFileChange;
   window.updateCalendarLayout = updateCalendarLayout;
   window.onTtBatchChange = onTtBatchChange;
+  window.toggleTtBatchDropdown = toggleTtBatchDropdown;
+  window.closeTtBatchDropdown = closeTtBatchDropdown;
+  window.pickTtBatch = pickTtBatch;
   window.getUserLabBatch = getUserLabBatch;
   window.setUserLabBatch = setUserLabBatch;
 

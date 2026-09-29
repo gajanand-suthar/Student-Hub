@@ -1277,29 +1277,73 @@ export function extractAvailableBatches(timetable) {
   return Array.from(batches).sort();
 }
 
-export function toggleTtBatchDropdown() {
-  const dd = document.getElementById('tt-batch-dropdown');
-  if (dd) dd.classList.toggle('open');
+export function toggleTtBatchDropdown(triggerEl, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const dd = triggerEl ? triggerEl.closest('.sem-dropdown') : document.getElementById('tt-batch-dropdown');
+  if (!dd) return;
+  const wasOpen = dd.classList.contains('open');
+  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) {
+    dd.classList.add('open');
+  }
 }
 
-export function closeTtBatchDropdown() {
-  const dd = document.getElementById('tt-batch-dropdown');
-  if (dd) dd.classList.remove('open');
+export function closeTtBatchDropdown(event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => d.classList.remove('open'));
 }
 
-export function pickTtBatch(batch) {
+export function pickTtBatch(batch, event) {
+  if (event) {
+    event.stopPropagation();
+  }
   setUserLabBatch(batch);
   closeTtBatchDropdown();
-  const label = document.getElementById('tt-batch-trigger-label');
-  if (label) {
-    label.textContent = (batch === 'ALL' || batch === 'All') ? 'All Batches' : ('Batch ' + batch);
-  }
   if (currentTimetableData) {
     renderTodaySchedule(currentTimetableData, currentTtDay);
   }
 }
 
 export const onTtBatchChange = pickTtBatch;
+
+export function buildBatchDropdownHtml(timetable, selectedBatch) {
+  const available = extractAvailableBatches(timetable);
+  const activeBatch = selectedBatch || getUserLabBatch();
+  const cleanActive = cleanBatch(activeBatch);
+  const isAllActive = (!cleanActive || cleanActive === 'ALL' || cleanActive === 'ALLBATCHES');
+
+  const displayLabel = isAllActive ? 'All Batches' : ('Batch ' + cleanActive);
+
+  let optionsHtml = `<button type="button" class="sem-option ${isAllActive ? 'active' : ''}" onclick="pickTtBatch('All', event)">All Batches</button>`;
+
+  available.forEach(b => {
+    const cleanB = cleanBatch(b);
+    const isAct = (!isAllActive && cleanActive === cleanB);
+    optionsHtml += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}', event)">Batch ${b}</button>`;
+  });
+
+  return `
+    <div class="tt-slot-actions">
+      <div class="sem-dropdown tt-batch-dropdown">
+        <div class="sem-backdrop" onclick="closeTtBatchDropdown(event)"></div>
+        <div class="sem-trigger" onclick="toggleTtBatchDropdown(this, event)">
+          <span class="sem-trigger-label">${escHtml(displayLabel)}</span>
+          <span class="sem-trigger-chevron">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </div>
+        <div class="sem-menu">
+          ${optionsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 export function updateTtBatchDropdownUI(timetable) {
   const menu = document.getElementById('tt-batch-menu');
@@ -1308,21 +1352,17 @@ export function updateTtBatchDropdownUI(timetable) {
 
   const currentBatch = getUserLabBatch();
   const available = extractAvailableBatches(timetable);
+  const cleanActive = cleanBatch(currentBatch);
+  const isAllActive = (!cleanActive || cleanActive === 'ALL' || cleanActive === 'ALLBATCHES');
 
-  let activeBatch = currentBatch;
-  if (activeBatch !== 'ALL' && activeBatch !== 'All' && !available.includes(activeBatch) && available.length > 0) {
-    activeBatch = available[0];
-    setUserLabBatch(activeBatch);
-  }
-
-  let html = `<button type="button" class="sem-option ${(activeBatch === 'All' || activeBatch === 'ALL') ? 'active' : ''}" onclick="pickTtBatch('All')">All Batches</button>`;
+  let html = `<button type="button" class="sem-option ${isAllActive ? 'active' : ''}" onclick="pickTtBatch('All', event)">All Batches</button>`;
   available.forEach(b => {
-    const isAct = (activeBatch === b);
-    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}')">Batch ${b}</button>`;
+    const isAct = (!isAllActive && cleanActive === cleanBatch(b));
+    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}', event)">Batch ${b}</button>`;
   });
   menu.innerHTML = html;
 
-  const displayBatch = (activeBatch === 'ALL' || activeBatch === 'All') ? 'All Batches' : ('Batch ' + activeBatch);
+  const displayBatch = isAllActive ? 'All Batches' : ('Batch ' + cleanActive);
   if (label) label.textContent = displayBatch;
 }
 
@@ -1414,7 +1454,12 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
   const cleanSelectedBatch = cleanBatch(selectedBatch);
 
   for (const s of rawDaySchedule) {
-    if (!s || s.type === 'break' || s.isBreak) continue;
+    if (!s || s.type === 'break' || s.isBreak || s.type === 'free') continue;
+    const codeClean = (s.code || '').trim().toLowerCase();
+    const nameClean = (s.name || s.title || '').trim().toLowerCase();
+    if (codeClean === 'free' || codeClean === 'nil' || codeClean === '-' || codeClean === 'na' || codeClean === 'no class') continue;
+    if (nameClean === 'free' || nameClean === 'free period' || nameClean === 'no class' || nameClean === 'nil') continue;
+    if (!codeClean && !nameClean && (!s.options || s.options.length === 0)) continue;
 
     const sStart = parseTimeToMinutes(s.start);
     const sEnd = parseTimeToMinutes(s.end);
@@ -1557,7 +1602,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
   return matchedClass;
 }
 
-function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes, timetable) {
+function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes, timetable, selectedBatch) {
   const isNow = isViewingToday && (nowMinutes >= slotDef.startMin && nowMinutes < slotDef.endMin);
 
   if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
@@ -1590,7 +1635,15 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
   if (!subjectName) subjectName = matchedClass.code || 'Class';
 
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-  const batchLabel = matchedClass.batch ? (matchedClass.batch.startsWith('Batch ') ? matchedClass.batch : `Batch ${matchedClass.batch}`) : '';
+
+  const isLabSlot = Boolean(
+    matchedClass.isLab ||
+    (matchedClass.code || '').toLowerCase().includes('lab') ||
+    (matchedClass.name || '').toLowerCase().includes('lab') ||
+    (matchedClass.rawSlot && (matchedClass.rawSlot.type === 'lab' || (Array.isArray(matchedClass.rawSlot.options) && matchedClass.rawSlot.options.some(o => o.batch))))
+  );
+
+  const dropdownHtml = isLabSlot ? buildBatchDropdownHtml(timetable, selectedBatch) : '';
 
   return `
     <div class="tt-slot ${isNow ? 'is-now' : ''}">
@@ -1605,14 +1658,14 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
         </div>
         <div class="tt-slot-meta">
           ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
-          ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
         </div>
       </div>
+      ${dropdownHtml}
     </div>
   `;
 }
 
-function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, timetable) {
+function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, timetable, selectedBatch) {
   const isNow = isViewingToday && (nowMinutes >= pA.startMin && nowMinutes < pB.endMin);
 
   let subjectName = matchedClass.name || '';
@@ -1630,7 +1683,15 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
   if (!subjectName) subjectName = matchedClass.code || 'Class';
 
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-  const batchLabel = matchedClass.batch ? (matchedClass.batch.startsWith('Batch ') ? matchedClass.batch : `Batch ${matchedClass.batch}`) : '';
+
+  const isLabSlot = Boolean(
+    matchedClass.isLab ||
+    (matchedClass.code || '').toLowerCase().includes('lab') ||
+    (matchedClass.name || '').toLowerCase().includes('lab') ||
+    (matchedClass.rawSlot && (matchedClass.rawSlot.type === 'lab' || (Array.isArray(matchedClass.rawSlot.options) && matchedClass.rawSlot.options.some(o => o.batch))))
+  );
+
+  const dropdownHtml = isLabSlot ? buildBatchDropdownHtml(timetable, selectedBatch) : '';
 
   return `
     <div class="tt-slot is-2hr ${isNow ? 'is-now' : ''}">
@@ -1645,9 +1706,9 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
         </div>
         <div class="tt-slot-meta">
           ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
-          ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
         </div>
       </div>
+      ${dropdownHtml}
     </div>
   `;
 }
@@ -1729,10 +1790,10 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     );
 
     if (canMerge) {
-      html += renderMergedSlotHtml(item.pA, item.pB, classA, isViewingToday, nowMinutes, timetable);
+      html += renderMergedSlotHtml(item.pA, item.pB, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
     } else {
-      html += renderSingleSlotHtml(item.pA, classA, isViewingToday, nowMinutes, timetable);
-      html += renderSingleSlotHtml(item.pB, classB, isViewingToday, nowMinutes, timetable);
+      html += renderSingleSlotHtml(item.pA, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
+      html += renderSingleSlotHtml(item.pB, classB, isViewingToday, nowMinutes, timetable, selectedBatch);
     }
   });
 
@@ -2159,6 +2220,7 @@ if (typeof window !== 'undefined') {
   window.toggleTtBatchDropdown = toggleTtBatchDropdown;
   window.closeTtBatchDropdown = closeTtBatchDropdown;
   window.pickTtBatch = pickTtBatch;
+  window.buildBatchDropdownHtml = buildBatchDropdownHtml;
   window.getUserLabBatch = getUserLabBatch;
   window.setUserLabBatch = setUserLabBatch;
 

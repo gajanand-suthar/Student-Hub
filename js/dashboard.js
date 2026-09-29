@@ -415,6 +415,12 @@ export async function obNext() {
 
       try {
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+        if (res.student.attendance && Array.isArray(res.student.attendance)) {
+          const enrolledCodes = res.student.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
+          if (enrolledCodes.length > 0) {
+            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+          }
+        }
       } catch (err) {}
 
       // Store verified credentials
@@ -980,7 +986,6 @@ let currentHomeSection = 'timetable';
 let currentTtDay = 'monday';
 let currentTimetableData = null;
 let selectedTtFile = null;
-let isTtWeekViewActive = false;
 
 export function toggleHomeSection(section) {
   const btnCalendar = document.getElementById('btn-toggle-calendar');
@@ -1069,19 +1074,104 @@ if (typeof document !== 'undefined' && !document._dashToggleBound) {
   });
 }
 
-function getRegisteredCourseCodes() {
+export function getRegisteredCourseCodes() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
+    if (Array.isArray(cached) && cached.length) {
+      return cached.map(c => String(c).toUpperCase().trim()).filter(Boolean);
+    }
+  } catch (e) {}
+
   try {
     const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
     if (session.attendance && Array.isArray(session.attendance)) {
       const codes = session.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
-      if (codes.length) return codes;
+      if (codes.length) {
+        try { localStorage.setItem('nie_registered_courses', JSON.stringify(codes)); } catch (err) {}
+        return codes;
+      }
     }
   } catch (e) {}
-  try {
-    const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
-    if (Array.isArray(cached) && cached.length) return cached;
-  } catch (e) {}
+
   return [];
+}
+
+// Background sync to ensure registered course codes from parents.nie.ac.in attendance are cached
+export async function ensureRegisteredCoursesLoaded() {
+  const current = getRegisteredCourseCodes();
+  if (current.length > 0) return current;
+
+  const creds = loadCreds();
+  if (!creds || !creds.usn || !creds.dob) return [];
+
+  try {
+    await ensureHumanSession();
+    const sessionToken = getSessionToken();
+    const res = await api.login({
+      action: 'login',
+      usn: creds.usn,
+      dob: creds.dob,
+      idType: creds.idType || '1',
+      code: creds.code || '',
+      sessionToken
+    });
+
+    if (res && res.student && Array.isArray(res.student.attendance)) {
+      const codes = res.student.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
+      if (codes.length > 0) {
+        try {
+          localStorage.setItem('nie_registered_courses', JSON.stringify(codes));
+        } catch (e) {}
+        // Trigger live re-render with updated elective choices
+        if (currentTimetableData) {
+          renderTodaySchedule(currentTimetableData, currentTtDay);
+        }
+        return codes;
+      }
+    }
+  } catch (e) {
+    console.warn('Silent registered courses sync skipped:', e.message);
+  }
+  return [];
+}
+
+// Standard NIE period slots with fixed Tea Break and Lunch Break timings
+const FIXED_DAY_SLOTS = [
+  { id: 'p1', type: 'period', num: 1, startMin: 540, endMin: 600, labelStart: '09:00', labelEnd: '10:00' },
+  { id: 'p2', type: 'period', num: 2, startMin: 600, endMin: 660, labelStart: '10:00', labelEnd: '11:00' },
+  { id: 'b1', type: 'break', name: 'Tea Break', icon: '☕', startMin: 660, endMin: 690, labelStart: '11:00', labelEnd: '11:30' },
+  { id: 'p3', type: 'period', num: 3, startMin: 690, endMin: 750, labelStart: '11:30', labelEnd: '12:30' },
+  { id: 'p4', type: 'period', num: 4, startMin: 750, endMin: 810, labelStart: '12:30', labelEnd: '01:30' },
+  { id: 'b2', type: 'break', name: 'Lunch Break', icon: '🍱', startMin: 810, endMin: 870, labelStart: '01:30', labelEnd: '02:30' },
+  { id: 'p5', type: 'period', num: 5, startMin: 870, endMin: 930, labelStart: '02:30', labelEnd: '03:30' },
+  { id: 'p6', type: 'period', num: 6, startMin: 930, endMin: 990, labelStart: '03:30', labelEnd: '04:30' }
+];
+
+function parseTimeToMinutes(t) {
+  if (!t) return -1;
+  const parts = String(t).trim().split(':');
+  let h = parseInt(parts[0], 10);
+  let m = parts[1] ? parseInt(parts[1], 10) : 0;
+  if (isNaN(h)) return -1;
+  if (isNaN(m)) m = 0;
+  // Convert 12h PM times (01:00 to 05:00) to 24h
+  if (h >= 1 && h <= 5) h += 12;
+  return h * 60 + m;
+}
+
+function cleanCourseCode(str) {
+  return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function matchesRegisteredCourse(candidateStr, regCodes) {
+  if (!candidateStr) return false;
+  if (!regCodes || !regCodes.length) return true; // allow fallback if no reg codes loaded yet
+  const candNorm = cleanCourseCode(candidateStr);
+  if (!candNorm) return false;
+  return regCodes.some(rc => {
+    const rcNorm = cleanCourseCode(rc);
+    return rcNorm && (candNorm.includes(rcNorm) || rcNorm.includes(candNorm));
+  });
 }
 
 function getStudentTimetableParams() {
@@ -1136,8 +1226,8 @@ export async function initTimetable() {
   const subheading = document.getElementById('tt-date-subheading');
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  if (heading && !isTtWeekViewActive) heading.textContent = "Today's Classes";
-  if (subheading && !isTtWeekViewActive) subheading.textContent = dateStr;
+  if (heading) heading.textContent = "Today's Classes";
+  if (subheading) subheading.textContent = dateStr;
 
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const todayIdx = now.getDay();
@@ -1145,11 +1235,10 @@ export async function initTimetable() {
 
   updateTtDayNavUI();
 
+  // Ensure course codes from parents.nie.ac.in attendance are loaded in background
+  ensureRegisteredCoursesLoaded();
+
   const params = getStudentTimetableParams();
-  const badgeEl = document.getElementById('tt-section-badge');
-  if (badgeEl) {
-    badgeEl.textContent = `${params.branch} • Sem ${params.semester} (${params.section})`;
-  }
 
   // Pre-populate upload modal inputs
   const upBranch = document.getElementById('tt-up-branch');
@@ -1223,10 +1312,18 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   const now = new Date();
   const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const isViewingToday = (dayName === daysOfWeek[now.getDay()]);
-  const dayDisplayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday' };
+  const dayDisplayNames = {
+    monday: 'Monday',
+    tuesday: 'Tuesday',
+    wednesday: 'Wednesday',
+    thursday: 'Thursday',
+    friday: 'Friday',
+    saturday: 'Saturday',
+    sunday: 'Sunday'
+  };
 
   if (heading) {
-    heading.textContent = isViewingToday ? "Today's Classes" : dayDisplayNames[dayName] || dayName;
+    heading.textContent = isViewingToday ? "Today's Classes" : (dayDisplayNames[dayName] || dayName);
   }
   if (subheading) {
     const options = { weekday: 'short', month: 'short', day: 'numeric' };
@@ -1235,72 +1332,155 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       : (timetable?.metadata ? `${timetable.metadata.branch || ''} Sem ${timetable.metadata.semester || ''} (${timetable.metadata.section || ''})` : '');
   }
 
-  const schedule = timetable?.schedule?.[dayName] || [];
-  if (!schedule.length) {
+  // Sunday holiday check
+  if (dayName === 'sunday') {
     container.innerHTML = `
       <div class="tt-empty">
         <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
-        <div class="tt-empty-title">${isViewingToday ? 'No Classes Today' : 'No Classes'}</div>
-        <div class="tt-empty-desc">${isViewingToday ? 'Enjoy your day off!' : 'No classes scheduled for this day.'}</div>
+        <div class="tt-empty-title">Sunday • Holiday</div>
+        <div class="tt-empty-desc">No classes scheduled on Sundays. Tap Mon–Sat above to view your schedule.</div>
       </div>
     `;
     return;
   }
 
+  const rawDaySchedule = timetable?.schedule?.[dayName] || [];
   const regCodes = getRegisteredCourseCodes();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   let html = '';
 
-  schedule.forEach(slot => {
-    // Skip breaks
-    if (slot.type === 'break' || slot.isBreak) {
-      const breakName = slot.name || (slot.start === '13:30' ? 'Lunch Break' : 'Tea Break');
-      const icon = breakName.toLowerCase().includes('lunch') ? '🍱' : '☕';
+  // Render each fixed slot in standard sequence
+  FIXED_DAY_SLOTS.forEach(slotDef => {
+    // 1. Fixed Breaks (Tea Break 11:00-11:30 and Lunch Break 01:30-02:30)
+    if (slotDef.type === 'break') {
       html += `
         <div class="tt-break-slot">
-          <span>${icon}</span>
-          <span>${escHtml(breakName)} (${slot.start} – ${slot.end})</span>
+          <span>${slotDef.icon}</span>
+          <span>${escHtml(slotDef.name)} (${slotDef.labelStart} – ${slotDef.labelEnd})</span>
         </div>
       `;
       return;
     }
 
-    // Skip free slots
-    if (slot.type === 'free' && !slot.code) return;
+    // 2. Academic Period Slots (Periods 1 to 6)
+    // Find matching class from timetable schedule for this period
+    let matchedClass = null;
 
-    // Resolve elective — only show student's registered option
-    let displayCode = slot.code || '';
-    let displayFaculty = slot.faculty || '';
-    let isElective = (slot.type === 'elective');
-    let skipSlot = false;
+    for (const s of rawDaySchedule) {
+      if (!s || s.type === 'break' || s.isBreak) continue;
 
-    if (slot.options && slot.options.length > 0) {
-      isElective = true;
-      if (regCodes.length > 0) {
-        const matched = slot.options.find(opt => regCodes.includes((opt.code || '').toUpperCase().trim()));
-        if (matched) {
-          // Student has this elective — show only theirs
-          displayCode = matched.code;
-          if (matched.faculty) displayFaculty = matched.faculty;
+      const sStart = parseTimeToMinutes(s.start);
+      const sEnd = parseTimeToMinutes(s.end);
+      if (sStart < 0 || sEnd < 0) continue;
+
+      // Check if slot overlaps with this period
+      if (sStart < slotDef.endMin && sEnd > slotDef.startMin) {
+        // Resolve elective options against registered courses
+        if (s.options && Array.isArray(s.options) && s.options.length > 0) {
+          if (regCodes.length > 0) {
+            const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
+            if (matchedOpt) {
+              matchedClass = {
+                code: matchedOpt.code,
+                faculty: matchedOpt.faculty || s.faculty || '',
+                batch: s.batch || '',
+                isLab: s.type === 'lab',
+                name: s.name || ''
+              };
+              break;
+            }
+          } else {
+            // No course codes registered yet: show all options as fallback
+            matchedClass = {
+              code: s.options.map(o => o.code).filter(Boolean).join(' / '),
+              faculty: s.options.map(o => o.faculty).filter(Boolean).join(' / '),
+              batch: s.batch || '',
+              isLab: s.type === 'lab',
+              name: s.name || ''
+            };
+            break;
+          }
+        } else if (s.code && s.code.includes('/')) {
+          // Multiple codes separated by '/'
+          const parts = s.code.split('/');
+          if (regCodes.length > 0) {
+            const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
+            if (matchedPart) {
+              const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
+              matchedClass = {
+                code: m ? m[1] : matchedPart.trim(),
+                faculty: m && m[2] ? m[2].trim() : (s.faculty || ''),
+                batch: s.batch || '',
+                isLab: s.type === 'lab',
+                name: s.name || ''
+              };
+              break;
+            }
+          } else {
+            matchedClass = {
+              code: s.code,
+              faculty: s.faculty || '',
+              batch: s.batch || '',
+              isLab: s.type === 'lab',
+              name: s.name || ''
+            };
+            break;
+          }
         } else {
-          // Student doesn't have ANY of these electives — skip this slot entirely
-          skipSlot = true;
+          // Single course code
+          if (regCodes.length > 0) {
+            // Check if this course is registered for the student
+            if (matchesRegisteredCourse(s.code, regCodes)) {
+              matchedClass = {
+                code: s.code,
+                faculty: s.faculty || '',
+                batch: s.batch || '',
+                isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
+                name: s.name || ''
+              };
+              break;
+            }
+          } else {
+            matchedClass = {
+              code: s.code,
+              faculty: s.faculty || '',
+              batch: s.batch || '',
+              isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
+              name: s.name || ''
+            };
+            break;
+          }
         }
-      } else {
-        // No registered courses data — show all options as fallback
-        displayCode = slot.options.map(o => o.code).filter(Boolean).join(' / ');
-        displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join(' / ');
       }
     }
 
-    if (skipSlot) return;
+    // Past slot calculation
+    const isPast = isViewingToday && (nowMinutes >= slotDef.endMin);
 
-    // Resolve subject name from subjects table
-    let subjectName = slot.name || '';
+    // If no period is scheduled, or student didn't opt for the elective: keep slot empty
+    if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
+      html += `
+        <div class="tt-slot is-empty ${isPast ? 'is-past' : ''}">
+          <div class="tt-slot-time">
+            <div class="tt-time-start">${slotDef.labelStart}</div>
+            <div class="tt-time-end">${slotDef.labelEnd}</div>
+          </div>
+          <div class="tt-slot-divider"></div>
+          <div class="tt-slot-content">
+            <div class="tt-slot-empty-label">No class scheduled</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Resolve clean subject title from subjects table
+    let subjectName = matchedClass.name || '';
+    let displayFaculty = matchedClass.faculty || '';
     if (!subjectName && timetable.subjects && Array.isArray(timetable.subjects)) {
-      const primaryCode = (displayCode || '').split('/')[0].trim();
-      const sub = timetable.subjects.find(s => (s.code || '').toUpperCase() === primaryCode.toUpperCase());
+      const primaryCode = (matchedClass.code || '').split('/')[0].trim();
+      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
       if (sub) {
         subjectName = sub.name || sub.title || '';
         if (!displayFaculty && (sub.faculty || sub.initials)) {
@@ -1308,40 +1488,23 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
         }
       }
     }
-    if (!subjectName) subjectName = displayCode || 'Class';
+    if (!subjectName) subjectName = matchedClass.code || 'Class';
 
-    // Clean up subject name — remove parenthetical category suffixes like "(IPCC)", "(HSMS)" for cleaner display
-    const cleanName = subjectName.replace(/\s*\([A-Z]{2,6}\)\s*$/, '').trim();
-
-    // Timing
-    let isNow = false;
-    let isPast = false;
-    if (slot.start && slot.end && isViewingToday) {
-      const [sh, sm] = slot.start.split(':').map(Number);
-      const [eh, em] = slot.end.split(':').map(Number);
-      const startMin = sh * 60 + sm;
-      const endMin = eh * 60 + em;
-      if (nowMinutes >= startMin && nowMinutes < endMin) isNow = true;
-      else if (nowMinutes >= endMin) isPast = true;
-    }
-
-    const isLab = (slot.type === 'lab');
-    const batchLabel = slot.batch ? slot.batch : '';
+    // Remove category suffixes like (IPCC), (HSMS), (PEC-I), (PCC), (AEC), (MC)
+    const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
+    const batchLabel = matchedClass.batch ? matchedClass.batch : '';
 
     html += `
-      <div class="tt-slot ${isNow ? 'is-now' : ''} ${isPast ? 'is-past' : ''}">
+      <div class="tt-slot ${isPast ? 'is-past' : ''}">
         <div class="tt-slot-time">
-          <div class="tt-time-start">${escHtml(slot.start || '')}</div>
-          <div class="tt-time-end">${escHtml(slot.end || '')}</div>
+          <div class="tt-time-start">${slotDef.labelStart}</div>
+          <div class="tt-time-end">${slotDef.labelEnd}</div>
         </div>
-        <div class="tt-slot-divider">
-          ${isNow ? '<div class="tt-now-dot"></div>' : ''}
-        </div>
+        <div class="tt-slot-divider"></div>
         <div class="tt-slot-content">
           <div class="tt-slot-title-row">
             <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-            ${isNow ? '<span class="tt-slot-tag tt-tag-now">NOW</span>' : ''}
-            ${!isNow && isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
+            ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
           </div>
           <div class="tt-slot-meta">
             ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
@@ -1352,16 +1515,6 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     `;
   });
 
-  if (!html.trim()) {
-    html = `
-      <div class="tt-empty">
-        <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
-        <div class="tt-empty-title">${isViewingToday ? 'No Classes Today' : 'No Classes'}</div>
-        <div class="tt-empty-desc">No relevant classes for you on this day.</div>
-      </div>
-    `;
-  }
-
   container.innerHTML = html;
 }
 
@@ -1371,11 +1524,6 @@ function showEmptyTimetable(params) {
   const heading = document.getElementById('tt-day-heading');
   const subheading = document.getElementById('tt-date-subheading');
   if (editBtn) editBtn.style.display = 'none';
-
-  if (isTtWeekViewActive) {
-    isTtWeekViewActive = false;
-    updateTtSubView();
-  }
 
   if (heading) heading.textContent = "Today's Classes";
   if (subheading) {
@@ -1530,196 +1678,6 @@ export async function submitTimetableUpload(e) {
       btn.style.borderColor = '';
       btn.style.color = '';
     }
-  }
-}
-
-export function toggleTtWeekView() {
-  isTtWeekViewActive = !isTtWeekViewActive;
-  updateTtSubView();
-}
-
-export function updateTtSubView() {
-  const scheduleBody = document.getElementById('tt-schedule-body');
-  const weekBody = document.getElementById('tt-week-body');
-  const weekBtn = document.getElementById('btn-tt-week');
-  const weekBtnText = document.getElementById('tt-week-btn-text');
-  const heading = document.getElementById('tt-day-heading');
-  const subheading = document.getElementById('tt-date-subheading');
-
-  if (isTtWeekViewActive) {
-    if (scheduleBody) {
-      scheduleBody.style.display = 'none';
-      scheduleBody.classList.remove('active');
-    }
-    if (weekBody) {
-      weekBody.style.display = 'flex';
-      weekBody.classList.add('active');
-    }
-    if (weekBtn) weekBtn.classList.add('is-active');
-    if (weekBtnText) weekBtnText.textContent = 'Today';
-    if (heading) heading.textContent = 'Weekly Schedule';
-    if (subheading) {
-      if (currentTimetableData?.metadata) {
-        const m = currentTimetableData.metadata;
-        subheading.textContent = `${m.branch || ''} Sem ${m.semester || ''} (${m.section || ''})${m.roomNo ? ' • Room ' + m.roomNo : ''}`;
-      } else {
-        const p = getStudentTimetableParams();
-        subheading.textContent = `${p.branch} Sem ${p.semester} (${p.section})`;
-      }
-    }
-    renderWeekScheduleInline();
-  } else {
-    if (weekBody) {
-      weekBody.style.display = 'none';
-      weekBody.classList.remove('active');
-    }
-    if (scheduleBody) {
-      scheduleBody.style.display = 'flex';
-      scheduleBody.classList.add('active');
-    }
-    if (weekBtn) weekBtn.classList.remove('is-active');
-    if (weekBtnText) weekBtnText.textContent = 'Week';
-    if (heading) heading.textContent = "Today's Classes";
-    if (subheading) {
-      const now = new Date();
-      subheading.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    }
-    if (currentTimetableData) {
-      renderTodaySchedule(currentTimetableData, currentTtDay);
-    }
-  }
-}
-
-export function renderWeekScheduleInline() {
-  const wrap = document.getElementById('tt-week-table-wrap');
-  if (!wrap) return;
-
-  const data = currentTimetableData;
-  if (!data || !data.schedule) {
-    wrap.innerHTML = `
-      <div class="tt-empty">
-        <div class="tt-empty-title">Timetable Not Available Yet</div>
-        <div class="tt-empty-desc">We don't have the timetable for your section yet. Help your classmates out by uploading a copy!</div>
-        <button type="button" class="tt-empty-btn" onclick="openTtUploadModal('upload')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          <span>Upload Timetable</span>
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayLabels = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' };
-  const todayDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
-  const regCodes = getRegisteredCourseCodes();
-
-  // Helper: resolve a slot to clean display data
-  function resolveSlot(slot) {
-    if (!slot || slot.type === 'break' || slot.type === 'free') return null;
-
-    let code = slot.code || '';
-    let faculty = slot.faculty || '';
-    let batch = slot.batch || '';
-    let isLab = (slot.type === 'lab');
-    let isElective = (slot.type === 'elective');
-    let skip = false;
-
-    // Resolve elective
-    if (slot.options && slot.options.length > 0) {
-      isElective = true;
-      if (regCodes.length > 0) {
-        const matched = slot.options.find(o => regCodes.includes((o.code || '').toUpperCase().trim()));
-        if (matched) {
-          code = matched.code;
-          if (matched.faculty) faculty = matched.faculty;
-        } else {
-          skip = true; // Student doesn't have this elective
-        }
-      } else {
-        code = slot.options.map(o => o.code).filter(Boolean).join('/');
-        faculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
-      }
-    }
-
-    if (skip) return null;
-
-    // Resolve subject name
-    let name = slot.name || '';
-    if (!name && data.subjects && Array.isArray(data.subjects)) {
-      const primaryCode = (code || '').split('/')[0].trim();
-      const sub = data.subjects.find(s => (s.code || '').toUpperCase() === primaryCode.toUpperCase());
-      if (sub) {
-        name = sub.name || sub.title || '';
-        if (!faculty && (sub.faculty || sub.initials)) faculty = sub.faculty || sub.initials;
-      }
-    }
-    if (!name) name = code || '';
-
-    // Clean name
-    name = name.replace(/\s*\([A-Z]{2,6}\)\s*$/, '').trim();
-
-    return { name, faculty, batch, isLab, isElective, code };
-  }
-
-  let html = '<div class="tt-week-rows">';
-
-  days.forEach(day => {
-    const slots = data.schedule[day] || [];
-    const isToday = (day === todayDayName);
-    const resolvedSlots = slots.map(s => ({ ...s, resolved: resolveSlot(s) })).filter(s => s.resolved || s.type === 'break');
-
-    // Skip days with no classes at all
-    const hasClasses = resolvedSlots.some(s => s.resolved);
-
-    html += `
-      <div class="tt-week-day-row ${isToday ? 'is-today' : ''} ${!hasClasses ? 'no-classes' : ''}">
-        <div class="tt-week-day-label">${dayLabels[day]}${isToday ? '<span class="tt-today-dot"></span>' : ''}</div>
-        <div class="tt-week-day-slots">
-    `;
-
-    if (!hasClasses) {
-      html += `<span class="tt-week-no-class">No classes</span>`;
-    } else {
-      resolvedSlots.forEach(s => {
-        if (s.type === 'break') {
-          // Skip breaks in week view for cleanliness
-          return;
-        }
-        const r = s.resolved;
-        if (!r) return;
-
-        html += `
-          <div class="tt-week-slot-chip ${r.isLab ? 'is-lab' : ''}">
-            <span class="tt-week-slot-name">${escHtml(r.name)}</span>
-            ${r.faculty ? `<span class="tt-week-slot-fac">${escHtml(r.faculty)}</span>` : ''}
-            ${r.batch ? `<span class="tt-week-slot-batch">${escHtml(r.batch)}</span>` : ''}
-          </div>
-        `;
-      });
-    }
-
-    html += `
-        </div>
-      </div>
-    `;
-  });
-
-  html += '</div>';
-  wrap.innerHTML = html;
-}
-
-export function openTtWeekModal() {
-  toggleTtWeekView();
-}
-
-export function closeTtWeekModal() {
-  if (isTtWeekViewActive) {
-    toggleTtWeekView();
   }
 }
 
@@ -1970,12 +1928,14 @@ if (typeof window !== 'undefined') {
   window.openTtUploadModal = openTtUploadModal;
   window.closeTtUploadModal = closeTtUploadModal;
   window.handleTtFileChange = handleTtFileChange;
-  window.submitTimetableUpload = submitTimetableUpload;
-  window.toggleTtWeekView = toggleTtWeekView;
-  window.renderWeekScheduleInline = renderWeekScheduleInline;
-  window.openTtWeekModal = openTtWeekModal;
-  window.closeTtWeekModal = closeTtWeekModal;
   window.updateCalendarLayout = updateCalendarLayout;
+
+  // Listen for course registrations updated by attendance tab
+  window.addEventListener('nie_courses_updated', () => {
+    if (currentTimetableData) {
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    }
+  });
 
   window.addEventListener('resize', updateCalendarLayout);
   if (typeof ResizeObserver !== 'undefined') {

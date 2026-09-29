@@ -693,44 +693,8 @@ html, body {
   to { opacity: 1; }
 }
 
-.tt-week-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  overflow: hidden;
-}
-
-.tt-body.active,
-.tt-week-body.active {
+.tt-body.active {
   animation: dashPanelFade 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.tt-week-table-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-}
-.tt-week-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
-.tt-week-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-.tt-week-table-wrap .tt-empty {
-  flex: 1;
-  min-height: 200px;
-  height: 100%;
-  margin: auto 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
 }
 
 /* Inline Box for Notices & Syllabus */
@@ -881,22 +845,6 @@ html, body {
   stroke: #fff;
 }
 
-#btn-tt-week {
-  min-width: 76px;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-#btn-tt-week svg {
-  flex-shrink: 0;
-}
-
-#tt-week-btn-text {
-  display: inline-block;
-  text-align: center;
-  min-width: 38px;
-}
-
 /* Day Selector Nav */
 .tt-day-nav {
   display: flex;
@@ -939,19 +887,28 @@ html, body {
 }
 
 .tt-day-chip.is-today {
-  position: relative;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--accent);
+  font-weight: 800;
+  border: 1px solid rgba(37, 99, 235, 0.25);
 }
 
-.tt-day-chip.is-today::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+.tt-day-chip.active.is-today {
   background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+[data-theme=dark] .tt-day-chip.is-today {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
+}
+
+[data-theme=dark] .tt-day-chip.active.is-today {
+  background: var(--accent);
+  color: #ffffff;
 }
 
 /* Timetable Slots Body */
@@ -1098,10 +1055,18 @@ html, body {
   flex-shrink: 0;
 }
 
-.tt-tag-now {
-  background: var(--accent);
-  color: #fff;
-  letter-spacing: 0.03em;
+.tt-slot.is-empty {
+  opacity: 0.55;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  box-shadow: none;
+}
+
+.tt-slot-empty-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-style: italic;
 }
 
 .tt-tag-elective {
@@ -1247,112 +1212,6 @@ html, body {
   background: rgba(37, 99, 235, 0.03);
 }
 
-/* Row-Based Week View */
-.tt-week-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 2px;
-}
-
-.tt-week-day-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
-  transition: all 0.15s ease;
-}
-
-.tt-week-day-row.is-today {
-  background: rgba(37, 99, 235, 0.04);
-  border-color: rgba(37, 99, 235, 0.25);
-}
-
-.tt-week-day-row.no-classes {
-  opacity: 0.5;
-}
-
-.tt-week-day-label {
-  min-width: 36px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text);
-  padding-top: 3px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.tt-today-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-
-.tt-week-day-slots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-}
-
-.tt-week-no-class {
-  font-size: 0.74rem;
-  color: var(--muted);
-  font-weight: 600;
-  font-style: italic;
-  padding: 2px 0;
-}
-
-.tt-week-slot-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 0.72rem;
-  transition: all 0.15s ease;
-}
-
-.tt-week-slot-chip.is-lab {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.06);
-}
-
-.tt-week-slot-name {
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
-}
-
-.tt-week-slot-fac {
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.tt-week-slot-batch {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 1px 5px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
 /* Batch pill for day view */
 .tt-batch-pill {
   font-size: 0.68rem;
@@ -1361,87 +1220,6 @@ html, body {
   background: rgba(37, 99, 235, 0.1);
   padding: 1px 6px;
   border-radius: 5px;
-}
-
-/* Legacy week table (keep for backward compat) */
-.tt-week-table {
-  width: 100%;
-  min-width: 560px;
-  border-collapse: separate;
-  border-spacing: 4px;
-  font-size: 0.74rem;
-  flex-shrink: 0;
-}
-
-.tt-week-table th {
-  background: var(--bg);
-  padding: 8px 6px;
-  text-align: center;
-  font-weight: 800;
-  color: var(--text);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.tt-week-table td {
-  vertical-align: top;
-  padding: 4px;
-  background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  min-width: 85px;
-}
-
-.tt-week-table td.is-time-col {
-  font-family: 'DM Mono', monospace;
-  font-weight: 700;
-  color: var(--muted);
-  text-align: center;
-  vertical-align: middle;
-  min-width: 65px;
-  background: var(--surface);
-}
-
-.tt-week-cell-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.tt-week-code {
-  font-weight: 800;
-  color: var(--text);
-  font-size: 0.72rem;
-}
-
-.tt-week-fac {
-  font-size: 0.66rem;
-  color: var(--muted);
-}
-
-.tt-week-table th.is-today-col {
-  color: var(--accent);
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.06);
-}
-
-.tt-week-table td.is-today-col {
-  border-color: rgba(37, 99, 235, 0.2);
-  background: rgba(37, 99, 235, 0.02);
-}
-
-@media (max-width: 480px) {
-  .tt-week-slot-name {
-    max-width: 120px;
-  }
-  .tt-week-day-row {
-    padding: 8px 10px;
-    gap: 8px;
-  }
 }
 
 .nm-scroll-area {

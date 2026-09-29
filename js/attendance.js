@@ -81,6 +81,7 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
         const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
         if (enrolledCodes.length > 0) {
           localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+          window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
         }
       } catch (e) {}
 

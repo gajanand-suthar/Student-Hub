@@ -106,6 +106,14 @@
                 </script>
               </div>
               <div class="tt-topbar-right">
+                <div class="tt-batch-dropdown-wrap" id="tt-batch-dropdown-wrap" title="Select your practical/lab batch">
+                  <select id="tt-batch-select" class="tt-batch-select" onchange="onTtBatchChange(this.value)" aria-label="Select Batch">
+                    <option value="All">All Batches</option>
+                    <option value="A1">Batch A1</option>
+                    <option value="A2">Batch A2</option>
+                    <option value="A3">Batch A3</option>
+                  </select>
+                </div>
                 <button type="button" class="tt-action-btn tt-icon-btn" id="btn-tt-edit" onclick="openTtUploadModal('edit')" title="Timetable incorrect? Suggest an edit" aria-label="Suggest edit" style="display: none;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

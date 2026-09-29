@@ -1221,6 +1221,92 @@ function getStudentTimetableParams() {
   };
 }
 
+export function cleanBatch(b) {
+  if (!b) return '';
+  return String(b).toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+export function getUserLabBatch() {
+  const cached = localStorage.getItem('nie_user_lab_batch');
+  if (cached) return cached.toUpperCase().trim();
+  const params = getStudentTimetableParams();
+  const sec = params.section || 'A';
+  return `${sec}1`;
+}
+
+export function setUserLabBatch(batch) {
+  if (!batch) return;
+  localStorage.setItem('nie_user_lab_batch', batch.trim().toUpperCase());
+}
+
+export function extractAvailableBatches(timetable) {
+  const batches = new Set();
+  const sched = timetable?.schedule || {};
+  Object.values(sched).forEach(dayArr => {
+    if (!Array.isArray(dayArr)) return;
+    dayArr.forEach(s => {
+      if (!s) return;
+      if (s.batch && s.batch.toUpperCase() !== 'ALL') {
+        batches.add(cleanBatch(s.batch));
+      }
+      if (Array.isArray(s.options)) {
+        s.options.forEach(opt => {
+          if (opt.batch && opt.batch.toUpperCase() !== 'ALL') {
+            batches.add(cleanBatch(opt.batch));
+          }
+        });
+      }
+      if (s.code) {
+        const matches = s.code.matchAll(/-(?:Lab-)?([A-Z]\d)-|\b([A-Z]\d)\b/gi);
+        for (const m of matches) {
+          const b = m[1] || m[2];
+          if (b) batches.add(cleanBatch(b));
+        }
+      }
+    });
+  });
+
+  if (batches.size === 0) {
+    const params = getStudentTimetableParams();
+    const sec = params.section || 'A';
+    batches.add(`${sec}1`);
+    batches.add(`${sec}2`);
+    batches.add(`${sec}3`);
+  }
+
+  return Array.from(batches).sort();
+}
+
+export function updateTtBatchDropdownUI(timetable) {
+  const select = document.getElementById('tt-batch-select');
+  if (!select) return;
+
+  const currentBatch = getUserLabBatch();
+  const available = extractAvailableBatches(timetable);
+
+  let html = `<option value="All">All Batches</option>`;
+  available.forEach(b => {
+    html += `<option value="${b}">Batch ${b}</option>`;
+  });
+  select.innerHTML = html;
+
+  if (currentBatch === 'ALL' || currentBatch === 'All') {
+    select.value = 'All';
+  } else if (available.includes(currentBatch)) {
+    select.value = currentBatch;
+  } else if (available.length > 0) {
+    select.value = available[0];
+    setUserLabBatch(available[0]);
+  }
+}
+
+export function onTtBatchChange(newBatch) {
+  setUserLabBatch(newBatch);
+  if (currentTimetableData) {
+    renderTodaySchedule(currentTimetableData, currentTtDay);
+  }
+}
+
 export async function initTimetable() {
   const heading = document.getElementById('tt-day-heading');
   const subheading = document.getElementById('tt-date-subheading');
@@ -1234,6 +1320,7 @@ export async function initTimetable() {
   currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
 
   updateTtDayNavUI();
+  updateTtBatchDropdownUI(currentTimetableData);
 
   // Ensure course codes from parents.nie.ac.in attendance are loaded in background
   ensureRegisteredCoursesLoaded();
@@ -1256,6 +1343,7 @@ export async function initTimetable() {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       currentTimetableData = JSON.parse(cached);
+      updateTtBatchDropdownUI(currentTimetableData);
       renderTodaySchedule(currentTimetableData, currentTtDay);
     }
   } catch (e) {}
@@ -1265,6 +1353,7 @@ export async function initTimetable() {
     const data = await api.getTimetable(params);
     if (data && data.schedule) {
       currentTimetableData = data;
+      updateTtBatchDropdownUI(currentTimetableData);
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data));
       } catch (e) {}
@@ -1298,6 +1387,256 @@ function updateTtDayNavUI() {
     btn.classList.toggle('active', day === currentTtDay);
     btn.classList.toggle('is-today', day === todayDayName);
   });
+}
+
+function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch, timetable) {
+  let matchedClass = null;
+  const isAllBatches = !selectedBatch || selectedBatch === 'ALL' || selectedBatch === 'All';
+  const cleanSelectedBatch = cleanBatch(selectedBatch);
+
+  for (const s of rawDaySchedule) {
+    if (!s || s.type === 'break' || s.isBreak) continue;
+
+    const sStart = parseTimeToMinutes(s.start);
+    const sEnd = parseTimeToMinutes(s.end);
+    if (sStart < 0 || sEnd < 0) continue;
+
+    // Check if slot overlaps with this period
+    if (sStart < slotDef.endMin && sEnd > slotDef.startMin) {
+      // 1. If slot has structured options
+      if (s.options && Array.isArray(s.options) && s.options.length > 0) {
+        // A. Check if options are segregated by lab batch
+        const hasBatchOpts = s.options.some(opt => opt.batch);
+        if (hasBatchOpts && !isAllBatches) {
+          const matchedBatchOpt = s.options.find(opt => cleanBatch(opt.batch) === cleanSelectedBatch);
+          if (matchedBatchOpt) {
+            matchedClass = {
+              code: matchedBatchOpt.code || s.code || '',
+              faculty: matchedBatchOpt.faculty || s.faculty || '',
+              batch: matchedBatchOpt.batch || s.batch || selectedBatch,
+              isLab: true,
+              name: matchedBatchOpt.name || s.name || '',
+              rawSlot: s
+            };
+            break;
+          }
+        }
+
+        // B. Check if options are electives matching registered courses
+        if (regCodes.length > 0) {
+          const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
+          if (matchedOpt) {
+            matchedClass = {
+              code: matchedOpt.code,
+              faculty: matchedOpt.faculty || s.faculty || '',
+              batch: matchedOpt.batch || s.batch || '',
+              isLab: s.type === 'lab' || matchedOpt.type === 'lab',
+              name: matchedOpt.name || s.name || '',
+              rawSlot: s
+            };
+            break;
+          }
+        } else {
+          // No reg codes loaded yet: show all options as fallback
+          matchedClass = {
+            code: s.options.map(o => o.code).filter(Boolean).join(' / '),
+            faculty: s.options.map(o => o.faculty).filter(Boolean).join(' / '),
+            batch: s.batch || '',
+            isLab: s.type === 'lab',
+            name: s.name || '',
+            rawSlot: s
+          };
+          break;
+        }
+      }
+
+      // 2. Check if code has multiple parts / lines with batch or elective markers
+      const rawCode = s.code || '';
+      const parts = rawCode.includes('\n') ? rawCode.split('\n') : (rawCode.includes('/') ? rawCode.split('/') : null);
+      if (parts && parts.length > 1) {
+        // Check if parts contain batches (e.g. Thu 11:30-01:30)
+        if (!isAllBatches) {
+          const matchedPart = parts.find(p => {
+            const bMatch = p.match(/-(?:Lab-)?([A-Z]\d)-|\b([A-Z]\d)\b/i);
+            return bMatch && cleanBatch(bMatch[1] || bMatch[2]) === cleanSelectedBatch;
+          });
+          if (matchedPart) {
+            const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
+            const fac = matchedPart.match(/\(([^)]+)\)$/);
+            matchedClass = {
+              code: m ? m[1] : matchedPart.trim(),
+              faculty: fac ? fac[1].trim() : (s.faculty || ''),
+              batch: selectedBatch,
+              isLab: true,
+              name: s.name || '',
+              rawSlot: s
+            };
+            break;
+          }
+        }
+
+        // Electives check for '/'
+        if (regCodes.length > 0) {
+          const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
+          if (matchedPart) {
+            const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
+            matchedClass = {
+              code: m ? m[1] : matchedPart.trim(),
+              faculty: m && m[2] ? m[2].trim() : (s.faculty || ''),
+              batch: s.batch || '',
+              isLab: s.type === 'lab',
+              name: s.name || '',
+              rawSlot: s
+            };
+            break;
+          }
+        } else {
+          matchedClass = {
+            code: s.code,
+            faculty: s.faculty || '',
+            batch: s.batch || '',
+            isLab: s.type === 'lab',
+            name: s.name || '',
+            rawSlot: s
+          };
+          break;
+        }
+      }
+
+      // 3. Single course slot
+      // If slot has specific batch, verify against student batch
+      if (s.batch && !isAllBatches && cleanBatch(s.batch) !== cleanSelectedBatch) {
+        continue;
+      }
+
+      if (regCodes.length > 0) {
+        if (matchesRegisteredCourse(s.code, regCodes)) {
+          matchedClass = {
+            code: s.code,
+            faculty: s.faculty || '',
+            batch: s.batch || '',
+            isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
+            name: s.name || '',
+            rawSlot: s
+          };
+          break;
+        }
+      } else {
+        matchedClass = {
+          code: s.code,
+          faculty: s.faculty || '',
+          batch: s.batch || '',
+          isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
+          name: s.name || '',
+          rawSlot: s
+        };
+        break;
+      }
+    }
+  }
+
+  return matchedClass;
+}
+
+function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes, timetable) {
+  const isNow = isViewingToday && (nowMinutes >= slotDef.startMin && nowMinutes < slotDef.endMin);
+
+  if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
+    return `
+      <div class="tt-slot is-empty ${isNow ? 'is-now' : ''}">
+        <div class="tt-slot-time">
+          <div class="tt-time-start">${slotDef.labelStart}</div>
+          <div class="tt-time-end">${slotDef.labelEnd}</div>
+        </div>
+        <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
+        <div class="tt-slot-content">
+          <div class="tt-slot-empty-label">No class scheduled</div>
+        </div>
+      </div>
+    `;
+  }
+
+  let subjectName = matchedClass.name || '';
+  let displayFaculty = matchedClass.faculty || '';
+  if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
+    const primaryCode = (matchedClass.code || '').split('/')[0].trim();
+    const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+    if (sub) {
+      subjectName = sub.name || sub.title || '';
+      if (!displayFaculty && (sub.faculty || sub.initials)) {
+        displayFaculty = sub.faculty || sub.initials;
+      }
+    }
+  }
+  if (!subjectName) subjectName = matchedClass.code || 'Class';
+
+  const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
+  const batchLabel = matchedClass.batch ? (matchedClass.batch.startsWith('Batch ') ? matchedClass.batch : `Batch ${matchedClass.batch}`) : '';
+
+  return `
+    <div class="tt-slot ${isNow ? 'is-now' : ''}">
+      <div class="tt-slot-time">
+        <div class="tt-time-start">${slotDef.labelStart}</div>
+        <div class="tt-time-end">${slotDef.labelEnd}</div>
+      </div>
+      <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
+      <div class="tt-slot-content">
+        <div class="tt-slot-title-row">
+          <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
+          ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
+        </div>
+        <div class="tt-slot-meta">
+          ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
+          ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, timetable) {
+  const isNow = isViewingToday && (nowMinutes >= pA.startMin && nowMinutes < pB.endMin);
+
+  let subjectName = matchedClass.name || '';
+  let displayFaculty = matchedClass.faculty || '';
+  if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
+    const primaryCode = (matchedClass.code || '').split('/')[0].trim();
+    const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+    if (sub) {
+      subjectName = sub.name || sub.title || '';
+      if (!displayFaculty && (sub.faculty || sub.initials)) {
+        displayFaculty = sub.faculty || sub.initials;
+      }
+    }
+  }
+  if (!subjectName) subjectName = matchedClass.code || 'Class';
+
+  const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
+  const batchLabel = matchedClass.batch ? (matchedClass.batch.startsWith('Batch ') ? matchedClass.batch : `Batch ${matchedClass.batch}`) : '';
+
+  return `
+    <div class="tt-slot is-2hr ${isNow ? 'is-now' : ''}">
+      <div class="tt-slot-time">
+        <div class="tt-time-start">${pA.labelStart}</div>
+        <div class="tt-time-end">${pB.labelEnd}</div>
+        <div class="tt-time-duration">2 hrs</div>
+      </div>
+      <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
+      <div class="tt-slot-content">
+        <div class="tt-slot-title-row">
+          <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
+          <div class="tt-slot-tags">
+            ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
+            <span class="tt-slot-tag tt-tag-2hr">2 Hours</span>
+          </div>
+        </div>
+        <div class="tt-slot-meta">
+          ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
+          ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export function renderTodaySchedule(timetable, dayName = currentTtDay) {
@@ -1344,16 +1683,23 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     return;
   }
 
+  const selectedBatch = getUserLabBatch();
   const rawDaySchedule = timetable?.schedule?.[dayName] || [];
   const regCodes = getRegisteredCourseCodes();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   let html = '';
 
-  // Render each fixed slot in standard sequence
-  FIXED_DAY_SLOTS.forEach(slotDef => {
-    // 1. Fixed Breaks (rendered as visible breaker divider with simple "Break" label, no emojis or times)
-    if (slotDef.type === 'break') {
+  const schedulePairs = [
+    { pA: FIXED_DAY_SLOTS[0], pB: FIXED_DAY_SLOTS[1] },
+    { break: FIXED_DAY_SLOTS[2] },
+    { pA: FIXED_DAY_SLOTS[3], pB: FIXED_DAY_SLOTS[4] },
+    { break: FIXED_DAY_SLOTS[5] },
+    { pA: FIXED_DAY_SLOTS[6], pB: FIXED_DAY_SLOTS[7] }
+  ];
+
+  schedulePairs.forEach(item => {
+    if (item.break) {
       html += `
         <div class="tt-break-divider" role="separator" aria-label="Break">
           <span class="tt-break-line"></span>
@@ -1364,156 +1710,34 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       return;
     }
 
-    // 2. Academic Period Slots (Periods 1 to 6)
-    // Find matching class from timetable schedule for this period
-    let matchedClass = null;
+    const classA = resolveClassForPeriod(item.pA, rawDaySchedule, regCodes, selectedBatch, timetable);
+    const classB = resolveClassForPeriod(item.pB, rawDaySchedule, regCodes, selectedBatch, timetable);
 
-    for (const s of rawDaySchedule) {
-      if (!s || s.type === 'break' || s.isBreak) continue;
+    const hasClassA = Boolean(classA && (classA.code || classA.name));
+    const hasClassB = Boolean(classB && (classB.code || classB.name));
 
-      const sStart = parseTimeToMinutes(s.start);
-      const sEnd = parseTimeToMinutes(s.end);
-      if (sStart < 0 || sEnd < 0) continue;
+    const canMerge = hasClassA && hasClassB && (
+      (classA.rawSlot && classB.rawSlot && classA.rawSlot === classB.rawSlot) ||
+      (
+        cleanCourseCode(classA.code) === cleanCourseCode(classB.code) &&
+        cleanBatch(classA.batch) === cleanBatch(classB.batch) &&
+        (
+          classA.isLab || classB.isLab ||
+          (classA.code || '').toLowerCase().includes('lab') ||
+          (classA.name || '').toLowerCase().includes('lab') ||
+          (classA.code || '').toLowerCase().includes('tutorial') ||
+          (classA.name || '').toLowerCase().includes('tutorial') ||
+          (classB.code || '').toLowerCase().includes('tutorial')
+        )
+      )
+    );
 
-      // Check if slot overlaps with this period
-      if (sStart < slotDef.endMin && sEnd > slotDef.startMin) {
-        // Resolve elective options against registered courses
-        if (s.options && Array.isArray(s.options) && s.options.length > 0) {
-          if (regCodes.length > 0) {
-            const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
-            if (matchedOpt) {
-              matchedClass = {
-                code: matchedOpt.code,
-                faculty: matchedOpt.faculty || s.faculty || '',
-                batch: s.batch || '',
-                isLab: s.type === 'lab',
-                name: s.name || ''
-              };
-              break;
-            }
-          } else {
-            // No course codes registered yet: show all options as fallback
-            matchedClass = {
-              code: s.options.map(o => o.code).filter(Boolean).join(' / '),
-              faculty: s.options.map(o => o.faculty).filter(Boolean).join(' / '),
-              batch: s.batch || '',
-              isLab: s.type === 'lab',
-              name: s.name || ''
-            };
-            break;
-          }
-        } else if (s.code && s.code.includes('/')) {
-          // Multiple codes separated by '/'
-          const parts = s.code.split('/');
-          if (regCodes.length > 0) {
-            const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
-            if (matchedPart) {
-              const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
-              matchedClass = {
-                code: m ? m[1] : matchedPart.trim(),
-                faculty: m && m[2] ? m[2].trim() : (s.faculty || ''),
-                batch: s.batch || '',
-                isLab: s.type === 'lab',
-                name: s.name || ''
-              };
-              break;
-            }
-          } else {
-            matchedClass = {
-              code: s.code,
-              faculty: s.faculty || '',
-              batch: s.batch || '',
-              isLab: s.type === 'lab',
-              name: s.name || ''
-            };
-            break;
-          }
-        } else {
-          // Single course code
-          if (regCodes.length > 0) {
-            // Check if this course is registered for the student
-            if (matchesRegisteredCourse(s.code, regCodes)) {
-              matchedClass = {
-                code: s.code,
-                faculty: s.faculty || '',
-                batch: s.batch || '',
-                isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
-                name: s.name || ''
-              };
-              break;
-            }
-          } else {
-            matchedClass = {
-              code: s.code,
-              faculty: s.faculty || '',
-              batch: s.batch || '',
-              isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
-              name: s.name || ''
-            };
-            break;
-          }
-        }
-      }
+    if (canMerge) {
+      html += renderMergedSlotHtml(item.pA, item.pB, classA, isViewingToday, nowMinutes, timetable);
+    } else {
+      html += renderSingleSlotHtml(item.pA, classA, isViewingToday, nowMinutes, timetable);
+      html += renderSingleSlotHtml(item.pB, classB, isViewingToday, nowMinutes, timetable);
     }
-
-    // Highlight current class if currently viewing today and time falls within this slot
-    const isNow = isViewingToday && (nowMinutes >= slotDef.startMin && nowMinutes < slotDef.endMin);
-
-    // If no period is scheduled, or student didn't opt for the elective: keep slot empty
-    if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
-      html += `
-        <div class="tt-slot is-empty ${isNow ? 'is-now' : ''}">
-          <div class="tt-slot-time">
-            <div class="tt-time-start">${slotDef.labelStart}</div>
-            <div class="tt-time-end">${slotDef.labelEnd}</div>
-          </div>
-          <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
-          <div class="tt-slot-content">
-            <div class="tt-slot-empty-label">No class scheduled</div>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    // Resolve clean subject title from subjects table
-    let subjectName = matchedClass.name || '';
-    let displayFaculty = matchedClass.faculty || '';
-    if (!subjectName && timetable.subjects && Array.isArray(timetable.subjects)) {
-      const primaryCode = (matchedClass.code || '').split('/')[0].trim();
-      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
-      if (sub) {
-        subjectName = sub.name || sub.title || '';
-        if (!displayFaculty && (sub.faculty || sub.initials)) {
-          displayFaculty = sub.faculty || sub.initials;
-        }
-      }
-    }
-    if (!subjectName) subjectName = matchedClass.code || 'Class';
-
-    // Remove category suffixes like (IPCC), (HSMS), (PEC-I), (PCC), (AEC), (MC)
-    const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-    const batchLabel = matchedClass.batch ? matchedClass.batch : '';
-
-    html += `
-      <div class="tt-slot ${isNow ? 'is-now' : ''}">
-        <div class="tt-slot-time">
-          <div class="tt-time-start">${slotDef.labelStart}</div>
-          <div class="tt-time-end">${slotDef.labelEnd}</div>
-        </div>
-        <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
-        <div class="tt-slot-content">
-          <div class="tt-slot-title-row">
-            <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-            ${matchedClass.isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
-          </div>
-          <div class="tt-slot-meta">
-            ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
-            ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
-          </div>
-        </div>
-      </div>
-    `;
   });
 
   container.innerHTML = html;
@@ -1940,6 +2164,9 @@ if (typeof window !== 'undefined') {
   window.submitTimetableUpload = submitTimetableUpload;
   window.handleTtFileChange = handleTtFileChange;
   window.updateCalendarLayout = updateCalendarLayout;
+  window.onTtBatchChange = onTtBatchChange;
+  window.getUserLabBatch = getUserLabBatch;
+  window.setUserLabBatch = setUserLabBatch;
 
   // Listen for course registrations updated by attendance tab
   window.addEventListener('nie_courses_updated', () => {

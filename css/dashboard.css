@@ -841,8 +841,49 @@ html, body {
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
 }
 
-.tt-action-btn.is-active svg {
-  stroke: #fff;
+/* Batch Selector Dropdown */
+.tt-batch-dropdown-wrap {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.tt-batch-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 5px 24px 5px 9px;
+  border-radius: 9px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  line-height: 1.25;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme=dark] .tt-batch-select {
+  background-color: #1e293b;
+  border-color: var(--border);
+  color: #f1f5f9;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.tt-batch-select:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tt-batch-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
 /* Day Selector Nav */
@@ -958,10 +999,45 @@ html, body {
   box-sizing: border-box;
 }
 
+.tt-slot.is-2hr {
+  flex: 2;
+  min-height: 104px;
+}
+
 .tt-slot.is-now {
   background: rgba(37, 99, 235, 0.08);
   border-color: var(--accent);
   box-shadow: 0 3px 12px rgba(37, 99, 235, 0.16);
+}
+
+.tt-time-duration {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.tt-slot-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tt-tag-2hr {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  font-size: 0.64rem;
+  padding: 1px 5px;
+}
+
+[data-theme=dark] .tt-tag-2hr {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
 }
 
 [data-theme=dark] .tt-slot.is-now {

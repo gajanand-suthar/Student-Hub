@@ -1096,43 +1096,9 @@ export function getRegisteredCourseCodes() {
   return [];
 }
 
-// Background sync to ensure registered course codes from parents.nie.ac.in attendance are cached
-export async function ensureRegisteredCoursesLoaded() {
-  const current = getRegisteredCourseCodes();
-  if (current.length > 0) return current;
-
-  const creds = loadCreds();
-  if (!creds || !creds.usn || !creds.dob) return [];
-
-  try {
-    await ensureHumanSession();
-    const sessionToken = getSessionToken();
-    const res = await api.login({
-      action: 'login',
-      usn: creds.usn,
-      dob: creds.dob,
-      idType: creds.idType || '1',
-      code: creds.code || '',
-      sessionToken
-    });
-
-    if (res && res.student && Array.isArray(res.student.attendance)) {
-      const codes = res.student.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
-      if (codes.length > 0) {
-        try {
-          localStorage.setItem('nie_registered_courses', JSON.stringify(codes));
-        } catch (e) {}
-        // Trigger live re-render with updated elective choices
-        if (currentTimetableData) {
-          renderTodaySchedule(currentTimetableData, currentTtDay);
-        }
-        return codes;
-      }
-    }
-  } catch (e) {
-    console.warn('Silent registered courses sync skipped:', e.message);
-  }
-  return [];
+// Get registered course codes from cache (populated during onboarding or when user visits Attendance tab)
+export function ensureRegisteredCoursesLoaded() {
+  return getRegisteredCourseCodes();
 }
 
 // Standard NIE period slots with fixed Break timings
@@ -1519,6 +1485,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
     const sStart = parseTimeToMinutes(s.start);
     const sEnd = parseTimeToMinutes(s.end);
     if (sStart < 0 || sEnd < 0) continue;
+    if (sStart >= 990) continue;
 
     // Check if slot overlaps with this period
     if (sStart < slotDef.endMin && sEnd > slotDef.startMin) {

@@ -11,6 +11,7 @@ let sgpaLoaded = false;
 let currentStudentData = null;
 let currentSgpaData = null;
 let currentExplicitSem = null;
+let activeAttendancePromise = null;
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -46,6 +47,10 @@ export function initAttendance() {
 }
 
 export async function fetchAttendanceData(showLoading = true, explicitSem = null) {
+  if (activeAttendancePromise) {
+    return activeAttendancePromise;
+  }
+
   closeAttModal();
   const creds = loadCreds();
   if (!creds || !creds.usn) return;
@@ -55,68 +60,73 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
   const overlay = document.getElementById('refresh-overlay');
   if (showLoading && overlay) overlay.classList.add('active');
 
-  try {
-    const payload = {
-      action: 'login',
-      usn: creds.usn,
-      dob: creds.dob,
-      idType: creds.idType,
-      code: creds.code
-    };
-    if (currentExplicitSem) payload.sem = currentExplicitSem;
+  activeAttendancePromise = (async () => {
+    try {
+      const payload = {
+        action: 'login',
+        usn: creds.usn,
+        dob: creds.dob,
+        idType: creds.idType,
+        code: creds.code
+      };
+      if (currentExplicitSem) payload.sem = currentExplicitSem;
 
-    // Attach session token for bot protection (already solved on homepage)
-    await ensureHumanSession(); // no-op if already solved
-    payload.sessionToken = getSessionToken();
+      // Attach session token for bot protection (already solved on homepage)
+      await ensureHumanSession(); // no-op if already solved
+      payload.sessionToken = getSessionToken();
 
-    const res = await api.login(payload);
+      const res = await api.login(payload);
 
-    if (res && res.student) {
-      currentStudentData = res.student;
-      const token = res.identityToken || res.student?.identityToken;
-      if (token) setIdentityToken(token);
-      // Cache attendance for this particular session only
-      try {
-        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
-        const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
-        if (enrolledCodes.length > 0) {
-          localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
-          window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
-        }
-      } catch (e) {}
+      if (res && res.student) {
+        currentStudentData = res.student;
+        const token = res.identityToken || res.student?.identityToken;
+        if (token) setIdentityToken(token);
+        // Cache attendance for this particular session only
+        try {
+          sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+          const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
+          if (enrolledCodes.length > 0) {
+            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+            window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
+          }
+        } catch (e) {}
 
-      // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
-      try {
-        const profile = {
-          name: res.student.name,
-          usn: res.student.usn,
-          program: res.student.program,
-          semNum: res.student.semNum || '',
-          section: res.student.section || '',
-          photoUri: res.student.photoUri || null,
-          sem: res.student.sem || ''
-        };
-        localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
-      } catch (e) {}
+        // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
+        try {
+          const profile = {
+            name: res.student.name,
+            usn: res.student.usn,
+            program: res.student.program,
+            semNum: res.student.semNum || '',
+            section: res.student.section || '',
+            photoUri: res.student.photoUri || null,
+            sem: res.student.sem || ''
+          };
+          localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+        } catch (e) {}
 
-      renderStudentView(res.student);
-    }
-  } catch (err) {
-    if (showLoading) {
-      if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
-        const nameEl = document.getElementById('stu-name-el');
-        if (nameEl) nameEl.textContent = 'Authentication Failed';
-        const progEl = document.getElementById('stu-prog-el');
-        if (progEl) {
-          progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span>';
-        }
-      } else {
-        alert('Could not fetch attendance data: ' + err.message);
+        renderStudentView(res.student);
       }
+    } catch (err) {
+      if (showLoading) {
+        if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
+          const nameEl = document.getElementById('stu-name-el');
+          if (nameEl) nameEl.textContent = 'Authentication Failed';
+          const progEl = document.getElementById('stu-prog-el');
+          if (progEl) {
+            progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span>';
+          }
+        } else {
+          alert('Could not fetch attendance data: ' + err.message);
+        }
+      }
+    } finally {
+      if (overlay) overlay.classList.remove('active');
+      activeAttendancePromise = null;
     }
-  } finally {
-    if (overlay) overlay.classList.remove('active');
-  }
+  })();
+
+  return activeAttendancePromise;
 }
 
 export function renderStudentView(data) {

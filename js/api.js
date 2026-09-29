@@ -315,6 +315,9 @@ export const api = {
       const error = new Error(err.error || `Upload failed: HTTP ${res.status}`);
       error.status = res.status;
       error.alreadyPending = Boolean(err.alreadyPending);
+      error.alreadyApproved = Boolean(err.alreadyApproved);
+      error.alreadyExists = Boolean(err.alreadyExists);
+      error.duplicateFile = Boolean(err.duplicateFile);
       throw error;
     }
     return res.json();

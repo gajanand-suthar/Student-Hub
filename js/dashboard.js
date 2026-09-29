@@ -985,6 +985,7 @@ function resetHtBtn() {
 let currentHomeSection = 'timetable';
 let currentTtDay = 'monday';
 let currentTimetableData = null;
+let currentTimetableIsPending = false;
 let selectedTtFile = null;
 
 export function toggleHomeSection(section) {
@@ -1395,12 +1396,19 @@ export async function initTimetable() {
     const data = await api.getTimetable(params);
     if (data && data.schedule) {
       currentTimetableData = data;
+      currentTimetableIsPending = false;
       updateTtBatchDropdownUI(currentTimetableData);
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data));
       } catch (e) {}
       renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else if (data && data.pending) {
+      currentTimetableIsPending = true;
+      currentTimetableData = null;
+      try { localStorage.removeItem(cacheKey); } catch (e) {}
+      showPendingTimetable(params);
     } else {
+      currentTimetableIsPending = false;
       if (!currentTimetableData) {
         showEmptyTimetable(params);
       }
@@ -1427,12 +1435,19 @@ export async function refreshTimetable(force = true) {
     const data = await api.getTimetable({ ...params, forceRefresh: force });
     if (data && data.schedule) {
       currentTimetableData = data;
+      currentTimetableIsPending = false;
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data));
       } catch (e) {}
       updateTtBatchDropdownUI(currentTimetableData);
       renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else if (data && data.pending) {
+      currentTimetableIsPending = true;
+      currentTimetableData = null;
+      try { localStorage.removeItem(cacheKey); } catch (e) {}
+      showPendingTimetable(params);
     } else {
+      currentTimetableIsPending = false;
       try {
         localStorage.removeItem(cacheKey);
       } catch (e) {}
@@ -1823,6 +1838,34 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   container.innerHTML = html;
 }
 
+function showPendingTimetable(params) {
+  const container = document.getElementById('tt-schedule-body');
+  const editBtn = document.getElementById('btn-tt-edit');
+  const heading = document.getElementById('tt-day-heading');
+  if (editBtn) editBtn.style.display = 'none';
+
+  if (heading) heading.textContent = "Schedule";
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="tt-empty">
+      <div class="tt-empty-title" style="color:var(--accent);display:inline-flex;align-items:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>Timetable Under Review</span>
+      </div>
+      <div class="tt-empty-desc">
+        A timetable for your section has already been submitted and is currently being verified and parsed by an administrator. Check back soon!
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:700;color:var(--accent);background:rgba(37,99,235,0.08);padding:6px 14px;border-radius:20px;border:1px solid rgba(37,99,235,0.2);">
+        <span>Status: Verification In Progress</span>
+      </div>
+    </div>
+  `;
+}
+
 function showEmptyTimetable(params) {
   const container = document.getElementById('tt-schedule-body');
   const editBtn = document.getElementById('btn-tt-edit');
@@ -1852,6 +1895,14 @@ function showEmptyTimetable(params) {
 }
 
 export function openTtUploadModal(mode = 'upload') {
+  if (currentTimetableIsPending) {
+    showAppNoticeToast(
+      'Submission Already Pending',
+      'A timetable for your class has already been submitted and is currently being reviewed in the admin panel.'
+    );
+    return;
+  }
+
   const modal = document.getElementById('tt-upload-modal');
   if (modal) {
     const titleEl = document.getElementById('tt-upload-modal-title');
@@ -1920,6 +1971,15 @@ export function handleTtFileChange(input) {
 
 export async function submitTimetableUpload(e) {
   if (e) e.preventDefault();
+  if (currentTimetableIsPending) {
+    closeTtUploadModal();
+    showAppNoticeToast(
+      'Submission Already Pending',
+      'A timetable for your class has already been submitted and is currently being reviewed in the admin panel.'
+    );
+    return;
+  }
+
   const fileInput = document.getElementById('tt-file-input');
   const file = selectedTtFile || fileInput?.files?.[0];
 
@@ -1975,10 +2035,11 @@ export async function submitTimetableUpload(e) {
       }
     }, 1000);
   } catch (err) {
-    if (err.alreadyPending || err.status === 409) {
+    if (err.alreadyPending || err.alreadyApproved || err.alreadyExists || err.duplicateFile || err.status === 409) {
       closeTtUploadModal();
+      currentTimetableIsPending = !err.alreadyApproved;
       showAppNoticeToast(
-        'Submission Already Pending',
+        err.alreadyApproved ? 'Timetable Already Live' : 'Submission Already Pending',
         err.message || 'A timetable submission for this class is already pending review in the admin panel.'
       );
     } else {

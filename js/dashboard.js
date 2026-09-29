@@ -1010,10 +1010,16 @@ export function toggleHomeSection(section) {
     btnNotices?.setAttribute('aria-selected', 'false');
     btnSyllabus?.setAttribute('aria-selected', 'false');
 
+    btnCalendar?.blur();
+    btnNotices?.blur();
+    btnSyllabus?.blur();
+
     panelTimetable?.classList.add('active');
     panelCalendar?.classList.remove('active');
     panelNotices?.classList.remove('active');
     panelSyllabus?.classList.remove('active');
+
+    resetTtToToday();
     return;
   }
 
@@ -1193,6 +1199,28 @@ export function cleanBatch(b) {
   return String(b).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+export function getBatchesFromString(str) {
+  if (!str) return [];
+  const found = [];
+  const matches = String(str).matchAll(/(?:^|[^A-Z0-9])([A-Z][0-9])(?:[^A-Z0-9]|$)/gi);
+  for (const m of matches) {
+    if (m[1]) found.push(m[1].toUpperCase());
+  }
+  if (found.length === 0) {
+    const clean = cleanBatch(str);
+    if (clean && clean !== 'ALL' && clean !== 'ALLBATCHES') found.push(clean);
+  }
+  return found;
+}
+
+export function batchMatches(slotBatchStr, targetBatch) {
+  if (!slotBatchStr || !targetBatch) return false;
+  const cleanTarget = cleanBatch(targetBatch);
+  if (cleanTarget === 'ALL' || cleanTarget === 'ALLBATCHES') return true;
+  const batches = getBatchesFromString(slotBatchStr);
+  return batches.includes(cleanTarget);
+}
+
 export function getUserLabBatch(availableBatches = []) {
   const cached = localStorage.getItem('nie_user_lab_batch');
   if (cached) {
@@ -1227,22 +1255,18 @@ export function extractAvailableBatches(timetable) {
     if (!Array.isArray(dayArr)) return;
     dayArr.forEach(s => {
       if (!s) return;
-      if (s.batch && s.batch.toUpperCase() !== 'ALL') {
-        batches.add(cleanBatch(s.batch));
+      if (s.batch) {
+        getBatchesFromString(s.batch).forEach(b => batches.add(b));
       }
       if (Array.isArray(s.options)) {
         s.options.forEach(opt => {
-          if (opt.batch && opt.batch.toUpperCase() !== 'ALL') {
-            batches.add(cleanBatch(opt.batch));
+          if (opt.batch) {
+            getBatchesFromString(opt.batch).forEach(b => batches.add(b));
           }
         });
       }
       if (s.code) {
-        const matches = s.code.matchAll(/-(?:Lab-)?([A-Z]\d)-|\b([A-Z]\d)\b/gi);
-        for (const m of matches) {
-          const b = m[1] || m[2];
-          if (b) batches.add(cleanBatch(b));
-        }
+        getBatchesFromString(s.code).forEach(b => batches.add(b));
       }
     });
   });
@@ -1265,24 +1289,15 @@ export function toggleTtBatchDropdown(triggerEl, event) {
   }
   const dd = triggerEl ? triggerEl.closest('.sem-dropdown') : document.getElementById('tt-batch-dropdown');
   if (!dd) return;
-  const wasOpen = dd.classList.contains('open');
-  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => {
-    d.classList.remove('open');
-    d.closest('.tt-slot')?.classList.remove('has-open-dropdown');
-  });
-  if (!wasOpen) {
-    dd.classList.add('open');
-    dd.closest('.tt-slot')?.classList.add('has-open-dropdown');
-  }
+  dd.classList.toggle('open');
 }
 
 export function closeTtBatchDropdown(event) {
   if (event) {
     event.stopPropagation();
   }
-  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => {
+  document.querySelectorAll('.tt-top-batch-dropdown.open, .tt-batch-dropdown.open').forEach(d => {
     d.classList.remove('open');
-    d.closest('.tt-slot')?.classList.remove('has-open-dropdown');
   });
 }
 
@@ -1290,45 +1305,32 @@ export function pickTtBatch(batch, event) {
   if (event) {
     event.stopPropagation();
   }
-  setUserLabBatch(batch);
+  const cleanB = cleanBatch(batch);
+  setUserLabBatch(cleanB);
+  const label = document.getElementById('tt-batch-trigger-label');
+  if (label) label.textContent = 'Batch ' + cleanB;
   closeTtBatchDropdown();
   if (currentTimetableData) {
+    updateTtBatchDropdownUI(currentTimetableData);
     renderTodaySchedule(currentTimetableData, currentTtDay);
   }
 }
 
 export const onTtBatchChange = pickTtBatch;
 
-export function buildBatchDropdownHtml(timetable, selectedBatch) {
-  const available = extractAvailableBatches(timetable);
-  const activeBatch = selectedBatch || getUserLabBatch(available);
-  const cleanActive = cleanBatch(activeBatch) || (available.length ? cleanBatch(available[0]) : 'A1');
+export function buildBatchDropdownHtml() {
+  return '';
+}
 
-  const displayLabel = 'Batch ' + cleanActive;
-
-  let optionsHtml = '';
-  available.forEach(b => {
-    const cleanB = cleanBatch(b);
-    const isAct = (cleanActive === cleanB);
-    optionsHtml += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${cleanB}', event)">Batch ${cleanB}</button>`;
-  });
-
-  return `
-    <div class="tt-slot-actions">
-      <div class="sem-dropdown tt-batch-dropdown">
-        <div class="sem-backdrop" onclick="closeTtBatchDropdown(event)"></div>
-        <div class="sem-trigger" onclick="toggleTtBatchDropdown(this, event)">
-          <span class="sem-trigger-label">${escHtml(displayLabel)}</span>
-          <span class="sem-trigger-chevron">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </div>
-        <div class="sem-menu">
-          ${optionsHtml}
-        </div>
-      </div>
-    </div>
-  `;
+export function resetTtToToday() {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
+  const todayIdx = now.getDay();
+  currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
+  updateTtDayNavUI();
+  if (currentTimetableData) {
+    renderTodaySchedule(currentTimetableData, currentTtDay);
+  }
 }
 
 export function updateTtBatchDropdownUI(timetable) {
@@ -1509,12 +1511,11 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         // A. Check if options are segregated by lab batch
         const hasBatchOpts = s.options.some(opt => opt.batch);
         if (hasBatchOpts && !isAllBatches) {
-          const matchedBatchOpt = s.options.find(opt => cleanBatch(opt.batch) === cleanSelectedBatch);
+          const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
           if (matchedBatchOpt) {
             matchedClass = {
               code: matchedBatchOpt.code || s.code || '',
-              faculty: matchedBatchOpt.faculty || s.faculty || '',
-              batch: matchedBatchOpt.batch || s.batch || selectedBatch,
+              batch: cleanSelectedBatch,
               isLab: true,
               name: matchedBatchOpt.name || s.name || '',
               rawSlot: s
@@ -1529,8 +1530,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           if (matchedOpt) {
             matchedClass = {
               code: matchedOpt.code,
-              faculty: matchedOpt.faculty || s.faculty || '',
-              batch: matchedOpt.batch || s.batch || '',
+              batch: s.batch || '',
               isLab: s.type === 'lab' || matchedOpt.type === 'lab',
               name: matchedOpt.name || s.name || '',
               rawSlot: s
@@ -1541,7 +1541,6 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           // No reg codes loaded yet: show all options as fallback
           matchedClass = {
             code: s.options.map(o => o.code).filter(Boolean).join(' / '),
-            faculty: s.options.map(o => o.faculty).filter(Boolean).join(' / '),
             batch: s.batch || '',
             isLab: s.type === 'lab',
             name: s.name || '',
@@ -1557,16 +1556,11 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
       if (parts && parts.length > 1) {
         // Check if parts contain batches (e.g. Thu 11:30-01:30)
         if (!isAllBatches) {
-          const matchedPart = parts.find(p => {
-            const bMatch = p.match(/-(?:Lab-)?([A-Z]\d)-|\b([A-Z]\d)\b/i);
-            return bMatch && cleanBatch(bMatch[1] || bMatch[2]) === cleanSelectedBatch;
-          });
+          const matchedPart = parts.find(p => batchMatches(p, cleanSelectedBatch));
           if (matchedPart) {
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
-            const fac = matchedPart.match(/\(([^)]+)\)$/);
             matchedClass = {
               code: m ? m[1] : matchedPart.trim(),
-              faculty: fac ? fac[1].trim() : (s.faculty || ''),
               batch: selectedBatch,
               isLab: true,
               name: s.name || '',
@@ -1583,7 +1577,6 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
             matchedClass = {
               code: m ? m[1] : matchedPart.trim(),
-              faculty: m && m[2] ? m[2].trim() : (s.faculty || ''),
               batch: s.batch || '',
               isLab: s.type === 'lab',
               name: s.name || '',
@@ -1594,7 +1587,6 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         } else {
           matchedClass = {
             code: s.code,
-            faculty: s.faculty || '',
             batch: s.batch || '',
             isLab: s.type === 'lab',
             name: s.name || '',
@@ -1606,7 +1598,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
 
       // 3. Single course slot
       // If slot has specific batch, verify against student batch
-      if (s.batch && !isAllBatches && cleanBatch(s.batch) !== cleanSelectedBatch) {
+      if (s.batch && !isAllBatches && !batchMatches(s.batch, cleanSelectedBatch)) {
         continue;
       }
 
@@ -1614,7 +1606,6 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         if (matchesRegisteredCourse(s.code, regCodes)) {
           matchedClass = {
             code: s.code,
-            faculty: s.faculty || '',
             batch: s.batch || '',
             isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
             name: s.name || '',
@@ -1625,7 +1616,6 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
       } else {
         matchedClass = {
           code: s.code,
-          faculty: s.faculty || '',
           batch: s.batch || '',
           isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
           name: s.name || '',
@@ -1658,29 +1648,16 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
   }
 
   let subjectName = matchedClass.name || '';
-  let displayFaculty = matchedClass.faculty || '';
   if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
     const primaryCode = (matchedClass.code || '').split('/')[0].trim();
     const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
     if (sub) {
       subjectName = sub.name || sub.title || '';
-      if (!displayFaculty && (sub.faculty || sub.initials)) {
-        displayFaculty = sub.faculty || sub.initials;
-      }
     }
   }
   if (!subjectName) subjectName = matchedClass.code || 'Class';
 
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-
-  const isLabSlot = Boolean(
-    matchedClass.isLab ||
-    (matchedClass.code || '').toLowerCase().includes('lab') ||
-    (matchedClass.name || '').toLowerCase().includes('lab') ||
-    (matchedClass.rawSlot && (matchedClass.rawSlot.type === 'lab' || (Array.isArray(matchedClass.rawSlot.options) && matchedClass.rawSlot.options.some(o => o.batch))))
-  );
-
-  const dropdownHtml = isLabSlot ? buildBatchDropdownHtml(timetable, selectedBatch) : '';
 
   return `
     <div class="tt-slot ${isNow ? 'is-now' : ''}">
@@ -1694,10 +1671,9 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
         </div>
         <div class="tt-slot-meta">
-          ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
+          ${matchedClass.code ? `<span class="tt-code-pill">${escHtml(matchedClass.code)}</span>` : ''}
         </div>
       </div>
-      ${dropdownHtml}
     </div>
   `;
 }
@@ -1706,29 +1682,16 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
   const isNow = isViewingToday && (nowMinutes >= pA.startMin && nowMinutes < pB.endMin);
 
   let subjectName = matchedClass.name || '';
-  let displayFaculty = matchedClass.faculty || '';
   if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
     const primaryCode = (matchedClass.code || '').split('/')[0].trim();
     const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
     if (sub) {
       subjectName = sub.name || sub.title || '';
-      if (!displayFaculty && (sub.faculty || sub.initials)) {
-        displayFaculty = sub.faculty || sub.initials;
-      }
     }
   }
   if (!subjectName) subjectName = matchedClass.code || 'Class';
 
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-
-  const isLabSlot = Boolean(
-    matchedClass.isLab ||
-    (matchedClass.code || '').toLowerCase().includes('lab') ||
-    (matchedClass.name || '').toLowerCase().includes('lab') ||
-    (matchedClass.rawSlot && (matchedClass.rawSlot.type === 'lab' || (Array.isArray(matchedClass.rawSlot.options) && matchedClass.rawSlot.options.some(o => o.batch))))
-  );
-
-  const dropdownHtml = isLabSlot ? buildBatchDropdownHtml(timetable, selectedBatch) : '';
 
   return `
     <div class="tt-slot is-2hr ${isNow ? 'is-now' : ''}">
@@ -1742,10 +1705,9 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
         </div>
         <div class="tt-slot-meta">
-          ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
+          ${matchedClass.code ? `<span class="tt-code-pill">${escHtml(matchedClass.code)}</span>` : ''}
         </div>
       </div>
-      ${dropdownHtml}
     </div>
   `;
 }
@@ -1827,12 +1789,14 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       )
     );
 
+    html += `<div class="tt-period-pair">`;
     if (canMerge) {
       html += renderMergedSlotHtml(item.pA, item.pB, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
     } else {
       html += renderSingleSlotHtml(item.pA, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
       html += renderSingleSlotHtml(item.pB, classB, isViewingToday, nowMinutes, timetable, selectedBatch);
     }
+    html += `</div>`;
   });
 
   container.innerHTML = html;

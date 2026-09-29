@@ -1362,7 +1362,9 @@ export async function initTimetable() {
       updateTtBatchDropdownUI(currentTimetableData);
       renderTodaySchedule(currentTimetableData, currentTtDay);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Cache timetable error:', e);
+  }
 
   // Fetch updated timetable from backend
   try {
@@ -1380,6 +1382,7 @@ export async function initTimetable() {
       }
     }
   } catch (err) {
+    console.warn('Backend timetable fetch failed:', err);
     if (!currentTimetableData) {
       showEmptyTimetable(params);
     }
@@ -1660,6 +1663,10 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   if (heading) {
     heading.textContent = "Schedule";
   }
+
+  const now = new Date();
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const isViewingToday = (dayName === daysOfWeek[now.getDay()]);
 
   // Sunday holiday check
   if (dayName === 'sunday') {

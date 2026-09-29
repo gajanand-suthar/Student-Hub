@@ -980,6 +980,13 @@ html, body {
   font-weight: 600;
 }
 
+.tt-loading svg.spin,
+.nm-loader svg.spin {
+  animation: spin 0.85s linear infinite !important;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
 /* Slot Card (Flex spreads across full container height) */
 .tt-slot {
   display: flex;

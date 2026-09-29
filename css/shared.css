@@ -240,6 +240,49 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .sug-history-reply-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 4px; }
 .sug-history-reply-text { font-size: 0.82rem; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
 .sug-history-pending { margin-top: 8px; font-size: 0.72rem; color: var(--muted); font-weight: 600; font-style: italic; }
-.sug-history-empty { text-align: center; padding: 32px 0; color: var(--muted); font-size: 0.85rem; }
+/* Universal Loading Spinners & Animation */
+.spin,
+svg.spin {
+  animation: spin 0.85s linear infinite !important;
+  display: inline-block;
+  transform-origin: center;
+  transform-box: fill-box;
+}
 
-@keyframes spin { 100% { transform: rotate(360deg); } }
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite !important;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.big-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite !important;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.loader {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite !important;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

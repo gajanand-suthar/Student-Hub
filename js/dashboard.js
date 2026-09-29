@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, escAttr, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
+import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken } from './shared.js';
 
 function getTodayISO() {
   const d = new Date();
@@ -1221,16 +1221,18 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   if (!container) return;
 
   const now = new Date();
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const todayDayName = days[now.getDay()];
-  const isViewingToday = (dayName === todayDayName);
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const isViewingToday = (dayName === daysOfWeek[now.getDay()]);
+  const dayDisplayNames = { monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday' };
 
   if (heading) {
-    heading.textContent = isViewingToday ? `Today's Classes` : `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} Classes`;
+    heading.textContent = isViewingToday ? "Today's Classes" : dayDisplayNames[dayName] || dayName;
   }
   if (subheading) {
     const options = { weekday: 'short', month: 'short', day: 'numeric' };
-    subheading.textContent = now.toLocaleDateString('en-US', options);
+    subheading.textContent = isViewingToday
+      ? now.toLocaleDateString('en-US', options)
+      : (timetable?.metadata ? `${timetable.metadata.branch || ''} Sem ${timetable.metadata.semester || ''} (${timetable.metadata.section || ''})` : '');
   }
 
   const schedule = timetable?.schedule?.[dayName] || [];
@@ -1238,8 +1240,8 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     container.innerHTML = `
       <div class="tt-empty">
         <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
-        <div class="tt-empty-title">No Classes Scheduled ${isViewingToday ? 'Today' : 'for ' + dayName.charAt(0).toUpperCase() + dayName.slice(1)}</div>
-        <div class="tt-empty-desc">Enjoy your day off or tap Week above to see your full schedule.</div>
+        <div class="tt-empty-title">${isViewingToday ? 'No Classes Today' : 'No Classes'}</div>
+        <div class="tt-empty-desc">${isViewingToday ? 'Enjoy your day off!' : 'No classes scheduled for this day.'}</div>
       </div>
     `;
     return;
@@ -1251,6 +1253,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   let html = '';
 
   schedule.forEach(slot => {
+    // Skip breaks
     if (slot.type === 'break' || slot.isBreak) {
       const breakName = slot.name || (slot.start === '13:30' ? 'Lunch Break' : 'Tea Break');
       const icon = breakName.toLowerCase().includes('lunch') ? '🍱' : '☕';
@@ -1263,66 +1266,67 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       return;
     }
 
-    // Resolve elective options against registered courses
+    // Skip free slots
+    if (slot.type === 'free' && !slot.code) return;
+
+    // Resolve elective — only show student's registered option
     let displayCode = slot.code || '';
     let displayFaculty = slot.faculty || '';
-    let displayRoom = slot.room || timetable.metadata?.roomNo || '';
     let isElective = (slot.type === 'elective');
+    let skipSlot = false;
 
     if (slot.options && slot.options.length > 0) {
       isElective = true;
       if (regCodes.length > 0) {
         const matched = slot.options.find(opt => regCodes.includes((opt.code || '').toUpperCase().trim()));
         if (matched) {
+          // Student has this elective — show only theirs
           displayCode = matched.code;
           if (matched.faculty) displayFaculty = matched.faculty;
-          if (matched.room) displayRoom = matched.room;
         } else {
-          displayCode = slot.options.map(o => o.code).filter(Boolean).join(' / ');
-          displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
+          // Student doesn't have ANY of these electives — skip this slot entirely
+          skipSlot = true;
         }
       } else {
+        // No registered courses data — show all options as fallback
         displayCode = slot.options.map(o => o.code).filter(Boolean).join(' / ');
-        displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
+        displayFaculty = slot.options.map(o => o.faculty).filter(Boolean).join(' / ');
       }
     }
 
-    // Resolve subject title from subjects table or slot.name
-    let subjectTitle = slot.name || slot.title || '';
-    if (!subjectTitle && timetable.subjects && Array.isArray(timetable.subjects)) {
-      const primaryCode = (displayCode || '').split('/')[0].trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      const sub = timetable.subjects.find(s => {
-        const sc = (s.code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        return sc && (sc === primaryCode || primaryCode.includes(sc) || sc.includes(primaryCode));
-      });
+    if (skipSlot) return;
+
+    // Resolve subject name from subjects table
+    let subjectName = slot.name || '';
+    if (!subjectName && timetable.subjects && Array.isArray(timetable.subjects)) {
+      const primaryCode = (displayCode || '').split('/')[0].trim();
+      const sub = timetable.subjects.find(s => (s.code || '').toUpperCase() === primaryCode.toUpperCase());
       if (sub) {
-        subjectTitle = sub.name || sub.title || '';
-        if (!displayFaculty && (sub.faculty || sub.initials || sub.instructor)) {
-          displayFaculty = sub.faculty || sub.initials || sub.instructor;
+        subjectName = sub.name || sub.title || '';
+        if (!displayFaculty && (sub.faculty || sub.initials)) {
+          displayFaculty = sub.faculty || sub.initials;
         }
       }
     }
-    if (!subjectTitle) subjectTitle = displayCode || 'Class';
+    if (!subjectName) subjectName = displayCode || 'Class';
 
-    // Parse start & end in minutes
+    // Clean up subject name — remove parenthetical category suffixes like "(IPCC)", "(HSMS)" for cleaner display
+    const cleanName = subjectName.replace(/\s*\([A-Z]{2,6}\)\s*$/, '').trim();
+
+    // Timing
     let isNow = false;
     let isPast = false;
-    if (slot.start && slot.end) {
+    if (slot.start && slot.end && isViewingToday) {
       const [sh, sm] = slot.start.split(':').map(Number);
       const [eh, em] = slot.end.split(':').map(Number);
       const startMin = sh * 60 + sm;
       const endMin = eh * 60 + em;
-
-      if (isViewingToday) {
-        if (nowMinutes >= startMin && nowMinutes < endMin) {
-          isNow = true;
-        } else if (nowMinutes >= endMin) {
-          isPast = true;
-        }
-      }
+      if (nowMinutes >= startMin && nowMinutes < endMin) isNow = true;
+      else if (nowMinutes >= endMin) isPast = true;
     }
 
     const isLab = (slot.type === 'lab');
+    const batchLabel = slot.batch ? slot.batch : '';
 
     html += `
       <div class="tt-slot ${isNow ? 'is-now' : ''} ${isPast ? 'is-past' : ''}">
@@ -1335,20 +1339,28 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
         </div>
         <div class="tt-slot-content">
           <div class="tt-slot-title-row">
-            <div class="tt-slot-title" title="${escAttr(subjectTitle)}">${escHtml(subjectTitle)}</div>
+            <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
             ${isNow ? '<span class="tt-slot-tag tt-tag-now">NOW</span>' : ''}
-            ${!isNow && isElective ? '<span class="tt-slot-tag tt-tag-elective">Elective</span>' : ''}
             ${!isNow && isLab ? '<span class="tt-slot-tag tt-tag-lab">Lab</span>' : ''}
           </div>
           <div class="tt-slot-meta">
-            ${displayCode ? `<span class="tt-code-pill">${escHtml(displayCode)}</span>` : ''}
-            ${displayRoom ? `<span class="tt-room">📍 ${escHtml(displayRoom)}</span>` : ''}
-            ${displayFaculty ? `<span class="tt-fac">👤 ${escHtml(displayFaculty)}</span>` : ''}
+            ${displayFaculty ? `<span class="tt-fac">${escHtml(displayFaculty)}</span>` : ''}
+            ${batchLabel ? `<span class="tt-batch-pill">${escHtml(batchLabel)}</span>` : ''}
           </div>
         </div>
       </div>
     `;
   });
+
+  if (!html.trim()) {
+    html = `
+      <div class="tt-empty">
+        <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
+        <div class="tt-empty-title">${isViewingToday ? 'No Classes Today' : 'No Classes'}</div>
+        <div class="tt-empty-desc">No relevant classes for you on this day.</div>
+      </div>
+    `;
+  }
 
   container.innerHTML = html;
 }
@@ -1521,19 +1533,6 @@ export async function submitTimetableUpload(e) {
   }
 }
 
-let isTtTransposed = false;
-try {
-  isTtTransposed = localStorage.getItem('nie_tt_transposed') === 'true';
-} catch (e) {}
-
-export function toggleTtTranspose() {
-  isTtTransposed = !isTtTransposed;
-  try {
-    localStorage.setItem('nie_tt_transposed', String(isTtTransposed));
-  } catch (e) {}
-  renderWeekScheduleInline();
-}
-
 export function toggleTtWeekView() {
   isTtWeekViewActive = !isTtWeekViewActive;
   updateTtSubView();
@@ -1544,7 +1543,6 @@ export function updateTtSubView() {
   const weekBody = document.getElementById('tt-week-body');
   const weekBtn = document.getElementById('btn-tt-week');
   const weekBtnText = document.getElementById('tt-week-btn-text');
-  const rotateBtn = document.getElementById('btn-tt-rotate');
   const heading = document.getElementById('tt-day-heading');
   const subheading = document.getElementById('tt-date-subheading');
 
@@ -1559,7 +1557,6 @@ export function updateTtSubView() {
     }
     if (weekBtn) weekBtn.classList.add('is-active');
     if (weekBtnText) weekBtnText.textContent = 'Today';
-    if (rotateBtn) rotateBtn.style.display = 'inline-flex';
     if (heading) heading.textContent = 'Weekly Schedule';
     if (subheading) {
       if (currentTimetableData?.metadata) {
@@ -1582,7 +1579,6 @@ export function updateTtSubView() {
     }
     if (weekBtn) weekBtn.classList.remove('is-active');
     if (weekBtnText) weekBtnText.textContent = 'Week';
-    if (rotateBtn) rotateBtn.style.display = 'none';
     if (heading) heading.textContent = "Today's Classes";
     if (subheading) {
       const now = new Date();
@@ -1592,49 +1588,6 @@ export function updateTtSubView() {
       renderTodaySchedule(currentTimetableData, currentTtDay);
     }
   }
-}
-
-function normTime(t) {
-  if (!t) return '';
-  const clean = String(t).trim().toLowerCase().replace(/\s*(am|pm)/, '');
-  const [h, m] = clean.split(':').map(Number);
-  if (isNaN(h)) return t;
-  return `${String(h).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
-}
-
-function resolveSlotDetails(slot, subjects = [], regCodes = []) {
-  if (!slot) return null;
-  let code = slot.code || '';
-  let fac = slot.faculty || '';
-  let name = slot.name || slot.title || '';
-
-  if (slot.options && slot.options.length) {
-    const matched = slot.options.find(o => regCodes.includes((o.code || '').toUpperCase().trim()));
-    if (matched) {
-      code = matched.code || code;
-      fac = matched.faculty || fac;
-      name = matched.name || name;
-    } else {
-      code = slot.options.map(o => o.code).filter(Boolean).join(' / ');
-      fac = slot.options.map(o => o.faculty).filter(Boolean).join('/');
-    }
-  }
-
-  if (!name && subjects && Array.isArray(subjects)) {
-    const primaryCode = (code || '').split('/')[0].trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    const sub = subjects.find(s => {
-      const sc = (s.code || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      return sc && (sc === primaryCode || primaryCode.includes(sc) || sc.includes(primaryCode));
-    });
-    if (sub) {
-      name = sub.name || sub.title || '';
-      if (!fac && (sub.faculty || sub.initials || sub.instructor)) {
-        fac = sub.faculty || sub.initials || sub.instructor;
-      }
-    }
-  }
-
-  return { code, fac, name: name || code };
 }
 
 export function renderWeekScheduleInline() {
@@ -1661,133 +1614,102 @@ export function renderWeekScheduleInline() {
   }
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayLabels = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' };
   const todayDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()];
-
-  let timeSlots = data.timeSlots;
-  if (!timeSlots || !timeSlots.length) {
-    const slotSet = new Set();
-    days.forEach(d => {
-      (data.schedule[d] || []).forEach(s => {
-        if (s.start && s.end) slotSet.add(`${s.start}-${s.end}`);
-      });
-    });
-    timeSlots = Array.from(slotSet).sort();
-    if (!timeSlots.length) {
-      timeSlots = [
-        '09:00-10:00',
-        '10:00-11:00',
-        '11:00-11:30',
-        '11:30-12:30',
-        '12:30-13:30',
-        '13:30-14:30',
-        '14:30-15:30',
-        '15:30-16:30'
-      ];
-    }
-  }
-
   const regCodes = getRegisteredCourseCodes();
-  const subjects = data.subjects || [];
 
-  let html = '';
+  // Helper: resolve a slot to clean display data
+  function resolveSlot(slot) {
+    if (!slot || slot.type === 'break' || slot.type === 'free') return null;
 
-  if (!isTtTransposed) {
-    // ── LAYOUT 1: TIME IN FIRST COLUMN, DAYS IN COLUMN HEADERS (Default) ──
-    html += `<table class="tt-week-table"><thead><tr><th>Time</th>`;
-    days.forEach((d, idx) => {
-      const isToday = (d === todayDayName);
-      html += `<th class="${isToday ? 'is-today-col' : ''}">${dayLabels[idx]}${isToday ? ' •' : ''}</th>`;
-    });
-    html += `</tr></thead><tbody>`;
+    let code = slot.code || '';
+    let faculty = slot.faculty || '';
+    let batch = slot.batch || '';
+    let isLab = (slot.type === 'lab');
+    let isElective = (slot.type === 'elective');
+    let skip = false;
 
-    timeSlots.forEach(ts => {
-      const [tstart, tend] = ts.split('-');
-      const normStart = normTime(tstart);
-      const isBreak = (normStart === '11:00' || normStart === '13:30');
-      html += `<tr><td class="is-time-col">${ts}</td>`;
-
-      if (isBreak) {
-        const bLabel = normStart === '13:30' ? '🍱 Lunch Break' : '☕ Tea Break';
-        html += `<td colspan="6" style="text-align:center; color:var(--muted); font-weight:700; background:rgba(0,0,0,0.02);">${bLabel}</td>`;
-      } else {
-        days.forEach(day => {
-          const slotsForDay = data.schedule[day] || [];
-          const slot = slotsForDay.find(s => normTime(s.start) === normStart);
-          const isToday = (day === todayDayName);
-
-          if (!slot) {
-            html += `<td class="${isToday ? 'is-today-col' : ''}"></td>`;
-          } else {
-            const resolved = resolveSlotDetails(slot, subjects, regCodes);
-            html += `
-              <td class="${isToday ? 'is-today-col' : ''}">
-                <div class="tt-week-cell-slot">
-                  <div class="tt-week-name" title="${escAttr(resolved.name || resolved.code)}">${escHtml(resolved.name || resolved.code)}</div>
-                  <div class="tt-week-sub-meta">
-                    <span class="tt-week-code">${escHtml(resolved.code)}</span>
-                    ${resolved.fac ? `<span class="tt-week-fac">(${escHtml(resolved.fac)})</span>` : ''}
-                  </div>
-                </div>
-              </td>
-            `;
-          }
-        });
-      }
-      html += `</tr>`;
-    });
-    html += `</tbody></table>`;
-  } else {
-    // ── LAYOUT 2: DAYS IN FIRST COLUMN, TIME IN COLUMN HEADERS (Rotated View) ──
-    html += `<table class="tt-week-table"><thead><tr><th>Day</th>`;
-    timeSlots.forEach(ts => {
-      const [tstart] = ts.split('-');
-      const normStart = normTime(tstart);
-      const isBreak = (normStart === '11:00' || normStart === '13:30');
-      const bShort = isBreak ? (normStart === '13:30' ? '🍱 Lunch' : '☕ Tea') : ts;
-      html += `<th class="is-time-header" style="${isBreak ? 'color:var(--muted);font-weight:600;' : ''}">${bShort}</th>`;
-    });
-    html += `</tr></thead><tbody>`;
-
-    days.forEach((day, dIdx) => {
-      const isToday = (day === todayDayName);
-      html += `<tr><td class="is-day-col ${isToday ? 'is-today-col' : ''}">${dayLabels[dIdx]}${isToday ? ' •' : ''}</td>`;
-
-      const slotsForDay = data.schedule[day] || [];
-
-      timeSlots.forEach(ts => {
-        const [tstart] = ts.split('-');
-        const normStart = normTime(tstart);
-        const isBreak = (normStart === '11:00' || normStart === '13:30');
-
-        if (isBreak) {
-          const bLabel = normStart === '13:30' ? '🍱' : '☕';
-          html += `<td style="text-align:center; color:var(--muted); font-size:0.8rem; background:rgba(0,0,0,0.02);">${bLabel}</td>`;
+    // Resolve elective
+    if (slot.options && slot.options.length > 0) {
+      isElective = true;
+      if (regCodes.length > 0) {
+        const matched = slot.options.find(o => regCodes.includes((o.code || '').toUpperCase().trim()));
+        if (matched) {
+          code = matched.code;
+          if (matched.faculty) faculty = matched.faculty;
         } else {
-          const slot = slotsForDay.find(s => normTime(s.start) === normStart);
-          if (!slot) {
-            html += `<td></td>`;
-          } else {
-            const resolved = resolveSlotDetails(slot, subjects, regCodes);
-            html += `
-              <td>
-                <div class="tt-week-cell-slot">
-                  <div class="tt-week-name" title="${escAttr(resolved.name || resolved.code)}">${escHtml(resolved.name || resolved.code)}</div>
-                  <div class="tt-week-sub-meta">
-                    <span class="tt-week-code">${escHtml(resolved.code)}</span>
-                    ${resolved.fac ? `<span class="tt-week-fac">(${escHtml(resolved.fac)})</span>` : ''}
-                  </div>
-                </div>
-              </td>
-            `;
-          }
+          skip = true; // Student doesn't have this elective
         }
-      });
-      html += `</tr>`;
-    });
-    html += `</tbody></table>`;
+      } else {
+        code = slot.options.map(o => o.code).filter(Boolean).join('/');
+        faculty = slot.options.map(o => o.faculty).filter(Boolean).join('/');
+      }
+    }
+
+    if (skip) return null;
+
+    // Resolve subject name
+    let name = slot.name || '';
+    if (!name && data.subjects && Array.isArray(data.subjects)) {
+      const primaryCode = (code || '').split('/')[0].trim();
+      const sub = data.subjects.find(s => (s.code || '').toUpperCase() === primaryCode.toUpperCase());
+      if (sub) {
+        name = sub.name || sub.title || '';
+        if (!faculty && (sub.faculty || sub.initials)) faculty = sub.faculty || sub.initials;
+      }
+    }
+    if (!name) name = code || '';
+
+    // Clean name
+    name = name.replace(/\s*\([A-Z]{2,6}\)\s*$/, '').trim();
+
+    return { name, faculty, batch, isLab, isElective, code };
   }
 
+  let html = '<div class="tt-week-rows">';
+
+  days.forEach(day => {
+    const slots = data.schedule[day] || [];
+    const isToday = (day === todayDayName);
+    const resolvedSlots = slots.map(s => ({ ...s, resolved: resolveSlot(s) })).filter(s => s.resolved || s.type === 'break');
+
+    // Skip days with no classes at all
+    const hasClasses = resolvedSlots.some(s => s.resolved);
+
+    html += `
+      <div class="tt-week-day-row ${isToday ? 'is-today' : ''} ${!hasClasses ? 'no-classes' : ''}">
+        <div class="tt-week-day-label">${dayLabels[day]}${isToday ? '<span class="tt-today-dot"></span>' : ''}</div>
+        <div class="tt-week-day-slots">
+    `;
+
+    if (!hasClasses) {
+      html += `<span class="tt-week-no-class">No classes</span>`;
+    } else {
+      resolvedSlots.forEach(s => {
+        if (s.type === 'break') {
+          // Skip breaks in week view for cleanliness
+          return;
+        }
+        const r = s.resolved;
+        if (!r) return;
+
+        html += `
+          <div class="tt-week-slot-chip ${r.isLab ? 'is-lab' : ''}">
+            <span class="tt-week-slot-name">${escHtml(r.name)}</span>
+            ${r.faculty ? `<span class="tt-week-slot-fac">${escHtml(r.faculty)}</span>` : ''}
+            ${r.batch ? `<span class="tt-week-slot-batch">${escHtml(r.batch)}</span>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
   wrap.innerHTML = html;
 }
 
@@ -2053,7 +1975,6 @@ if (typeof window !== 'undefined') {
   window.renderWeekScheduleInline = renderWeekScheduleInline;
   window.openTtWeekModal = openTtWeekModal;
   window.closeTtWeekModal = closeTtWeekModal;
-  window.toggleTtTranspose = toggleTtTranspose;
   window.updateCalendarLayout = updateCalendarLayout;
 
   window.addEventListener('resize', updateCalendarLayout);

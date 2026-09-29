@@ -329,12 +329,17 @@ export const api = {
     if (semester) params.set('semester', semester);
     if (section) params.set('section', section);
     if (batch) params.set('batch', batch);
-    if (forceRefresh) params.set('_t', Date.now().toString());
+    // Always attach timestamp cache-buster so browser HTTP disk cache and CDN proxies never serve stale timetable
+    params.set('_t', Date.now().toString());
 
     const qs = params.toString();
     const res = await fetch(this.getApiUrl('/api/timetable' + (qs ? '?' + qs : '')), {
-      headers: getAuthHeaders(),
-      cache: forceRefresh ? 'no-cache' : 'default'
+      headers: {
+        ...getAuthHeaders(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      cache: 'no-store'
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

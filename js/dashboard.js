@@ -1411,9 +1411,11 @@ export async function initTimetable() {
       showPendingTimetable(params);
     } else {
       currentTimetableIsPending = false;
-      if (!currentTimetableData) {
-        showEmptyTimetable(params);
-      }
+      try {
+        localStorage.removeItem(cacheKey);
+      } catch (e) {}
+      currentTimetableData = null;
+      showEmptyTimetable(params);
     }
   } catch (err) {
     console.warn('Backend timetable fetch failed:', err);
@@ -1649,10 +1651,14 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
 
   let subjectName = matchedClass.name || '';
   if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
-    const primaryCode = (matchedClass.code || '').split('/')[0].trim();
-    const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
-    if (sub) {
-      subjectName = sub.name || sub.title || '';
+    if (matchedClass.code && matchedClass.code.includes('/')) {
+      subjectName = 'Elective / Lab Options';
+    } else {
+      const primaryCode = (matchedClass.code || '').trim();
+      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+      if (sub) {
+        subjectName = sub.name || sub.title || '';
+      }
     }
   }
   if (!subjectName) subjectName = matchedClass.code || 'Class';
@@ -1683,10 +1689,14 @@ function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, 
 
   let subjectName = matchedClass.name || '';
   if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
-    const primaryCode = (matchedClass.code || '').split('/')[0].trim();
-    const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
-    if (sub) {
-      subjectName = sub.name || sub.title || '';
+    if (matchedClass.code && matchedClass.code.includes('/')) {
+      subjectName = 'Elective / Lab Options';
+    } else {
+      const primaryCode = (matchedClass.code || '').trim();
+      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+      if (sub) {
+        subjectName = sub.name || sub.title || '';
+      }
     }
   }
   if (!subjectName) subjectName = matchedClass.code || 'Class';
@@ -1990,6 +2000,7 @@ export async function submitTimetableUpload(e) {
     }
     setTimeout(() => {
       closeTtUploadModal();
+      refreshTimetable(true);
       if (btn) {
         btn.disabled = false;
         btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';

@@ -317,16 +317,18 @@ export const api = {
     return res.json();
   },
 
-  async getTimetable({ branch, semester, section, batch } = {}) {
+  async getTimetable({ branch, semester, section, batch, forceRefresh } = {}) {
     const params = new URLSearchParams();
     if (branch) params.set('branch', branch);
     if (semester) params.set('semester', semester);
     if (section) params.set('section', section);
     if (batch) params.set('batch', batch);
+    if (forceRefresh) params.set('_t', Date.now().toString());
 
     const qs = params.toString();
     const res = await fetch(this.getApiUrl('/api/timetable' + (qs ? '?' + qs : '')), {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
+      cache: forceRefresh ? 'no-cache' : 'default'
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

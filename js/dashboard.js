@@ -1299,9 +1299,13 @@ export function toggleTtBatchDropdown(triggerEl, event) {
   const dd = triggerEl ? triggerEl.closest('.sem-dropdown') : document.getElementById('tt-batch-dropdown');
   if (!dd) return;
   const wasOpen = dd.classList.contains('open');
-  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => {
+    d.classList.remove('open');
+    d.closest('.tt-slot')?.classList.remove('has-open-dropdown');
+  });
   if (!wasOpen) {
     dd.classList.add('open');
+    dd.closest('.tt-slot')?.classList.add('has-open-dropdown');
   }
 }
 
@@ -1309,7 +1313,10 @@ export function closeTtBatchDropdown(event) {
   if (event) {
     event.stopPropagation();
   }
-  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.tt-batch-dropdown.open').forEach(d => {
+    d.classList.remove('open');
+    d.closest('.tt-slot')?.classList.remove('has-open-dropdown');
+  });
 }
 
 export function pickTtBatch(batch, event) {
@@ -1437,6 +1444,43 @@ export async function initTimetable() {
     if (!currentTimetableData) {
       showEmptyTimetable(params);
     }
+  }
+}
+
+export async function refreshTimetable(force = true) {
+  const icon = document.getElementById('tt-refresh-icon');
+  const btn = document.getElementById('btn-tt-refresh');
+  if (icon) icon.classList.add('spin');
+  if (btn) btn.disabled = true;
+
+  const params = getStudentTimetableParams();
+  const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
+
+  try {
+    ensureRegisteredCoursesLoaded();
+    const data = await api.getTimetable({ ...params, forceRefresh: force });
+    if (data && data.schedule) {
+      currentTimetableData = data;
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch (e) {}
+      updateTtBatchDropdownUI(currentTimetableData);
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else {
+      try {
+        localStorage.removeItem(cacheKey);
+      } catch (e) {}
+      currentTimetableData = null;
+      showEmptyTimetable(params);
+    }
+  } catch (err) {
+    console.warn('Backend timetable refresh failed:', err);
+    if (!currentTimetableData) {
+      showEmptyTimetable(params);
+    }
+  } finally {
+    if (icon) icon.classList.remove('spin');
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -2223,6 +2267,7 @@ if (typeof window !== 'undefined') {
   window.toggleHomeSection = toggleHomeSection;
   window.selectTtDay = selectTtDay;
   window.initTimetable = initTimetable;
+  window.refreshTimetable = refreshTimetable;
   window.openTtUploadModal = openTtUploadModal;
   window.closeTtUploadModal = closeTtUploadModal;
   window.submitTimetableUpload = submitTimetableUpload;

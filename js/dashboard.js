@@ -1226,17 +1226,31 @@ export function cleanBatch(b) {
   return String(b).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-export function getUserLabBatch() {
+export function getUserLabBatch(availableBatches = []) {
   const cached = localStorage.getItem('nie_user_lab_batch');
-  if (cached) return cached.toUpperCase().trim();
+  if (cached) {
+    const cleanC = cleanBatch(cached);
+    if (cleanC && cleanC !== 'ALL' && cleanC !== 'ALLBATCHES') {
+      if (!availableBatches || !availableBatches.length || availableBatches.map(cleanBatch).includes(cleanC)) {
+        return cleanC;
+      }
+    }
+  }
+  if (Array.isArray(availableBatches) && availableBatches.length > 0) {
+    const first = cleanBatch(availableBatches[0]);
+    localStorage.setItem('nie_user_lab_batch', first);
+    return first;
+  }
   const params = getStudentTimetableParams();
   const sec = params.section || 'A';
-  return `${sec}1`;
+  const defaultBatch = `${sec}1`;
+  localStorage.setItem('nie_user_lab_batch', defaultBatch);
+  return defaultBatch;
 }
 
 export function setUserLabBatch(batch) {
-  if (!batch) return;
-  localStorage.setItem('nie_user_lab_batch', batch.trim().toUpperCase());
+  if (!batch || batch.toUpperCase() === 'ALL') return;
+  localStorage.setItem('nie_user_lab_batch', cleanBatch(batch));
 }
 
 export function extractAvailableBatches(timetable) {
@@ -1313,18 +1327,16 @@ export const onTtBatchChange = pickTtBatch;
 
 export function buildBatchDropdownHtml(timetable, selectedBatch) {
   const available = extractAvailableBatches(timetable);
-  const activeBatch = selectedBatch || getUserLabBatch();
-  const cleanActive = cleanBatch(activeBatch);
-  const isAllActive = (!cleanActive || cleanActive === 'ALL' || cleanActive === 'ALLBATCHES');
+  const activeBatch = selectedBatch || getUserLabBatch(available);
+  const cleanActive = cleanBatch(activeBatch) || (available.length ? cleanBatch(available[0]) : 'A1');
 
-  const displayLabel = isAllActive ? 'All Batches' : ('Batch ' + cleanActive);
+  const displayLabel = 'Batch ' + cleanActive;
 
-  let optionsHtml = `<button type="button" class="sem-option ${isAllActive ? 'active' : ''}" onclick="pickTtBatch('All', event)">All Batches</button>`;
-
+  let optionsHtml = '';
   available.forEach(b => {
     const cleanB = cleanBatch(b);
-    const isAct = (!isAllActive && cleanActive === cleanB);
-    optionsHtml += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}', event)">Batch ${b}</button>`;
+    const isAct = (cleanActive === cleanB);
+    optionsHtml += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${cleanB}', event)">Batch ${cleanB}</button>`;
   });
 
   return `
@@ -1350,20 +1362,19 @@ export function updateTtBatchDropdownUI(timetable) {
   const label = document.getElementById('tt-batch-trigger-label');
   if (!menu) return;
 
-  const currentBatch = getUserLabBatch();
   const available = extractAvailableBatches(timetable);
-  const cleanActive = cleanBatch(currentBatch);
-  const isAllActive = (!cleanActive || cleanActive === 'ALL' || cleanActive === 'ALLBATCHES');
+  const activeBatch = getUserLabBatch(available);
+  const cleanActive = cleanBatch(activeBatch) || (available.length ? cleanBatch(available[0]) : 'A1');
 
-  let html = `<button type="button" class="sem-option ${isAllActive ? 'active' : ''}" onclick="pickTtBatch('All', event)">All Batches</button>`;
+  let html = '';
   available.forEach(b => {
-    const isAct = (!isAllActive && cleanActive === cleanBatch(b));
-    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${b}', event)">Batch ${b}</button>`;
+    const cleanB = cleanBatch(b);
+    const isAct = (cleanActive === cleanB);
+    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${cleanB}', event)">Batch ${cleanB}</button>`;
   });
   menu.innerHTML = html;
 
-  const displayBatch = isAllActive ? 'All Batches' : ('Batch ' + cleanActive);
-  if (label) label.textContent = displayBatch;
+  if (label) label.textContent = 'Batch ' + cleanActive;
 }
 
 export async function initTimetable() {
@@ -1741,7 +1752,8 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     return;
   }
 
-  const selectedBatch = getUserLabBatch();
+  const availableBatches = extractAvailableBatches(timetable);
+  const selectedBatch = getUserLabBatch(availableBatches);
   const rawDaySchedule = timetable?.schedule?.[dayName] || [];
   const regCodes = getRegisteredCourseCodes();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();

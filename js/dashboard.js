@@ -1194,23 +1194,72 @@ function getStudentTimetableParams() {
   };
 }
 
-export function cleanBatch(b) {
+export function cleanBatch(b, section = '') {
   if (!b) return '';
-  return String(b).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let s = String(b).trim().toUpperCase();
+  s = s.replace(/\bBATCH\b/gi, '')
+       .replace(/\bSECTION\b/gi, '')
+       .replace(/\bSEC\b/gi, '')
+       .replace(/[^A-Z0-9]/g, '')
+       .trim();
+
+  if (!s || s === 'ALL' || s === 'ALLBATCHES' || s === 'ELECTIVE' || s === 'THEORY' || s === 'LAB' || s === 'NONE') {
+    return '';
+  }
+
+  // Reject course codes (e.g. BEE501, 21MEL37, BRMEE557) or graduation years (e.g. 2022, 2026)
+  // Lab batches are always 1 to 3 characters and do not contain multi-digit numbers
+  if (s.length > 3 || /\d{2,}/.test(s)) {
+    return '';
+  }
+
+  const sec = (section || (typeof getStudentTimetableParams === 'function' ? getStudentTimetableParams().section : '') || 'A').toUpperCase().charAt(0) || 'A';
+
+  if (/^[1-9]$/.test(s)) {
+    return `${sec}${s}`;
+  }
+
+  if (/^[A-Z][1-9][A-Z]?$/.test(s)) {
+    return s;
+  }
+
+  return '';
 }
 
-export function getBatchesFromString(str) {
+export function getBatchesFromString(str, section = '') {
   if (!str) return [];
-  const found = [];
-  const matches = String(str).matchAll(/(?:^|[^A-Z0-9])([A-Z][0-9])(?:[^A-Z0-9]|$)/gi);
-  for (const m of matches) {
-    if (m[1]) found.push(m[1].toUpperCase());
+  const sec = (section || (typeof getStudentTimetableParams === 'function' ? getStudentTimetableParams().section : '') || 'A').toUpperCase().charAt(0) || 'A';
+  const found = new Set();
+  const rawStr = String(str);
+
+  // 1. Match [A-Z][1-9] at token boundaries (e.g. "A1", "B2", "A1, A2", "Batch A1")
+  const batchRegex = /(?:^|[^A-Za-z0-9])([A-Za-z][1-9])(?:[^A-Za-z0-9]|$)/g;
+  let match;
+  while ((match = batchRegex.exec(rawStr)) !== null) {
+    if (match[1]) {
+      const b = cleanBatch(match[1], sec);
+      if (b) found.add(b);
+    }
   }
-  if (found.length === 0) {
-    const clean = cleanBatch(str);
-    if (clean && clean !== 'ALL' && clean !== 'ALLBATCHES') found.push(clean);
+
+  // 2. Match "Batch 1", "Batch 2", "B1", "B 2"
+  const numBatchRegex = /\b(?:Batch|B)\s*[-:]?\s*([1-9])\b/gi;
+  while ((match = numBatchRegex.exec(rawStr)) !== null) {
+    if (match[1]) {
+      const b = cleanBatch(match[1], sec);
+      if (b) found.add(b);
+    }
   }
-  return found;
+
+  // 3. Fallback: only if cleanBatch returns a valid 1-3 character batch
+  if (found.size === 0) {
+    const cleaned = cleanBatch(rawStr, sec);
+    if (cleaned) {
+      found.add(cleaned);
+    }
+  }
+
+  return Array.from(found);
 }
 
 export function batchMatches(slotBatchStr, targetBatch) {
@@ -1223,63 +1272,84 @@ export function batchMatches(slotBatchStr, targetBatch) {
 
 export function getUserLabBatch(availableBatches = []) {
   const cached = localStorage.getItem('nie_user_lab_batch');
+  const params = getStudentTimetableParams();
+  const sec = (params.section || 'A').toUpperCase().charAt(0) || 'A';
+  const defaultBatch = `${sec}1`;
+
   if (cached) {
-    const cleanC = cleanBatch(cached);
+    const cleanC = cleanBatch(cached, sec);
     if (cleanC && cleanC !== 'ALL' && cleanC !== 'ALLBATCHES') {
-      if (!availableBatches || !availableBatches.length || availableBatches.map(cleanBatch).includes(cleanC)) {
+      if (Array.isArray(availableBatches) && availableBatches.length > 0) {
+        if (availableBatches.map(b => cleanBatch(b, sec)).includes(cleanC)) {
+          return cleanC;
+        }
+      } else {
         return cleanC;
       }
     }
   }
+
   if (Array.isArray(availableBatches) && availableBatches.length > 0) {
-    const first = cleanBatch(availableBatches[0]);
+    const first = cleanBatch(availableBatches[0], sec) || availableBatches[0];
     localStorage.setItem('nie_user_lab_batch', first);
     return first;
   }
-  const params = getStudentTimetableParams();
-  const sec = params.section || 'A';
-  const defaultBatch = `${sec}1`;
+
   localStorage.setItem('nie_user_lab_batch', defaultBatch);
   return defaultBatch;
 }
 
 export function setUserLabBatch(batch) {
   if (!batch || batch.toUpperCase() === 'ALL') return;
-  localStorage.setItem('nie_user_lab_batch', cleanBatch(batch));
+  const clean = cleanBatch(batch);
+  if (clean) localStorage.setItem('nie_user_lab_batch', clean);
 }
 
 export function extractAvailableBatches(timetable) {
   const batches = new Set();
   const sched = timetable?.schedule || {};
+  const params = getStudentTimetableParams();
+  const sec = (params.section || 'A').toUpperCase().charAt(0) || 'A';
+
+  // Collect all known course codes to strictly exclude any subject code
+  const knownCourseCodes = new Set();
+  if (Array.isArray(timetable?.subjects)) {
+    timetable.subjects.forEach(s => {
+      if (s?.code) knownCourseCodes.add(String(s.code).toUpperCase().trim());
+    });
+  }
+
   Object.values(sched).forEach(dayArr => {
     if (!Array.isArray(dayArr)) return;
     dayArr.forEach(s => {
       if (!s) return;
       if (s.batch) {
-        getBatchesFromString(s.batch).forEach(b => batches.add(b));
+        getBatchesFromString(s.batch, sec).forEach(b => {
+          if (!knownCourseCodes.has(b)) batches.add(b);
+        });
       }
       if (Array.isArray(s.options)) {
         s.options.forEach(opt => {
-          if (opt.batch) {
-            getBatchesFromString(opt.batch).forEach(b => batches.add(b));
+          if (opt && opt.batch) {
+            getBatchesFromString(opt.batch, sec).forEach(b => {
+              if (!knownCourseCodes.has(b)) batches.add(b);
+            });
           }
         });
       }
-      if (s.code) {
-        getBatchesFromString(s.code).forEach(b => batches.add(b));
-      }
+      // NEVER extract batches from s.code or opt.code! Course codes are not batches.
     });
   });
 
-  if (batches.size === 0) {
-    const params = getStudentTimetableParams();
-    const sec = params.section || 'A';
-    batches.add(`${sec}1`);
-    batches.add(`${sec}2`);
-    batches.add(`${sec}3`);
+  const validBatches = Array.from(batches).filter(b => {
+    return b && /^[A-Z]?[1-9][A-Z]?$/.test(b) && !knownCourseCodes.has(b);
+  });
+
+  if (validBatches.length === 0) {
+    validBatches.push(`${sec}1`, `${sec}2`, `${sec}3`);
   }
 
-  return Array.from(batches).sort();
+  return validBatches.sort();
 }
 
 export function toggleTtBatchDropdown(triggerEl, event) {
@@ -1511,7 +1581,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
       // 1. If slot has structured options
       if (s.options && Array.isArray(s.options) && s.options.length > 0) {
         // A. Check if options are segregated by lab batch
-        const hasBatchOpts = s.options.some(opt => opt.batch);
+        const hasBatchOpts = s.options.some(opt => opt.batch && getBatchesFromString(opt.batch).length > 0);
         if (hasBatchOpts && !isAllBatches) {
           const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
           if (matchedBatchOpt) {

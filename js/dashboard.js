@@ -1135,14 +1135,14 @@ export async function ensureRegisteredCoursesLoaded() {
   return [];
 }
 
-// Standard NIE period slots with fixed Tea Break and Lunch Break timings
+// Standard NIE period slots with fixed Break timings
 const FIXED_DAY_SLOTS = [
   { id: 'p1', type: 'period', num: 1, startMin: 540, endMin: 600, labelStart: '09:00', labelEnd: '10:00' },
   { id: 'p2', type: 'period', num: 2, startMin: 600, endMin: 660, labelStart: '10:00', labelEnd: '11:00' },
-  { id: 'b1', type: 'break', name: 'Tea Break', icon: '☕', startMin: 660, endMin: 690, labelStart: '11:00', labelEnd: '11:30' },
+  { id: 'b1', type: 'break', name: 'Break', startMin: 660, endMin: 690, labelStart: '11:00', labelEnd: '11:30' },
   { id: 'p3', type: 'period', num: 3, startMin: 690, endMin: 750, labelStart: '11:30', labelEnd: '12:30' },
   { id: 'p4', type: 'period', num: 4, startMin: 750, endMin: 810, labelStart: '12:30', labelEnd: '01:30' },
-  { id: 'b2', type: 'break', name: 'Lunch Break', icon: '🍱', startMin: 810, endMin: 870, labelStart: '01:30', labelEnd: '02:30' },
+  { id: 'b2', type: 'break', name: 'Break', startMin: 810, endMin: 870, labelStart: '01:30', labelEnd: '02:30' },
   { id: 'p5', type: 'period', num: 5, startMin: 870, endMin: 930, labelStart: '02:30', labelEnd: '03:30' },
   { id: 'p6', type: 'period', num: 6, startMin: 930, endMin: 990, labelStart: '03:30', labelEnd: '04:30' }
 ];
@@ -1352,12 +1352,13 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
 
   // Render each fixed slot in standard sequence
   FIXED_DAY_SLOTS.forEach(slotDef => {
-    // 1. Fixed Breaks (Tea Break 11:00-11:30 and Lunch Break 01:30-02:30)
+    // 1. Fixed Breaks (rendered as visible breaker divider with simple "Break" label, no emojis or times)
     if (slotDef.type === 'break') {
       html += `
-        <div class="tt-break-slot">
-          <span>${slotDef.icon}</span>
-          <span>${escHtml(slotDef.name)} (${slotDef.labelStart} – ${slotDef.labelEnd})</span>
+        <div class="tt-break-divider" role="separator" aria-label="Break">
+          <span class="tt-break-line"></span>
+          <span class="tt-break-text">Break</span>
+          <span class="tt-break-line"></span>
         </div>
       `;
       return;
@@ -1455,18 +1456,18 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       }
     }
 
-    // Past slot calculation
-    const isPast = isViewingToday && (nowMinutes >= slotDef.endMin);
+    // Highlight current class if currently viewing today and time falls within this slot
+    const isNow = isViewingToday && (nowMinutes >= slotDef.startMin && nowMinutes < slotDef.endMin);
 
     // If no period is scheduled, or student didn't opt for the elective: keep slot empty
     if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
       html += `
-        <div class="tt-slot is-empty ${isPast ? 'is-past' : ''}">
+        <div class="tt-slot is-empty ${isNow ? 'is-now' : ''}">
           <div class="tt-slot-time">
             <div class="tt-time-start">${slotDef.labelStart}</div>
             <div class="tt-time-end">${slotDef.labelEnd}</div>
           </div>
-          <div class="tt-slot-divider"></div>
+          <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
           <div class="tt-slot-content">
             <div class="tt-slot-empty-label">No class scheduled</div>
           </div>
@@ -1495,12 +1496,12 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     const batchLabel = matchedClass.batch ? matchedClass.batch : '';
 
     html += `
-      <div class="tt-slot ${isPast ? 'is-past' : ''}">
+      <div class="tt-slot ${isNow ? 'is-now' : ''}">
         <div class="tt-slot-time">
           <div class="tt-time-start">${slotDef.labelStart}</div>
           <div class="tt-time-end">${slotDef.labelEnd}</div>
         </div>
-        <div class="tt-slot-divider"></div>
+        <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
         <div class="tt-slot-content">
           <div class="tt-slot-title-row">
             <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
@@ -1590,6 +1591,15 @@ export function openTtUploadModal(mode = 'upload') {
         if (e.dataTransfer?.files?.[0]) {
           handleTtFileChange({ files: e.dataTransfer.files });
         }
+      });
+    }
+
+    const uploadForm = document.getElementById('tt-upload-form');
+    if (uploadForm && !uploadForm._submitInit) {
+      uploadForm._submitInit = true;
+      uploadForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitTimetableUpload(e);
       });
     }
   }
@@ -1927,6 +1937,7 @@ if (typeof window !== 'undefined') {
   window.initTimetable = initTimetable;
   window.openTtUploadModal = openTtUploadModal;
   window.closeTtUploadModal = closeTtUploadModal;
+  window.submitTimetableUpload = submitTimetableUpload;
   window.handleTtFileChange = handleTtFileChange;
   window.updateCalendarLayout = updateCalendarLayout;
 

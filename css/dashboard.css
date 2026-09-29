@@ -915,7 +915,8 @@ html, body {
 .tt-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 6px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -941,27 +942,32 @@ html, body {
   font-weight: 600;
 }
 
-/* Slot Card */
+/* Slot Card (Flex spreads across full container height) */
 .tt-slot {
   display: flex;
   align-items: stretch;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 14px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   transition: all 0.2s ease;
   position: relative;
+  flex: 1;
+  min-height: 48px;
+  box-sizing: border-box;
 }
 
 .tt-slot.is-now {
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(37, 99, 235, 0.08);
   border-color: var(--accent);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.16);
 }
 
-.tt-slot.is-past {
-  opacity: 0.52;
+[data-theme=dark] .tt-slot.is-now {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: #60a5fa;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
 }
 
 .tt-slot-time {
@@ -990,9 +996,10 @@ html, body {
 
 .tt-slot-divider {
   width: 2px;
+  align-self: stretch;
   background: var(--border);
   border-radius: 2px;
-  margin: 2px 0;
+  margin: 3px 0;
   flex-shrink: 0;
   position: relative;
 }
@@ -1056,6 +1063,8 @@ html, body {
 }
 
 .tt-slot.is-empty {
+  flex: 1;
+  min-height: 48px;
   opacity: 0.55;
   background: transparent;
   border: 1.5px dashed var(--border);
@@ -1115,23 +1124,30 @@ html, body {
   gap: 3px;
 }
 
-/* Break Row */
-.tt-break-slot {
+/* Visible Break Divider Across Full Width */
+.tt-break-divider {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 700;
+  gap: 12px;
+  padding: 3px 6px;
+  flex-shrink: 0;
+  user-select: none;
 }
 
-[data-theme=dark] .tt-break-slot {
-  background: rgba(255, 255, 255, 0.02);
+.tt-break-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--border);
+  border-radius: 2px;
+  opacity: 0.85;
+}
+
+.tt-break-text {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
 }
 
 /* Empty Timetable State */

@@ -382,7 +382,7 @@
           </button>
         </div>
 
-        <form id="tt-upload-form" onsubmit="submitTimetableUpload(event)">
+        <form id="tt-upload-form" onsubmit="event.preventDefault(); submitTimetableUpload(event)">
           <div class="form-group" style="margin-bottom: 16px;">
             <div class="tt-dropzone" id="tt-dropzone" onclick="document.getElementById('tt-file-input').click()">
               <input type="file" id="tt-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleTtFileChange(this)">

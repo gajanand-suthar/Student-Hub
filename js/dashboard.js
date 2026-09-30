@@ -1804,7 +1804,7 @@ export function openTtUploadModal(mode = 'upload') {
     const editFileLabel = document.getElementById('tt-edit-file-label');
 
     if (dropLabel) dropLabel.textContent = 'Click to select timetable file';
-    if (editFileLabel) editFileLabel.textContent = 'Attach updated timetable (optional)';
+    if (editFileLabel) editFileLabel.textContent = 'Timetable (optional)';
 
     if (isEdit) {
       if (dropzone) dropzone.style.display = 'none';

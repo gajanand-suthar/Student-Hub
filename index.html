@@ -398,12 +398,12 @@
 
         <form id="tt-upload-form" onsubmit="event.preventDefault(); submitTimetableUpload(event)">
           <!-- 1. Edit Description Group (Shown first in edit mode with greater height) -->
-          <div class="form-group" id="tt-edit-desc-group" style="margin-bottom: 16px; display: none;">
+          <div class="form-group" id="tt-edit-desc-group" style="margin-bottom: 8px; display: none;">
             <label for="tt-edit-desc" style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">
-              <span>Describe the correction <span style="color: var(--danger);">*</span></span>
+              <span>Describe</span>
               <span style="font-size: 0.72rem; font-weight: 600; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 2px 6px; border-radius: 4px;">Required</span>
             </label>
-            <textarea id="tt-edit-desc" class="s-input" rows="5" style="width: 100%; min-height: 125px; resize: vertical; padding: 12px; font-size: 0.86rem; box-sizing: border-box; border-radius: 10px; line-height: 1.5;" placeholder="e.g., Monday 10:00 AM slot should be Control Systems (BEE502) instead of BEE503, and Wednesday 2:30 PM lab is with Batch J1..."></textarea>
+            <textarea id="tt-edit-desc" class="s-input" rows="5" style="width: 100%; min-height: 125px; resize: vertical; padding: 12px; font-size: 0.86rem; box-sizing: border-box; border-radius: 10px; line-height: 1.5;" placeholder="Describe what needs to be changed..."></textarea>
           </div>
 
           <!-- 2. File Upload Area -->
@@ -428,7 +428,7 @@
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
                 <div style="min-width: 0;">
-                  <div id="tt-edit-file-label" style="font-size: 0.82rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Attach updated timetable (optional)</div>
+                  <div id="tt-edit-file-label" style="font-size: 0.82rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Timetable (optional)</div>
                   <div style="font-size: 0.72rem; color: var(--muted);">PDF or Image up to 5MB</div>
                 </div>
               </div>

@@ -1185,11 +1185,7 @@ export function getUserLabBatch(availableBatches = []) {
     localStorage.setItem('nie_user_lab_batch', first);
     return first;
   }
-  const params = getStudentTimetableParams();
-  const sec = params.section || 'A';
-  const defaultBatch = `${sec}1`;
-  localStorage.setItem('nie_user_lab_batch', defaultBatch);
-  return defaultBatch;
+  return '';
 }
 
 export function setUserLabBatch(batch) {
@@ -1219,14 +1215,6 @@ export function extractAvailableBatches(timetable) {
       // Batches only come from s.batch and opt.batch fields.
     });
   });
-
-  if (batches.size === 0) {
-    const params = getStudentTimetableParams();
-    const sec = params.section || 'A';
-    batches.add(`${sec}1`);
-    batches.add(`${sec}2`);
-    batches.add(`${sec}3`);
-  }
 
   return Array.from(batches).sort();
 }
@@ -1285,6 +1273,13 @@ export function updateTtBatchDropdownUI(timetable) {
   if (!menu) return;
 
   const available = extractAvailableBatches(timetable);
+  const ddContainer = document.getElementById('tt-batch-dropdown');
+  if (available.length === 0) {
+    if (ddContainer) ddContainer.style.display = 'none';
+    return;
+  }
+  if (ddContainer) ddContainer.style.display = '';
+
   const activeBatch = getUserLabBatch(available);
   const cleanActive = cleanBatch(activeBatch) || (available.length ? cleanBatch(available[0]) : 'A1');
 

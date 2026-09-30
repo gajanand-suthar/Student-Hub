@@ -157,7 +157,6 @@ export function initDashboard() {
     if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
   }, { capture: true, passive: true });
 
-  initHomeToggleListeners();
   initAcademicCalendar();
   initTimetable();
 
@@ -988,56 +987,36 @@ let currentTimetableData = null;
 let currentTimetableIsPending = false;
 let selectedTtFile = null;
 
-export function toggleHomeSection(section) {
-  const btnCalendar = document.getElementById('btn-toggle-calendar');
-  const btnNotices = document.getElementById('btn-toggle-notices');
-  const btnSyllabus = document.getElementById('btn-toggle-syllabus');
+const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
+
+export function toggleHomeSection(section) {
+  const sections = ['calendar', 'notices', 'syllabus'];
   const panelTimetable = document.getElementById('panel-timetable');
-  const panelCalendar = document.getElementById('panel-calendar');
-  const panelNotices = document.getElementById('panel-notices');
-  const panelSyllabus = document.getElementById('panel-syllabus');
 
   // If already active or explicitly timetable, toggle off -> back to timetable
   if (currentHomeSection === section || section === 'timetable') {
     currentHomeSection = 'timetable';
-
-    btnCalendar?.classList.remove('active');
-    btnNotices?.classList.remove('active');
-    btnSyllabus?.classList.remove('active');
-
-    btnCalendar?.setAttribute('aria-selected', 'false');
-    btnNotices?.setAttribute('aria-selected', 'false');
-    btnSyllabus?.setAttribute('aria-selected', 'false');
-
-    btnCalendar?.blur();
-    btnNotices?.blur();
-    btnSyllabus?.blur();
-
+    sections.forEach(s => {
+      const btn = document.getElementById(`btn-toggle-${s}`);
+      if (btn) { btn.classList.remove('active'); btn.setAttribute('aria-selected', 'false'); btn.blur(); }
+      document.getElementById(`panel-${s}`)?.classList.remove('active');
+    });
     panelTimetable?.classList.add('active');
-    panelCalendar?.classList.remove('active');
-    panelNotices?.classList.remove('active');
-    panelSyllabus?.classList.remove('active');
-
     resetTtToToday();
     return;
   }
 
   // Activate selected section
   currentHomeSection = section;
-
-  btnCalendar?.classList.toggle('active', section === 'calendar');
-  btnNotices?.classList.toggle('active', section === 'notices');
-  btnSyllabus?.classList.toggle('active', section === 'syllabus');
-
-  btnCalendar?.setAttribute('aria-selected', section === 'calendar' ? 'true' : 'false');
-  btnNotices?.setAttribute('aria-selected', section === 'notices' ? 'true' : 'false');
-  btnSyllabus?.setAttribute('aria-selected', section === 'syllabus' ? 'true' : 'false');
-
   panelTimetable?.classList.remove('active');
-  panelCalendar?.classList.toggle('active', section === 'calendar');
-  panelNotices?.classList.toggle('active', section === 'notices');
-  panelSyllabus?.classList.toggle('active', section === 'syllabus');
+  sections.forEach(s => {
+    const btn = document.getElementById(`btn-toggle-${s}`);
+    const isActive = s === section;
+    btn?.classList.toggle('active', isActive);
+    btn?.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    document.getElementById(`panel-${s}`)?.classList.toggle('active', isActive);
+  });
 
   if (section === 'calendar') {
     initAcademicCalendar();
@@ -1049,36 +1028,9 @@ export function toggleHomeSection(section) {
   }
 }
 
-export function initHomeToggleListeners() {
-  ['calendar', 'notices', 'syllabus'].forEach(sec => {
-    const btn = document.getElementById(`btn-toggle-${sec}`);
-    if (btn && !btn._toggleBound) {
-      btn._toggleBound = true;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        toggleHomeSection(sec);
-      });
-    }
-  });
-}
-
-// Guarantee immediate availability of toggleHomeSection for inline onclick & event delegation
+// Guarantee immediate availability of toggleHomeSection for inline onclick
 if (typeof window !== 'undefined') {
   window.toggleHomeSection = toggleHomeSection;
-  window.initHomeToggleListeners = initHomeToggleListeners;
-}
-
-if (typeof document !== 'undefined' && !document._dashToggleBound) {
-  document._dashToggleBound = true;
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.dash-toggle-btn');
-    if (btn) {
-      const id = btn.id || '';
-      if (id.includes('calendar')) toggleHomeSection('calendar');
-      else if (id.includes('notices')) toggleHomeSection('notices');
-      else if (id.includes('syllabus')) toggleHomeSection('syllabus');
-    }
-  });
 }
 
 export function getRegisteredCourseCodes() {
@@ -1103,10 +1055,7 @@ export function getRegisteredCourseCodes() {
   return [];
 }
 
-// Get registered course codes from cache (populated during onboarding or when user visits Attendance tab)
-export function ensureRegisteredCoursesLoaded() {
-  return getRegisteredCourseCodes();
-}
+// ensureRegisteredCoursesLoaded removed — callers use getRegisteredCourseCodes() directly
 
 // Standard NIE period slots with fixed Break timings
 const FIXED_DAY_SLOTS = [
@@ -1194,72 +1143,23 @@ function getStudentTimetableParams() {
   };
 }
 
-export function cleanBatch(b, section = '') {
+export function cleanBatch(b) {
   if (!b) return '';
-  let s = String(b).trim().toUpperCase();
-  s = s.replace(/\bBATCH\b/gi, '')
-       .replace(/\bSECTION\b/gi, '')
-       .replace(/\bSEC\b/gi, '')
-       .replace(/[^A-Z0-9]/g, '')
-       .trim();
-
-  if (!s || s === 'ALL' || s === 'ALLBATCHES' || s === 'ELECTIVE' || s === 'THEORY' || s === 'LAB' || s === 'NONE') {
-    return '';
-  }
-
-  // Reject course codes (e.g. BEE501, 21MEL37, BRMEE557) or graduation years (e.g. 2022, 2026)
-  // Lab batches are always 1 to 3 characters and do not contain multi-digit numbers
-  if (s.length > 3 || /\d{2,}/.test(s)) {
-    return '';
-  }
-
-  const sec = (section || (typeof getStudentTimetableParams === 'function' ? getStudentTimetableParams().section : '') || 'A').toUpperCase().charAt(0) || 'A';
-
-  if (/^[1-9]$/.test(s)) {
-    return `${sec}${s}`;
-  }
-
-  if (/^[A-Z][1-9][A-Z]?$/.test(s)) {
-    return s;
-  }
-
-  return '';
+  return String(b).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-export function getBatchesFromString(str, section = '') {
+export function getBatchesFromString(str) {
   if (!str) return [];
-  const sec = (section || (typeof getStudentTimetableParams === 'function' ? getStudentTimetableParams().section : '') || 'A').toUpperCase().charAt(0) || 'A';
-  const found = new Set();
-  const rawStr = String(str);
-
-  // 1. Match [A-Z][1-9] at token boundaries (e.g. "A1", "B2", "A1, A2", "Batch A1")
-  const batchRegex = /(?:^|[^A-Za-z0-9])([A-Za-z][1-9])(?:[^A-Za-z0-9]|$)/g;
-  let match;
-  while ((match = batchRegex.exec(rawStr)) !== null) {
-    if (match[1]) {
-      const b = cleanBatch(match[1], sec);
-      if (b) found.add(b);
-    }
+  const found = [];
+  const matches = String(str).matchAll(/(?:^|[^A-Z0-9])([A-Z][0-9])(?:[^A-Z0-9]|$)/gi);
+  for (const m of matches) {
+    if (m[1]) found.push(m[1].toUpperCase());
   }
-
-  // 2. Match "Batch 1", "Batch 2", "B1", "B 2"
-  const numBatchRegex = /\b(?:Batch|B)\s*[-:]?\s*([1-9])\b/gi;
-  while ((match = numBatchRegex.exec(rawStr)) !== null) {
-    if (match[1]) {
-      const b = cleanBatch(match[1], sec);
-      if (b) found.add(b);
-    }
+  if (found.length === 0) {
+    const clean = cleanBatch(str);
+    if (clean && clean !== 'ALL' && clean !== 'ALLBATCHES') found.push(clean);
   }
-
-  // 3. Fallback: only if cleanBatch returns a valid 1-3 character batch
-  if (found.size === 0) {
-    const cleaned = cleanBatch(rawStr, sec);
-    if (cleaned) {
-      found.add(cleaned);
-    }
-  }
-
-  return Array.from(found);
+  return found;
 }
 
 export function batchMatches(slotBatchStr, targetBatch) {
@@ -1272,84 +1172,63 @@ export function batchMatches(slotBatchStr, targetBatch) {
 
 export function getUserLabBatch(availableBatches = []) {
   const cached = localStorage.getItem('nie_user_lab_batch');
-  const params = getStudentTimetableParams();
-  const sec = (params.section || 'A').toUpperCase().charAt(0) || 'A';
-  const defaultBatch = `${sec}1`;
-
   if (cached) {
-    const cleanC = cleanBatch(cached, sec);
+    const cleanC = cleanBatch(cached);
     if (cleanC && cleanC !== 'ALL' && cleanC !== 'ALLBATCHES') {
-      if (Array.isArray(availableBatches) && availableBatches.length > 0) {
-        if (availableBatches.map(b => cleanBatch(b, sec)).includes(cleanC)) {
-          return cleanC;
-        }
-      } else {
+      if (!availableBatches || !availableBatches.length || availableBatches.map(cleanBatch).includes(cleanC)) {
         return cleanC;
       }
     }
   }
-
   if (Array.isArray(availableBatches) && availableBatches.length > 0) {
-    const first = cleanBatch(availableBatches[0], sec) || availableBatches[0];
+    const first = cleanBatch(availableBatches[0]);
     localStorage.setItem('nie_user_lab_batch', first);
     return first;
   }
-
+  const params = getStudentTimetableParams();
+  const sec = params.section || 'A';
+  const defaultBatch = `${sec}1`;
   localStorage.setItem('nie_user_lab_batch', defaultBatch);
   return defaultBatch;
 }
 
 export function setUserLabBatch(batch) {
   if (!batch || batch.toUpperCase() === 'ALL') return;
-  const clean = cleanBatch(batch);
-  if (clean) localStorage.setItem('nie_user_lab_batch', clean);
+  localStorage.setItem('nie_user_lab_batch', cleanBatch(batch));
 }
 
 export function extractAvailableBatches(timetable) {
   const batches = new Set();
   const sched = timetable?.schedule || {};
-  const params = getStudentTimetableParams();
-  const sec = (params.section || 'A').toUpperCase().charAt(0) || 'A';
-
-  // Collect all known course codes to strictly exclude any subject code
-  const knownCourseCodes = new Set();
-  if (Array.isArray(timetable?.subjects)) {
-    timetable.subjects.forEach(s => {
-      if (s?.code) knownCourseCodes.add(String(s.code).toUpperCase().trim());
-    });
-  }
-
   Object.values(sched).forEach(dayArr => {
     if (!Array.isArray(dayArr)) return;
     dayArr.forEach(s => {
       if (!s) return;
       if (s.batch) {
-        getBatchesFromString(s.batch, sec).forEach(b => {
-          if (!knownCourseCodes.has(b)) batches.add(b);
-        });
+        getBatchesFromString(s.batch).forEach(b => batches.add(b));
       }
       if (Array.isArray(s.options)) {
         s.options.forEach(opt => {
-          if (opt && opt.batch) {
-            getBatchesFromString(opt.batch, sec).forEach(b => {
-              if (!knownCourseCodes.has(b)) batches.add(b);
-            });
+          if (opt.batch) {
+            getBatchesFromString(opt.batch).forEach(b => batches.add(b));
           }
         });
       }
-      // NEVER extract batches from s.code or opt.code! Course codes are not batches.
+      // NOTE: Do NOT extract batches from s.code — course codes like "BEE504"
+      // or "BEEL505 / BEE502 / BEE503" are not batch identifiers.
+      // Batches only come from s.batch and opt.batch fields.
     });
   });
 
-  const validBatches = Array.from(batches).filter(b => {
-    return b && /^[A-Z]?[1-9][A-Z]?$/.test(b) && !knownCourseCodes.has(b);
-  });
-
-  if (validBatches.length === 0) {
-    validBatches.push(`${sec}1`, `${sec}2`, `${sec}3`);
+  if (batches.size === 0) {
+    const params = getStudentTimetableParams();
+    const sec = params.section || 'A';
+    batches.add(`${sec}1`);
+    batches.add(`${sec}2`);
+    batches.add(`${sec}3`);
   }
 
-  return validBatches.sort();
+  return Array.from(batches).sort();
 }
 
 export function toggleTtBatchDropdown(triggerEl, event) {
@@ -1386,14 +1265,11 @@ export function pickTtBatch(batch, event) {
   }
 }
 
-export const onTtBatchChange = pickTtBatch;
 
-export function buildBatchDropdownHtml() {
-  return '';
-}
+
 
 export function resetTtToToday() {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days = DAYS_OF_WEEK;
   const now = new Date();
   const todayIdx = now.getDay();
   currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
@@ -1423,11 +1299,41 @@ export function updateTtBatchDropdownUI(timetable) {
   if (label) label.textContent = 'Batch ' + cleanActive;
 }
 
+async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
+  const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
+  try {
+    const fetchParams = forceRefresh ? { ...params, forceRefresh } : params;
+    const data = await api.getTimetable(fetchParams);
+    if (data && data.schedule) {
+      currentTimetableData = data;
+      currentTimetableIsPending = false;
+      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+      updateTtBatchDropdownUI(currentTimetableData);
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else if (data && data.pending) {
+      currentTimetableIsPending = true;
+      currentTimetableData = null;
+      try { localStorage.removeItem(cacheKey); } catch (e) {}
+      showPendingTimetable(params);
+    } else {
+      currentTimetableIsPending = false;
+      try { localStorage.removeItem(cacheKey); } catch (e) {}
+      currentTimetableData = null;
+      showEmptyTimetable(params);
+    }
+  } catch (err) {
+    console.warn('Timetable fetch failed:', err);
+    if (!currentTimetableData) {
+      showEmptyTimetable(params);
+    }
+  }
+}
+
 export async function initTimetable() {
   const heading = document.getElementById('tt-day-heading');
   if (heading) heading.textContent = "Schedule";
 
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days = DAYS_OF_WEEK;
   const now = new Date();
   const todayIdx = now.getDay();
   currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
@@ -1435,20 +1341,9 @@ export async function initTimetable() {
   updateTtDayNavUI();
   updateTtBatchDropdownUI(currentTimetableData);
 
-  // Ensure course codes from parents.nie.ac.in attendance are loaded in background
-  ensureRegisteredCoursesLoaded();
+  getRegisteredCourseCodes();
 
   const params = getStudentTimetableParams();
-
-  // Pre-populate upload modal inputs
-  const upBranch = document.getElementById('tt-up-branch');
-  const upSem = document.getElementById('tt-up-sem');
-  const upSec = document.getElementById('tt-up-section');
-  const upBatch = document.getElementById('tt-up-batch');
-  if (upBranch && !upBranch.value) upBranch.value = params.branch;
-  if (upSem && !upSem.value) upSem.value = params.semester;
-  if (upSec && !upSec.value) upSec.value = params.section;
-  if (upBatch && !upBatch.value) upBatch.value = params.batch;
 
   // Render from cache first for instant UX
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
@@ -1463,36 +1358,7 @@ export async function initTimetable() {
     console.warn('Cache timetable error:', e);
   }
 
-  // Fetch updated timetable from backend
-  try {
-    const data = await api.getTimetable(params);
-    if (data && data.schedule) {
-      currentTimetableData = data;
-      currentTimetableIsPending = false;
-      updateTtBatchDropdownUI(currentTimetableData);
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-      } catch (e) {}
-      renderTodaySchedule(currentTimetableData, currentTtDay);
-    } else if (data && data.pending) {
-      currentTimetableIsPending = true;
-      currentTimetableData = null;
-      try { localStorage.removeItem(cacheKey); } catch (e) {}
-      showPendingTimetable(params);
-    } else {
-      currentTimetableIsPending = false;
-      try {
-        localStorage.removeItem(cacheKey);
-      } catch (e) {}
-      currentTimetableData = null;
-      showEmptyTimetable(params);
-    }
-  } catch (err) {
-    console.warn('Backend timetable fetch failed:', err);
-    if (!currentTimetableData) {
-      showEmptyTimetable(params);
-    }
-  }
+  await fetchAndApplyTimetable(params);
 }
 
 export async function refreshTimetable(force = true) {
@@ -1501,38 +1367,11 @@ export async function refreshTimetable(force = true) {
   if (icon) icon.classList.add('spin');
   if (btn) btn.disabled = true;
 
+  getRegisteredCourseCodes();
   const params = getStudentTimetableParams();
-  const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
 
   try {
-    ensureRegisteredCoursesLoaded();
-    const data = await api.getTimetable({ ...params, forceRefresh: force });
-    if (data && data.schedule) {
-      currentTimetableData = data;
-      currentTimetableIsPending = false;
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-      } catch (e) {}
-      updateTtBatchDropdownUI(currentTimetableData);
-      renderTodaySchedule(currentTimetableData, currentTtDay);
-    } else if (data && data.pending) {
-      currentTimetableIsPending = true;
-      currentTimetableData = null;
-      try { localStorage.removeItem(cacheKey); } catch (e) {}
-      showPendingTimetable(params);
-    } else {
-      currentTimetableIsPending = false;
-      try {
-        localStorage.removeItem(cacheKey);
-      } catch (e) {}
-      currentTimetableData = null;
-      showEmptyTimetable(params);
-    }
-  } catch (err) {
-    console.warn('Backend timetable refresh failed:', err);
-    if (!currentTimetableData) {
-      showEmptyTimetable(params);
-    }
+    await fetchAndApplyTimetable(params, { forceRefresh: force });
   } finally {
     if (icon) icon.classList.remove('spin');
     if (btn) btn.disabled = false;
@@ -1548,7 +1387,7 @@ export function selectTtDay(dayName) {
 }
 
 function updateTtDayNavUI() {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days = DAYS_OF_WEEK;
   const todayDayName = days[new Date().getDay()];
 
   document.querySelectorAll('.tt-day-chip').forEach(btn => {
@@ -1581,7 +1420,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
       // 1. If slot has structured options
       if (s.options && Array.isArray(s.options) && s.options.length > 0) {
         // A. Check if options are segregated by lab batch
-        const hasBatchOpts = s.options.some(opt => opt.batch && getBatchesFromString(opt.batch).length > 0);
+        const hasBatchOpts = s.options.some(opt => opt.batch);
         if (hasBatchOpts && !isAllBatches) {
           const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
           if (matchedBatchOpt) {
@@ -1698,18 +1537,43 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
     }
   }
 
+  // Resolve subject name from timetable.subjects if not already set
+  if (matchedClass && !matchedClass.name && timetable?.subjects && Array.isArray(timetable.subjects)) {
+    const code = (matchedClass.code || '').trim();
+    if (code && !code.includes('/')) {
+      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(code));
+      if (sub) {
+        matchedClass.name = sub.name || sub.title || '';
+      }
+    }
+  }
+
   return matchedClass;
 }
 
-function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes, timetable, selectedBatch) {
-  const isNow = isViewingToday && (nowMinutes >= slotDef.startMin && nowMinutes < slotDef.endMin);
+function resolveSubjectName(matchedClass, timetable) {
+  let name = matchedClass.name || '';
+  if (!name && timetable?.subjects && Array.isArray(timetable.subjects)) {
+    if (matchedClass.code && matchedClass.code.includes('/')) {
+      name = 'Elective / Lab Options';
+    } else {
+      const primaryCode = (matchedClass.code || '').trim();
+      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+      if (sub) name = sub.name || sub.title || '';
+    }
+  }
+  return name || matchedClass.code || 'Class';
+}
+
+function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, isViewingToday, nowMinutes, timetable, is2hr }) {
+  const isNow = isViewingToday && (nowMinutes >= startMin && nowMinutes < endMin);
 
   if (!matchedClass || (!matchedClass.code && !matchedClass.name)) {
     return `
       <div class="tt-slot is-empty ${isNow ? 'is-now' : ''}">
         <div class="tt-slot-time">
-          <div class="tt-time-start">${slotDef.labelStart}</div>
-          <div class="tt-time-end">${slotDef.labelEnd}</div>
+          <div class="tt-time-start">${startLabel}</div>
+          <div class="tt-time-end">${endLabel}</div>
         </div>
         <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
         <div class="tt-slot-content">
@@ -1719,65 +1583,14 @@ function renderSingleSlotHtml(slotDef, matchedClass, isViewingToday, nowMinutes,
     `;
   }
 
-  let subjectName = matchedClass.name || '';
-  if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
-    if (matchedClass.code && matchedClass.code.includes('/')) {
-      subjectName = 'Elective / Lab Options';
-    } else {
-      const primaryCode = (matchedClass.code || '').trim();
-      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
-      if (sub) {
-        subjectName = sub.name || sub.title || '';
-      }
-    }
-  }
-  if (!subjectName) subjectName = matchedClass.code || 'Class';
-
+  const subjectName = resolveSubjectName(matchedClass, timetable);
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
 
   return `
-    <div class="tt-slot ${isNow ? 'is-now' : ''}">
+    <div class="tt-slot ${is2hr ? 'is-2hr' : ''} ${isNow ? 'is-now' : ''}">
       <div class="tt-slot-time">
-        <div class="tt-time-start">${slotDef.labelStart}</div>
-        <div class="tt-time-end">${slotDef.labelEnd}</div>
-      </div>
-      <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
-      <div class="tt-slot-content">
-        <div class="tt-slot-title-row">
-          <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-        </div>
-        <div class="tt-slot-meta">
-          ${matchedClass.code ? `<span class="tt-code-pill">${escHtml(matchedClass.code)}</span>` : ''}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderMergedSlotHtml(pA, pB, matchedClass, isViewingToday, nowMinutes, timetable, selectedBatch) {
-  const isNow = isViewingToday && (nowMinutes >= pA.startMin && nowMinutes < pB.endMin);
-
-  let subjectName = matchedClass.name || '';
-  if (!subjectName && timetable?.subjects && Array.isArray(timetable.subjects)) {
-    if (matchedClass.code && matchedClass.code.includes('/')) {
-      subjectName = 'Elective / Lab Options';
-    } else {
-      const primaryCode = (matchedClass.code || '').trim();
-      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
-      if (sub) {
-        subjectName = sub.name || sub.title || '';
-      }
-    }
-  }
-  if (!subjectName) subjectName = matchedClass.code || 'Class';
-
-  const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
-
-  return `
-    <div class="tt-slot is-2hr ${isNow ? 'is-now' : ''}">
-      <div class="tt-slot-time">
-        <div class="tt-time-start">${pA.labelStart}</div>
-        <div class="tt-time-end">${pB.labelEnd}</div>
+        <div class="tt-time-start">${startLabel}</div>
+        <div class="tt-time-end">${endLabel}</div>
       </div>
       <div class="tt-slot-divider">${isNow ? '<span class="tt-now-dot"></span>' : ''}</div>
       <div class="tt-slot-content">
@@ -1805,8 +1618,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   }
 
   const now = new Date();
-  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const isViewingToday = (dayName === daysOfWeek[now.getDay()]);
+  const isViewingToday = (dayName === DAYS_OF_WEEK[now.getDay()]);
 
   // Sunday holiday check
   if (dayName === 'sunday') {
@@ -1871,10 +1683,10 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
 
     html += `<div class="tt-period-pair">`;
     if (canMerge) {
-      html += renderMergedSlotHtml(item.pA, item.pB, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
+      html += renderSlotHtml({ startLabel: item.pA.labelStart, endLabel: item.pB.labelEnd, startMin: item.pA.startMin, endMin: item.pB.endMin, matchedClass: classA, isViewingToday, nowMinutes, timetable, is2hr: true });
     } else {
-      html += renderSingleSlotHtml(item.pA, classA, isViewingToday, nowMinutes, timetable, selectedBatch);
-      html += renderSingleSlotHtml(item.pB, classB, isViewingToday, nowMinutes, timetable, selectedBatch);
+      html += renderSlotHtml({ startLabel: item.pA.labelStart, endLabel: item.pA.labelEnd, startMin: item.pA.startMin, endMin: item.pA.endMin, matchedClass: classA, isViewingToday, nowMinutes, timetable });
+      html += renderSlotHtml({ startLabel: item.pB.labelStart, endLabel: item.pB.labelEnd, startMin: item.pB.startMin, endMin: item.pB.endMin, matchedClass: classB, isViewingToday, nowMinutes, timetable });
     }
     html += `</div>`;
   });
@@ -1987,15 +1799,6 @@ export function openTtUploadModal(mode = 'upload') {
         }
       });
     }
-
-    const uploadForm = document.getElementById('tt-upload-form');
-    if (uploadForm && !uploadForm._submitInit) {
-      uploadForm._submitInit = true;
-      uploadForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        submitTimetableUpload(e);
-      });
-    }
   }
 }
 
@@ -2041,11 +1844,7 @@ export async function submitTimetableUpload(e) {
   }
 
   // Get student params automatically from local storage
-  const studentParams = getStudentTimetableParams();
-  const branch = studentParams.branch;
-  const semester = studentParams.semester;
-  const section = studentParams.section;
-  const batch = studentParams.batch;
+  const { branch, semester, section, batch } = getStudentTimetableParams();
 
   if (btn) {
     btn.disabled = true;
@@ -2071,13 +1870,7 @@ export async function submitTimetableUpload(e) {
     setTimeout(() => {
       closeTtUploadModal();
       refreshTimetable(true);
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
-        btn.style.background = '';
-        btn.style.borderColor = '';
-        btn.style.color = '';
-      }
+      resetUploadBtn(btn, isEdit);
     }, 1000);
   } catch (err) {
     if (err.alreadyPending || err.alreadyApproved || err.alreadyExists || err.duplicateFile || err.status === 409) {
@@ -2094,14 +1887,17 @@ export async function submitTimetableUpload(e) {
         statusEl.textContent = err.message || 'Upload failed. Please try again.';
       }
     }
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
-      btn.style.background = '';
-      btn.style.borderColor = '';
-      btn.style.color = '';
-    }
+    resetUploadBtn(btn, isEdit);
   }
+}
+
+function resetUploadBtn(btn, isEdit) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+  btn.style.background = '';
+  btn.style.borderColor = '';
+  btn.style.color = '';
 }
 
 // ── Department & Notices Sections ──
@@ -2354,11 +2150,9 @@ if (typeof window !== 'undefined') {
   window.submitTimetableUpload = submitTimetableUpload;
   window.handleTtFileChange = handleTtFileChange;
   window.updateCalendarLayout = updateCalendarLayout;
-  window.onTtBatchChange = onTtBatchChange;
   window.toggleTtBatchDropdown = toggleTtBatchDropdown;
   window.closeTtBatchDropdown = closeTtBatchDropdown;
   window.pickTtBatch = pickTtBatch;
-  window.buildBatchDropdownHtml = buildBatchDropdownHtml;
   window.getUserLabBatch = getUserLabBatch;
   window.setUserLabBatch = setUserLabBatch;
 

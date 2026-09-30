@@ -299,11 +299,12 @@ export const api = {
   // ── Timetable ──
   async uploadTimetable(file, metadata = {}) {
     const fd = new FormData();
-    fd.append('file', file);
+    if (file) fd.append('file', file);
     if (metadata.branch) fd.append('branch', metadata.branch);
     if (metadata.semester) fd.append('semester', metadata.semester);
     if (metadata.section) fd.append('section', metadata.section);
     if (metadata.batch) fd.append('batch', metadata.batch);
+    if (metadata.editDescription) fd.append('editDescription', metadata.editDescription);
 
     const res = await fetch(this.getApiUrl('/api/timetable/upload'), {
       method: 'POST',

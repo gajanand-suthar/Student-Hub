@@ -1091,47 +1091,25 @@ export function courseCodesMatch(codeA, codeB) {
   const b = cleanCourseCode(codeB);
   if (!a || !b) return false;
 
-  // 1. Direct equality
+  // Direct exact match
   if (a === b) return true;
 
-  // 2. Direct substring containment (e.g. BCS304 and 21BCS304)
-  if (a.includes(b) || b.includes(a)) return true;
+  // Exact length required: no prefix/suffix variations allowed
+  if (a.length !== b.length) return false;
 
-  // 3. Wildcard matching where 'X' can match any alphanumeric characters
-  // e.g., 1BXX302 matches 1BCS302, 1BAI302, 1BAD302, 1BIS302, etc.
-  if (a.includes('X')) {
-    const patternA = '^' + a.replace(/X+/g, '[A-Z0-9]+') + '$';
-    try {
-      if (new RegExp(patternA, 'i').test(b)) return true;
-    } catch (e) {}
-
-    const strippedA = a.replace(/^[^A-Z]*\d+/, '');
-    const strippedB = b.replace(/^[^A-Z]*\d+/, '');
-    if (strippedA && strippedB && strippedA.includes('X')) {
-      const strippedPatternA = '^' + strippedA.replace(/X+/g, '[A-Z0-9]+') + '$';
-      try {
-        if (new RegExp(strippedPatternA, 'i').test(strippedB)) return true;
-      } catch (e) {}
+  // Exact character match, where 'X' terms can be anything, other terms must match exactly
+  for (let i = 0; i < a.length; i++) {
+    const charA = a[i];
+    const charB = b[i];
+    if (charA === 'X' || charB === 'X') {
+      continue; // X term can be anything
+    }
+    if (charA !== charB) {
+      return false; // other terms must match exactly
     }
   }
 
-  if (b.includes('X')) {
-    const patternB = '^' + b.replace(/X+/g, '[A-Z0-9]+') + '$';
-    try {
-      if (new RegExp(patternB, 'i').test(a)) return true;
-    } catch (e) {}
-
-    const strippedA = a.replace(/^[^A-Z]*\d+/, '');
-    const strippedB = b.replace(/^[^A-Z]*\d+/, '');
-    if (strippedA && strippedB && strippedB.includes('X')) {
-      const strippedPatternB = '^' + strippedB.replace(/X+/g, '[A-Z0-9]+') + '$';
-      try {
-        if (new RegExp(strippedPatternB, 'i').test(strippedA)) return true;
-      } catch (e) {}
-    }
-  }
-
-  return false;
+  return true;
 }
 
 function matchesRegisteredCourse(candidateStr, regCodes) {
@@ -1465,12 +1443,8 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         if (hasBatchOpts && !isAllBatches) {
           const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
           if (matchedBatchOpt) {
-            const optCode = matchedBatchOpt.code || s.code || '';
-            const regMatch = (optCode && optCode.includes('X') && regCodes.length > 0)
-              ? regCodes.find(rc => courseCodesMatch(optCode, rc))
-              : null;
             matchedClass = {
-              code: regMatch || optCode,
+              code: matchedBatchOpt.code || s.code || '',
               batch: cleanSelectedBatch,
               isLab: true,
               name: matchedBatchOpt.name || s.name || '',
@@ -1484,11 +1458,8 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         if (regCodes.length > 0) {
           const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
           if (matchedOpt) {
-            const regMatch = (matchedOpt.code && matchedOpt.code.includes('X'))
-              ? regCodes.find(rc => courseCodesMatch(matchedOpt.code, rc))
-              : null;
             matchedClass = {
-              code: regMatch || matchedOpt.code,
+              code: matchedOpt.code,
               batch: s.batch || '',
               isLab: s.type === 'lab' || matchedOpt.type === 'lab',
               name: matchedOpt.name || s.name || '',
@@ -1518,12 +1489,8 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           const matchedPart = parts.find(p => batchMatches(p, cleanSelectedBatch));
           if (matchedPart) {
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
-            const partCode = m ? m[1] : matchedPart.trim();
-            const regMatch = (partCode && partCode.includes('X') && regCodes.length > 0)
-              ? regCodes.find(rc => courseCodesMatch(partCode, rc))
-              : null;
             matchedClass = {
-              code: regMatch || partCode,
+              code: m ? m[1] : matchedPart.trim(),
               batch: selectedBatch,
               isLab: true,
               name: s.name || '',
@@ -1538,12 +1505,8 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
           if (matchedPart) {
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
-            const partCode = m ? m[1] : matchedPart.trim();
-            const regMatch = (partCode && partCode.includes('X'))
-              ? regCodes.find(rc => courseCodesMatch(partCode, rc))
-              : null;
             matchedClass = {
-              code: regMatch || partCode,
+              code: m ? m[1] : matchedPart.trim(),
               batch: s.batch || '',
               isLab: s.type === 'lab',
               name: s.name || '',
@@ -1571,11 +1534,8 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
 
       if (regCodes.length > 0) {
         if (matchesRegisteredCourse(s.code, regCodes)) {
-          const regMatch = (s.code && s.code.includes('X'))
-            ? regCodes.find(rc => courseCodesMatch(s.code, rc))
-            : null;
           matchedClass = {
-            code: regMatch || s.code,
+            code: s.code,
             batch: s.batch || '',
             isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
             name: s.name || '',
@@ -1832,13 +1792,16 @@ export function openTtUploadModal(mode = 'upload') {
       btnEl.style.background = '';
       btnEl.style.borderColor = '';
       btnEl.style.color = '';
-    }
-
     selectedTtFile = null;
     const fileInput = document.getElementById('tt-file-input');
     if (fileInput) fileInput.value = '';
     const label = document.getElementById('tt-dropzone-label');
-    if (label) label.textContent = 'Click to select timetable file';
+    if (label) label.textContent = (mode === 'edit') ? 'Optional: Upload a new timetable image/PDF' : 'Click to select timetable file';
+
+    const descGroup = document.getElementById('tt-edit-desc-group');
+    const descInput = document.getElementById('tt-edit-desc');
+    if (descGroup) descGroup.style.display = (mode === 'edit') ? 'block' : 'none';
+    if (descInput) descInput.value = '';
 
     const status = document.getElementById('tt-upload-status');
     if (status) { status.style.display = 'none'; status.textContent = ''; }
@@ -1888,16 +1851,18 @@ export async function submitTimetableUpload(e) {
 
   const fileInput = document.getElementById('tt-file-input');
   const file = selectedTtFile || fileInput?.files?.[0];
+  const descInput = document.getElementById('tt-edit-desc');
+  const descText = descInput ? descInput.value.trim() : '';
 
   const statusEl = document.getElementById('tt-upload-status');
   const btn = document.getElementById('tt-upload-btn');
   const isEdit = btn?.getAttribute('data-mode') === 'edit';
 
-  if (!file) {
+  if (!file && (!isEdit || !descText)) {
     if (statusEl) {
       statusEl.style.display = 'block';
       statusEl.style.color = 'var(--danger)';
-      statusEl.textContent = 'Please choose a timetable file (PDF or image).';
+      statusEl.textContent = isEdit ? 'Please provide a description or choose a file.' : 'Please choose a timetable file (PDF or image).';
     }
     return;
   }
@@ -1915,7 +1880,7 @@ export async function submitTimetableUpload(e) {
   }
 
   try {
-    await api.uploadTimetable(file, { branch, semester, section, batch });
+    await api.uploadTimetable(file, { branch, semester, section, batch, editDescription: descText });
     if (statusEl) {
       statusEl.style.display = 'none';
       statusEl.textContent = '';

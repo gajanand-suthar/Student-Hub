@@ -43,30 +43,39 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 
 ## Features
 
-### 1. Academic Calendar
+### 1. Class Timetable
+- Daily period-by-period schedule with real-time "Now" class indicator and break dividers.
+- Dynamic lab batch selection based directly on class timetable data.
+- Crowdsourced timetable uploads and corrections with AI parsing and review.
+
+### 2. Academic Calendar
 - Monthly academic calendar with highlighted exams, deadlines, and events.
 - Holiday list with dates and descriptions.
 - Semester-wise filter (Sem I, Sem III, Sem V, Sem VII).
   
-### 2. Attendance and CIE Tracker
+### 3. Attendance and CIE Tracker
 - Real-time attendance percentage with visual indicator bars and threshold markers (<75%, 75-84%, >=85%).
 - Subject-wise breakdown showing conducted versus attended classes and margin calculations.
 - CIE marks breakdown with an accordion component for component-level score inspection.
 - SGPA flip card displaying overall score and semester-by-semester SGPA grid.
 
-### 3. Course and Document Portal
+### 4. Course and Document Portal
 - Search and browse enrolled courses across semesters.
 - Built-in PDF reader using PDF.js for in-app document viewing without downloading.
 - Built-in audio and video media playback using Plyr.
 - Categorized resource badges for documents, presentations, spreadsheets, quizzes, and links.
 
-### 4. Branch Leaderboard and Results
+### 5. Notices & Department Syllabi
+- In-app notification viewer for college circulars and official announcements.
+- Department syllabus inspection modal with quick access to course outlines and curriculum structures.
+
+### 6. Branch Leaderboard and Results
 - Branch-wide academic rankings and percentile statistics.
 - Direct highlighting for individual rank and SGPA.
 
-### 5. Progressive Web App (PWA)
-- Installable on Android, and Desktop platforms (PWA is not supported on iOS).
-- Offline navigation fallback and caching via Service Worker.
+### 7. Progressive Web App (PWA)
+- Installable on Android and Desktop platforms (PWA is not supported on iOS).
+- Offline navigation fallback and automatic cache updates via Service Worker (v11).
 - Client-side History API router for instant tab transitions without full page reloads.
 - Built-in Dark and Light mode theme toggle.
 
@@ -76,7 +85,9 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 ## Tech Stack
 
 - **Frontend**: Vanilla JavaScript (ES Modules), HTML5, CSS3 Custom Properties
-- **Backend**: Cloudflare Workers
+- **Backend**: Cloudflare Workers (Serverless Edge Runtime)
+- **Database & Storage**: Cloudflare KV (key-value cache & state locks), Cloudflare R2 (document storage), Cloudflare D1 (student records)
+- **AI Processing**: Google Gemini API (multi-model fallback chain for timetable parsing)
 - **Router**: Browser History API (pushState / popstate)
 - **External Libraries (CDN)**:
   - PDF.js (v3.11) for document preview

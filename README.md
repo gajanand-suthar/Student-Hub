@@ -1,6 +1,6 @@
 # Student Hub
 
-A fast Single Page Application (SPA) and Progressive Web App (PWA) built for students to check attendance, view CIE marks, access course materials, track academic calendars, and view branch leaderboards.
+A fast, modern Progressive Web App (PWA) and academic portal for NIE students to check daily class timetables, track attendance, view CIE scores, access Moodle course materials, check branch leaderboards, and follow academic calendars.
 
 ---
 
@@ -74,7 +74,7 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 - Direct highlighting for individual rank and SGPA.
 
 ### 7. Progressive Web App (PWA)
-- Installable on Android and Desktop platforms (PWA is not supported on iOS).
+- Installable on Android, Desktop, and iOS devices (via Safari "Add to Home Screen" system install).
 - Offline navigation fallback and automatic cache updates via Service Worker (v11).
 - Client-side History API router for instant tab transitions without full page reloads.
 - Built-in Dark and Light mode theme toggle.

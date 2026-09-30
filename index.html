@@ -389,7 +389,7 @@
     <!-- TIMETABLE UPLOAD MODAL (Decluttered & Clean) -->
     <div id="tt-upload-modal" class="modal-overlay" onclick="if(event.target===this)closeTtUploadModal()">
       <div class="modal-card" style="width: min(390px, 100%); text-align: left; padding: 22px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
           <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text);" id="tt-upload-modal-title">Upload Timetable</h3>
           <button type="button" class="nm-icon-btn" onclick="closeTtUploadModal()" style="width: 30px; height: 30px;" aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -397,17 +397,14 @@
         </div>
 
         <form id="tt-upload-form" onsubmit="event.preventDefault(); submitTimetableUpload(event)">
-          <!-- 1. Edit Description Group (Shown first in edit mode with greater height) -->
-          <div class="form-group" id="tt-edit-desc-group" style="margin-bottom: 8px; display: none;">
-            <label for="tt-edit-desc" style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 6px;">
-              <span>Describe</span>
-              <span style="font-size: 0.72rem; font-weight: 600; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 2px 6px; border-radius: 4px;">Required</span>
-            </label>
-            <textarea id="tt-edit-desc" class="s-input" rows="5" style="width: 100%; min-height: 125px; resize: vertical; padding: 12px; font-size: 0.86rem; box-sizing: border-box; border-radius: 10px; line-height: 1.5;" placeholder="Describe what needs to be changed..."></textarea>
+          <!-- 1. Edit Description Group (Shown first in edit mode with badge inside textbox) -->
+          <div class="form-group" id="tt-edit-desc-group" style="position: relative; margin-bottom: 12px; display: none;">
+            <textarea id="tt-edit-desc" class="s-input" rows="5" style="width: 100%; min-height: 125px; resize: vertical; padding: 12px; padding-right: 68px; font-size: 0.86rem; box-sizing: border-box; border-radius: 10px; line-height: 1.5; margin: 0;" placeholder="Describe what needs to be changed..."></textarea>
+            <span style="position: absolute; top: 10px; right: 10px; font-size: 0.68rem; font-weight: 700; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 2px 7px; border-radius: 5px; pointer-events: none; user-select: none; letter-spacing: 0.02em;">Required</span>
           </div>
 
           <!-- 2. File Upload Area -->
-          <div class="form-group" style="margin-bottom: 16px;">
+          <div class="form-group" style="margin-bottom: 14px;">
             <input type="file" id="tt-file-input" accept="image/*,application/pdf" style="display:none" onchange="handleTtFileChange(this)">
 
             <!-- Big box dropzone for standard upload mode -->

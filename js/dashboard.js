@@ -1780,13 +1780,14 @@ export function openTtUploadModal(mode = 'upload') {
 
   const modal = document.getElementById('tt-upload-modal');
   if (modal) {
+    const isEdit = (mode === 'edit');
     const titleEl = document.getElementById('tt-upload-modal-title');
     const btnEl = document.getElementById('tt-upload-btn');
     if (titleEl) {
-      titleEl.textContent = (mode === 'edit') ? 'Suggest Timetable Edit' : 'Upload Timetable';
+      titleEl.textContent = isEdit ? 'Suggest Timetable Correction' : 'Upload Timetable';
     }
     if (btnEl) {
-      btnEl.textContent = (mode === 'edit') ? 'Submit Correction' : 'Submit for Review';
+      btnEl.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
       btnEl.setAttribute('data-mode', mode);
       btnEl.disabled = false;
       btnEl.style.background = '';
@@ -1796,20 +1797,36 @@ export function openTtUploadModal(mode = 'upload') {
     selectedTtFile = null;
     const fileInput = document.getElementById('tt-file-input');
     if (fileInput) fileInput.value = '';
-    const label = document.getElementById('tt-dropzone-label');
-    if (label) label.textContent = (mode === 'edit') ? 'Optional: Upload a new timetable image/PDF' : 'Click to select timetable file';
+
+    const dropzone = document.getElementById('tt-dropzone');
+    const editFileRow = document.getElementById('tt-edit-file-row');
+    const dropLabel = document.getElementById('tt-dropzone-label');
+    const editFileLabel = document.getElementById('tt-edit-file-label');
+
+    if (dropLabel) dropLabel.textContent = 'Click to select timetable file';
+    if (editFileLabel) editFileLabel.textContent = 'Attach updated timetable (optional)';
+
+    if (isEdit) {
+      if (dropzone) dropzone.style.display = 'none';
+      if (editFileRow) editFileRow.style.display = 'flex';
+    } else {
+      if (dropzone) dropzone.style.display = 'flex';
+      if (editFileRow) editFileRow.style.display = 'none';
+    }
 
     const descGroup = document.getElementById('tt-edit-desc-group');
     const descInput = document.getElementById('tt-edit-desc');
-    if (descGroup) descGroup.style.display = (mode === 'edit') ? 'block' : 'none';
-    if (descInput) descInput.value = '';
+    if (descGroup) descGroup.style.display = isEdit ? 'block' : 'none';
+    if (descInput) {
+      descInput.value = '';
+      if (isEdit) setTimeout(() => descInput.focus(), 150);
+    }
 
     const status = document.getElementById('tt-upload-status');
     if (status) { status.style.display = 'none'; status.textContent = ''; }
 
     modal.classList.add('active');
 
-    const dropzone = document.getElementById('tt-dropzone');
     if (dropzone && !dropzone._dragInit) {
       dropzone._dragInit = true;
       dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
@@ -1817,6 +1834,19 @@ export function openTtUploadModal(mode = 'upload') {
       dropzone.addEventListener('drop', e => {
         e.preventDefault();
         dropzone.style.borderColor = '';
+        if (e.dataTransfer?.files?.[0]) {
+          handleTtFileChange({ files: e.dataTransfer.files });
+        }
+      });
+    }
+
+    if (editFileRow && !editFileRow._dragInit) {
+      editFileRow._dragInit = true;
+      editFileRow.addEventListener('dragover', e => { e.preventDefault(); editFileRow.style.borderColor = 'var(--accent)'; });
+      editFileRow.addEventListener('dragleave', () => { editFileRow.style.borderColor = ''; });
+      editFileRow.addEventListener('drop', e => {
+        e.preventDefault();
+        editFileRow.style.borderColor = '';
         if (e.dataTransfer?.files?.[0]) {
           handleTtFileChange({ files: e.dataTransfer.files });
         }
@@ -1833,9 +1863,12 @@ export function closeTtUploadModal() {
 export function handleTtFileChange(input) {
   const file = input.files?.[0];
   const label = document.getElementById('tt-dropzone-label');
-  if (file && label) {
+  const editLabel = document.getElementById('tt-edit-file-label');
+  if (file) {
     selectedTtFile = file;
-    label.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+    const text = `Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+    if (label) label.textContent = text;
+    if (editLabel) editLabel.textContent = text;
   }
 }
 
@@ -1859,13 +1892,25 @@ export async function submitTimetableUpload(e) {
   const btn = document.getElementById('tt-upload-btn');
   const isEdit = btn?.getAttribute('data-mode') === 'edit';
 
-  if (!file && (!isEdit || !descText)) {
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.color = 'var(--danger)';
-      statusEl.textContent = isEdit ? 'Please provide a description or choose a file.' : 'Please choose a timetable file (PDF or image).';
+  if (isEdit) {
+    if (!descText) {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = 'Please describe the required correction.';
+      }
+      descInput?.focus();
+      return;
     }
-    return;
+  } else {
+    if (!file) {
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = 'Please choose a timetable file (PDF or image).';
+      }
+      return;
+    }
   }
 
   // Get student params automatically from local storage

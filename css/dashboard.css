@@ -879,9 +879,9 @@ html, body {
 /* Batch Selector Dropdown (Top Bar) */
 #view-dashboard .tt-top-batch-dropdown {
   position: relative;
-  width: 98px;
-  min-width: 98px;
-  max-width: 98px;
+  width: 116px;
+  min-width: 116px;
+  max-width: 116px;
   margin: 0;
   flex-shrink: 0;
   box-sizing: border-box;
@@ -892,7 +892,7 @@ html, body {
 #view-dashboard .tt-top-batch-dropdown .sem-trigger {
   width: 100%;
   height: 34px;
-  padding: 0 22px;
+  padding: 0 20px 0 10px;
   border-radius: 10px;
   background: var(--bg);
   border: 1.5px solid var(--border);
@@ -1405,9 +1405,10 @@ html, body {
   transition: all 0.2s ease;
 }
 
-.tt-dropzone:hover {
-  border-color: var(--accent);
-  background: rgba(37, 99, 235, 0.03);
+.tt-dropzone:hover,
+#tt-edit-file-row:hover {
+  border-color: var(--accent) !important;
+  background: rgba(37, 99, 235, 0.03) !important;
 }
 
 /* Batch pill for day view */

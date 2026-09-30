@@ -1085,15 +1085,61 @@ function cleanCourseCode(str) {
   return String(str || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+export function courseCodesMatch(codeA, codeB) {
+  if (!codeA || !codeB) return false;
+  const a = cleanCourseCode(codeA);
+  const b = cleanCourseCode(codeB);
+  if (!a || !b) return false;
+
+  // 1. Direct equality
+  if (a === b) return true;
+
+  // 2. Direct substring containment (e.g. BCS304 and 21BCS304)
+  if (a.includes(b) || b.includes(a)) return true;
+
+  // 3. Wildcard matching where 'X' can match any alphanumeric characters
+  // e.g., 1BXX302 matches 1BCS302, 1BAI302, 1BAD302, 1BIS302, etc.
+  if (a.includes('X')) {
+    const patternA = '^' + a.replace(/X+/g, '[A-Z0-9]+') + '$';
+    try {
+      if (new RegExp(patternA, 'i').test(b)) return true;
+    } catch (e) {}
+
+    const strippedA = a.replace(/^[^A-Z]*\d+/, '');
+    const strippedB = b.replace(/^[^A-Z]*\d+/, '');
+    if (strippedA && strippedB && strippedA.includes('X')) {
+      const strippedPatternA = '^' + strippedA.replace(/X+/g, '[A-Z0-9]+') + '$';
+      try {
+        if (new RegExp(strippedPatternA, 'i').test(strippedB)) return true;
+      } catch (e) {}
+    }
+  }
+
+  if (b.includes('X')) {
+    const patternB = '^' + b.replace(/X+/g, '[A-Z0-9]+') + '$';
+    try {
+      if (new RegExp(patternB, 'i').test(a)) return true;
+    } catch (e) {}
+
+    const strippedA = a.replace(/^[^A-Z]*\d+/, '');
+    const strippedB = b.replace(/^[^A-Z]*\d+/, '');
+    if (strippedA && strippedB && strippedB.includes('X')) {
+      const strippedPatternB = '^' + strippedB.replace(/X+/g, '[A-Z0-9]+') + '$';
+      try {
+        if (new RegExp(strippedPatternB, 'i').test(strippedA)) return true;
+      } catch (e) {}
+    }
+  }
+
+  return false;
+}
+
 function matchesRegisteredCourse(candidateStr, regCodes) {
   if (!candidateStr) return false;
   if (!regCodes || !regCodes.length) return true; // allow fallback if no reg codes loaded yet
   const candNorm = cleanCourseCode(candidateStr);
   if (!candNorm) return false;
-  return regCodes.some(rc => {
-    const rcNorm = cleanCourseCode(rc);
-    return rcNorm && (candNorm.includes(rcNorm) || rcNorm.includes(candNorm));
-  });
+  return regCodes.some(rc => courseCodesMatch(candNorm, rc));
 }
 
 function getStudentTimetableParams() {
@@ -1419,8 +1465,12 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         if (hasBatchOpts && !isAllBatches) {
           const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
           if (matchedBatchOpt) {
+            const optCode = matchedBatchOpt.code || s.code || '';
+            const regMatch = (optCode && optCode.includes('X') && regCodes.length > 0)
+              ? regCodes.find(rc => courseCodesMatch(optCode, rc))
+              : null;
             matchedClass = {
-              code: matchedBatchOpt.code || s.code || '',
+              code: regMatch || optCode,
               batch: cleanSelectedBatch,
               isLab: true,
               name: matchedBatchOpt.name || s.name || '',
@@ -1434,8 +1484,11 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
         if (regCodes.length > 0) {
           const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
           if (matchedOpt) {
+            const regMatch = (matchedOpt.code && matchedOpt.code.includes('X'))
+              ? regCodes.find(rc => courseCodesMatch(matchedOpt.code, rc))
+              : null;
             matchedClass = {
-              code: matchedOpt.code,
+              code: regMatch || matchedOpt.code,
               batch: s.batch || '',
               isLab: s.type === 'lab' || matchedOpt.type === 'lab',
               name: matchedOpt.name || s.name || '',
@@ -1465,8 +1518,12 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           const matchedPart = parts.find(p => batchMatches(p, cleanSelectedBatch));
           if (matchedPart) {
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
+            const partCode = m ? m[1] : matchedPart.trim();
+            const regMatch = (partCode && partCode.includes('X') && regCodes.length > 0)
+              ? regCodes.find(rc => courseCodesMatch(partCode, rc))
+              : null;
             matchedClass = {
-              code: m ? m[1] : matchedPart.trim(),
+              code: regMatch || partCode,
               batch: selectedBatch,
               isLab: true,
               name: s.name || '',
@@ -1481,8 +1538,12 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
           const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
           if (matchedPart) {
             const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
+            const partCode = m ? m[1] : matchedPart.trim();
+            const regMatch = (partCode && partCode.includes('X'))
+              ? regCodes.find(rc => courseCodesMatch(partCode, rc))
+              : null;
             matchedClass = {
-              code: m ? m[1] : matchedPart.trim(),
+              code: regMatch || partCode,
               batch: s.batch || '',
               isLab: s.type === 'lab',
               name: s.name || '',
@@ -1510,8 +1571,11 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
 
       if (regCodes.length > 0) {
         if (matchesRegisteredCourse(s.code, regCodes)) {
+          const regMatch = (s.code && s.code.includes('X'))
+            ? regCodes.find(rc => courseCodesMatch(s.code, rc))
+            : null;
           matchedClass = {
-            code: s.code,
+            code: regMatch || s.code,
             batch: s.batch || '',
             isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
             name: s.name || '',
@@ -1536,7 +1600,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
   if (matchedClass && !matchedClass.name && timetable?.subjects && Array.isArray(timetable.subjects)) {
     const code = (matchedClass.code || '').trim();
     if (code && !code.includes('/')) {
-      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(code));
+      const sub = timetable.subjects.find(item => courseCodesMatch(item.code, code));
       if (sub) {
         matchedClass.name = sub.name || sub.title || '';
       }
@@ -1553,7 +1617,7 @@ function resolveSubjectName(matchedClass, timetable) {
       name = 'Elective / Lab Options';
     } else {
       const primaryCode = (matchedClass.code || '').trim();
-      const sub = timetable.subjects.find(item => cleanCourseCode(item.code) === cleanCourseCode(primaryCode));
+      const sub = timetable.subjects.find(item => courseCodesMatch(item.code, primaryCode));
       if (sub) name = sub.name || sub.title || '';
     }
   }
@@ -1665,7 +1729,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       (classA.rawSlot && classB.rawSlot && classA.rawSlot === classB.rawSlot) ||
       (
         Boolean(cleanCourseCode(classA.code)) &&
-        cleanCourseCode(classA.code) === cleanCourseCode(classB.code) &&
+        courseCodesMatch(classA.code, classB.code) &&
         cleanBatch(classA.batch) === cleanBatch(classB.batch)
       ) ||
       (
@@ -2150,6 +2214,7 @@ if (typeof window !== 'undefined') {
   window.pickTtBatch = pickTtBatch;
   window.getUserLabBatch = getUserLabBatch;
   window.setUserLabBatch = setUserLabBatch;
+  window.courseCodesMatch = courseCodesMatch;
 
   // Listen for course registrations updated by attendance tab
   window.addEventListener('nie_courses_updated', () => {

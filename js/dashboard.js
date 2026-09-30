@@ -1792,6 +1792,7 @@ export function openTtUploadModal(mode = 'upload') {
       btnEl.style.background = '';
       btnEl.style.borderColor = '';
       btnEl.style.color = '';
+    }
     selectedTtFile = null;
     const fileInput = document.getElementById('tt-file-input');
     if (fileInput) fileInput.value = '';

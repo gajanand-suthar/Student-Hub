@@ -1221,9 +1221,30 @@ function getBatchSelections(timetable) {
   return selections;
 }
 
-export function pickSlotBatch(batchSetIdx, value) {
+export function toggleSlotBatchDropdown(triggerEl, event) {
+  if (event) event.stopPropagation();
+  const dropdown = triggerEl.closest('.sem-dropdown');
+  if (!dropdown) return;
+  const wasOpen = dropdown.classList.contains('open');
+  // Close any other open slot batch dropdowns first
+  document.querySelectorAll('.tt-slot-batch-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) {
+    dropdown.classList.add('open');
+  }
+}
+
+export function closeSlotBatchDropdown(backdropEl, event) {
+  if (event) event.stopPropagation();
+  const dropdown = backdropEl ? backdropEl.closest('.sem-dropdown') : null;
+  if (dropdown) dropdown.classList.remove('open');
+  else document.querySelectorAll('.tt-slot-batch-dropdown.open').forEach(d => d.classList.remove('open'));
+}
+
+export function pickSlotBatch(batchSetIdx, value, event) {
+  if (event) event.stopPropagation();
   const clean = cleanBatch(value);
   if (clean) localStorage.setItem('nie_batch_' + batchSetIdx, clean);
+  closeSlotBatchDropdown();
   if (currentTimetableData) {
     renderTodaySchedule(currentTimetableData, currentTtDay);
   }
@@ -1366,45 +1387,54 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelection
         const nonBatchOpts = s.options.filter(opt => !opt.batch);
 
         if (batchOpts.length > 0) {
-          // Find which batchSet these options use
           const bsIdx = findBatchSetIndex(batchOpts[0].batch, batchSets);
           const selectedForSet = bsIdx >= 0 ? (batchSelections[bsIdx] || '') : '';
           const dropdownBatches = bsIdx >= 0 ? batchSets[bsIdx].map(b => cleanBatch(b)) : [];
 
-          let resolved = null;
-
           if (selectedForSet) {
-            // Try batch match
             const matched = batchOpts.find(opt => batchMatches(opt.batch, selectedForSet));
             if (matched) {
-              resolved = { code: matched.code || '', name: matched.name || s.name || '', isLab: s.type === 'lab' || matched.type === 'lab' };
-            } else if (nonBatchOpts.length > 0) {
-              // Batch selected but doesn't match any batch option — try electives from non-batch options
-              if (regCodes.length > 0) {
-                const electiveMatch = nonBatchOpts.find(opt => matchesRegisteredCourse(opt.code, regCodes));
-                if (electiveMatch) {
-                  resolved = { code: electiveMatch.code, name: electiveMatch.name || s.name || '', isLab: s.type === 'lab' || electiveMatch.type === 'lab' };
-                }
-              }
-              if (!resolved) {
-                resolved = { code: nonBatchOpts.map(o => o.code).filter(Boolean).join(' / '), name: s.name || '', isLab: s.type === 'lab' };
+              matchedClass = {
+                code: matched.code || '',
+                name: matched.name || s.name || '',
+                isLab: s.type === 'lab' || matched.type === 'lab',
+                rawSlot: s,
+                batchSetIdx: bsIdx,
+                batchOptions: dropdownBatches,
+                selectedBatchValue: selectedForSet
+              };
+              break;
+            } else if (nonBatchOpts.length > 0 && regCodes.length > 0) {
+              const electiveMatch = nonBatchOpts.find(opt => matchesRegisteredCourse(opt.code, regCodes));
+              if (electiveMatch) {
+                matchedClass = {
+                  code: electiveMatch.code,
+                  name: electiveMatch.name || s.name || '',
+                  isLab: s.type === 'lab' || electiveMatch.type === 'lab',
+                  rawSlot: s,
+                  batchSetIdx: bsIdx,
+                  batchOptions: dropdownBatches,
+                  selectedBatchValue: selectedForSet
+                };
+                break;
               }
             }
+            continue;
           }
 
           matchedClass = {
-            code: resolved ? resolved.code : s.options.map(o => o.code).filter(Boolean).join(' / '),
-            name: resolved ? resolved.name : (s.name || ''),
-            isLab: resolved ? resolved.isLab : (s.type === 'lab'),
+            code: s.options.map(o => o.code).filter(Boolean).join(' / '),
+            name: s.name || 'Lab',
+            isLab: true,
             rawSlot: s,
             batchSetIdx: bsIdx,
             batchOptions: dropdownBatches,
-            selectedBatchValue: selectedForSet
+            selectedBatchValue: ''
           };
           break;
         }
 
-        // Pure elective options (no batch fields)
+        // Pure elective options (no batch)
         if (regCodes.length > 0) {
           const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
           if (matchedOpt) {
@@ -1417,8 +1447,9 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelection
             };
             break;
           }
+          continue;
         }
-        // Fallback: show all options
+
         matchedClass = {
           code: s.options.map(o => o.code).filter(Boolean).join(' / '),
           batch: s.batch || '',
@@ -1446,6 +1477,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelection
             };
             break;
           }
+          continue;
         }
         matchedClass = {
           code: s.code,
@@ -1462,7 +1494,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelection
         const bsIdx = findBatchSetIndex(s.batch, batchSets);
         const selectedForSet = bsIdx >= 0 ? (batchSelections[bsIdx] || '') : '';
         if (selectedForSet && !batchMatches(s.batch, selectedForSet)) {
-          continue; // Student's selected batch doesn't match this slot
+          continue;
         }
       }
 
@@ -1508,14 +1540,14 @@ function resolveSubjectName(matchedClass, timetable) {
   let name = matchedClass.name || '';
   if (!name && timetable?.subjects && Array.isArray(timetable.subjects)) {
     if (matchedClass.code && matchedClass.code.includes('/')) {
-      name = 'Elective / Lab Options';
+      name = matchedClass.isLab ? 'Lab' : 'Elective Options';
     } else {
       const primaryCode = (matchedClass.code || '').trim();
       const sub = timetable.subjects.find(item => courseCodesMatch(item.code, primaryCode));
       if (sub) name = sub.name || sub.title || '';
     }
   }
-  return name || matchedClass.code || 'Class';
+  return name || (matchedClass.isLab ? 'Lab' : (matchedClass.code || 'Class'));
 }
 
 function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, isViewingToday, nowMinutes, timetable, is2hr }) {
@@ -1539,14 +1571,30 @@ function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, 
   const subjectName = resolveSubjectName(matchedClass, timetable);
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
 
-  const batchDropdownHtml = (matchedClass.batchOptions && matchedClass.batchOptions.length > 0 && matchedClass.batchSetIdx >= 0)
-    ? `<select class="tt-batch-select" onchange="pickSlotBatch(${matchedClass.batchSetIdx}, this.value)">
-        ${!matchedClass.selectedBatchValue ? '<option value="" disabled selected>Batch</option>' : ''}
-        ${matchedClass.batchOptions.map(b =>
-          `<option value="${escHtml(b)}" ${b === matchedClass.selectedBatchValue ? 'selected' : ''}>${escHtml(b)}</option>`
-        ).join('')}
-       </select>`
-    : '';
+  let batchDropdownHtml = '';
+  if (matchedClass.batchOptions && matchedClass.batchOptions.length > 0 && matchedClass.batchSetIdx >= 0) {
+    const currentVal = matchedClass.selectedBatchValue;
+    const triggerLabel = currentVal ? (currentVal.toLowerCase().startsWith('batch') ? currentVal : 'Batch ' + currentVal) : 'Batch';
+    
+    batchDropdownHtml = `
+      <div class="sem-dropdown tt-slot-batch-dropdown">
+        <div class="sem-backdrop" onclick="closeSlotBatchDropdown(this, event)"></div>
+        <div class="sem-trigger" onclick="toggleSlotBatchDropdown(this, event)">
+          <span class="sem-trigger-label">${escHtml(triggerLabel)}</span>
+          <span class="sem-trigger-chevron">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </div>
+        <div class="sem-menu">
+          ${matchedClass.batchOptions.map(b => {
+            const isSelected = cleanBatch(b) === cleanBatch(currentVal);
+            const optLabel = b.toLowerCase().startsWith('batch') ? b : 'Batch ' + b;
+            return `<button type="button" class="sem-option ${isSelected ? 'active' : ''}" onclick="pickSlotBatch(${matchedClass.batchSetIdx}, '${escHtml(b)}', event)">${escHtml(optLabel)}</button>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
 
   return `
     <div class="tt-slot ${is2hr ? 'is-2hr' : ''} ${isNow ? 'is-now' : ''}">
@@ -2165,6 +2213,8 @@ if (typeof window !== 'undefined') {
   window.updateCalendarLayout = updateCalendarLayout;
   window.courseCodesMatch = courseCodesMatch;
   window.pickSlotBatch = pickSlotBatch;
+  window.toggleSlotBatchDropdown = toggleSlotBatchDropdown;
+  window.closeSlotBatchDropdown = closeSlotBatchDropdown;
 
   // Listen for course registrations updated by attendance tab
   window.addEventListener('nie_courses_updated', () => {

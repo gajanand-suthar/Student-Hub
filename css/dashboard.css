@@ -246,91 +246,10 @@ html, body {
 [data-theme=dark] .cal-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
 .cal-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-#view-dashboard .sem-dropdown {
-  position: relative;
-  flex-shrink: 0;
+#cal-sem-dropdown {
   width: 100px;
   margin-left: 8px;
 }
-#view-dashboard .sem-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  width: 100%;
-  box-sizing: border-box;
-  height: 38px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 0 24px 0 8px;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  user-select: none;
-}
-#view-dashboard .sem-trigger:hover { border-color: var(--accent); }
-#view-dashboard .sem-trigger-label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  text-align: center;
-  flex: 1;
-}
-#view-dashboard .sem-trigger-chevron {
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-#view-dashboard .sem-dropdown.open .sem-trigger-chevron { transform: translateY(-50%) rotate(180deg); }
-#view-dashboard .sem-dropdown.open .sem-trigger { border-color: var(--accent); }
-#view-dashboard .sem-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 50;
-  padding: 4px;
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-#view-dashboard .sem-dropdown.open .sem-menu { opacity: 1; transform: translateY(0); pointer-events: auto; }
-#view-dashboard .sem-option {
-  display: block;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: center;
-  font-family: inherit;
-}
-#view-dashboard .sem-option:hover { background: var(--bg); }
-#view-dashboard .sem-option.active {
-  color: var(--accent) !important;
-  font-weight: 800 !important;
-  background: rgba(37, 99, 235, 0.1) !important;
-}
-[data-theme=dark] #view-dashboard .sem-option.active {
-  color: #60a5fa !important;
-  background: rgba(37, 99, 235, 0.2) !important;
-}
-#view-dashboard .sem-backdrop { position: fixed; inset: 0; z-index: 49; display: none; }
-#view-dashboard .sem-dropdown.open .sem-backdrop { display: block; }
 
 .cal-grid-header {
   display: grid;
@@ -451,9 +370,7 @@ html, body {
   .cal-month-nav { height: 40px; padding: 0 8px; box-sizing: border-box; }
   .cal-month-label { font-size: 0.92rem; font-weight: 800; }
   .cal-nav-btn { width: 32px; height: 32px; padding: 0; }
-  #view-dashboard .sem-dropdown { width: 100px; margin-left: 8px; }
-  #view-dashboard .sem-trigger { height: 40px; padding: 0 24px 0 10px; box-sizing: border-box; }
-  #view-dashboard .sem-trigger-label { font-size: 0.82rem; font-weight: 700; }
+  #cal-sem-dropdown { width: 100px; margin-left: 8px; }
   .cal-grid-header { font-size: 0.75rem; margin-bottom: 6px; }
   .cal-grid-body { flex: 1; min-height: 0; gap: 4px; }
   .cal-day-cell { min-height: 0; height: 100%; border-radius: 8px; font-size: 0.84rem; padding: 2px 0; }
@@ -1109,58 +1026,22 @@ html, body {
   gap: 3px;
 }
 
-/* Inline batch selector in slot cards */
-.tt-batch-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
+/* Slot Custom Batch Dropdown overrides */
+.tt-slot-batch-dropdown {
+  width: auto;
+  min-width: 86px;
+  margin-left: 0 !important;
+}
+.tt-slot-batch-dropdown .sem-trigger {
   height: 36px;
-  min-width: 78px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  padding: 0 28px 0 12px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  font-family: inherit;
-  color: var(--text);
-  text-align: center;
-  text-align-last: center;
-  -webkit-text-align-last: center;
-  cursor: pointer;
-  outline: none;
-  flex-shrink: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: all 0.15s ease;
+  padding: 0 26px 0 12px;
 }
-.tt-batch-select:hover {
-  border-color: var(--accent);
-}
-.tt-batch-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-.tt-batch-select option {
-  text-align: center;
-  font-weight: 700;
-  font-size: 0.82rem;
-  background: var(--surface);
-  color: var(--text);
-  padding: 8px 12px;
-}
-[data-theme=dark] .tt-batch-select {
-  background-color: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-}
-[data-theme=dark] .tt-batch-select option {
-  background: #1e293b;
-  color: #f8fafc;
+.tt-slot-batch-dropdown .sem-menu {
+  min-width: 100%;
+  width: max-content;
+  max-width: 130px;
+  right: 0;
+  left: auto;
 }
 .tt-slot-title-row {
   display: flex;

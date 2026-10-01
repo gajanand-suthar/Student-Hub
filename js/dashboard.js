@@ -21,21 +21,6 @@ const DEPT_SLUG_MAP = {
   CV: 'civil'
 };
 
-// Section alias normalization for branches that are sub-departments
-// AIML (CI) is under CSE — portal sometimes labels AIML section A as CSE section F
-const SECTION_ALIAS_MAP = {
-  CI: { E: 'A', F: 'B', G: 'C', H: 'D', I: 'E', J: 'F' }
-};
-
-function normalizeSection(branch, section) {
-  if (!branch || !section) return section || '';
-  const aliases = SECTION_ALIAS_MAP[branch.toUpperCase()];
-  if (aliases && aliases[section.toUpperCase()]) {
-    return aliases[section.toUpperCase()];
-  }
-  return section;
-}
-
 function openAnimatedModal(modalId, backdropId, triggerSelector) {
   const nm = document.getElementById(modalId);
   const nb = document.getElementById(backdropId);
@@ -415,22 +400,13 @@ export async function obNext() {
       const token = res.identityToken || res.student?.identityToken;
       if (token) setIdentityToken(token);
 
-      // Normalize section for sub-department branches (e.g., AIML under CSE)
-      let profileSection = res.student.section || '';
-      if (res.student.usn) {
-        const usnMatch = res.student.usn.toUpperCase().match(/^\d[A-Z]{2}\d{2}([A-Z]{2})/);
-        if (usnMatch && usnMatch[1]) {
-          profileSection = normalizeSection(usnMatch[1], profileSection);
-        }
-      }
-
       // Gate authentication succeeded: store verified student profile and attendance cache
       const profile = {
         name: res.student.name,
-        usn: res.student.usn,
+        usn: res.student.usn || usn,
         program: res.student.program,
         semNum: res.student.semNum || '',
-        section: profileSection,
+        section: res.student.section || '',
         photoUri: res.student.photoUri || null,
         sem: res.student.sem || ''
       };
@@ -1184,12 +1160,11 @@ function getStudentTimetableParams() {
   }
 
   const finalBranch = (branch || 'CS').toUpperCase();
-  const finalSection = normalizeSection(finalBranch, (section || 'A').toUpperCase());
   
   return {
     branch: finalBranch,
     semester: parseInt(semester, 10) || 5,
-    section: finalSection,
+    section: (section || 'A').toUpperCase(),
     batch: batch || ''
   };
 }
@@ -1221,88 +1196,40 @@ export function batchMatches(slotBatchStr, targetBatch) {
   return batches.includes(cleanTarget);
 }
 
-export function getUserLabBatch(availableBatches = []) {
-  const cached = localStorage.getItem('nie_user_lab_batch');
-  if (cached) {
-    const cleanC = cleanBatch(cached);
-    if (cleanC && cleanC !== 'ALL' && cleanC !== 'ALLBATCHES') {
-      if (!availableBatches || !availableBatches.length || availableBatches.map(cleanBatch).includes(cleanC)) {
-        return cleanC;
+function findBatchSetIndex(batchValue, batchSets) {
+  if (!batchValue || !Array.isArray(batchSets)) return -1;
+  const clean = cleanBatch(batchValue);
+  if (!clean) return -1;
+  for (let i = 0; i < batchSets.length; i++) {
+    if (batchSets[i].some(b => cleanBatch(b) === clean)) return i;
+  }
+  return -1;
+}
+
+function getBatchSelections(timetable) {
+  const batchSets = timetable?.batchSets || [];
+  const selections = {};
+  batchSets.forEach((set, idx) => {
+    const saved = localStorage.getItem('nie_batch_' + idx);
+    if (saved) {
+      const clean = cleanBatch(saved);
+      if (set.some(b => cleanBatch(b) === clean)) {
+        selections[idx] = clean;
       }
     }
-  }
-  if (Array.isArray(availableBatches) && availableBatches.length > 0) {
-    const first = cleanBatch(availableBatches[0]);
-    localStorage.setItem('nie_user_lab_batch', first);
-    return first;
-  }
-  return '';
-}
-
-export function setUserLabBatch(batch) {
-  if (!batch || batch.toUpperCase() === 'ALL') return;
-  localStorage.setItem('nie_user_lab_batch', cleanBatch(batch));
-}
-
-export function extractAvailableBatches(timetable) {
-  const batches = new Set();
-  const sched = timetable?.schedule || {};
-  Object.values(sched).forEach(dayArr => {
-    if (!Array.isArray(dayArr)) return;
-    dayArr.forEach(s => {
-      if (!s) return;
-      if (s.batch) {
-        getBatchesFromString(s.batch).forEach(b => batches.add(b));
-      }
-      if (Array.isArray(s.options)) {
-        s.options.forEach(opt => {
-          if (opt.batch) {
-            getBatchesFromString(opt.batch).forEach(b => batches.add(b));
-          }
-        });
-      }
-      // NOTE: Do NOT extract batches from s.code — course codes like "BEE504"
-      // or "BEEL505 / BEE502 / BEE503" are not batch identifiers.
-      // Batches only come from s.batch and opt.batch fields.
-    });
   });
-
-  return Array.from(batches).sort();
+  return selections;
 }
 
-export function toggleTtBatchDropdown(triggerEl, event) {
-  if (event) {
-    event.stopPropagation();
-    event.preventDefault();
-  }
-  const dd = triggerEl ? triggerEl.closest('.sem-dropdown') : document.getElementById('tt-batch-dropdown');
-  if (!dd) return;
-  dd.classList.toggle('open');
-}
-
-export function closeTtBatchDropdown(event) {
-  if (event) {
-    event.stopPropagation();
-  }
-  document.querySelectorAll('.tt-top-batch-dropdown.open, .tt-batch-dropdown.open').forEach(d => {
-    d.classList.remove('open');
-  });
-}
-
-export function pickTtBatch(batch, event) {
-  if (event) {
-    event.stopPropagation();
-  }
-  const cleanB = cleanBatch(batch);
-  setUserLabBatch(cleanB);
-  const label = document.getElementById('tt-batch-trigger-label');
-  if (label) label.textContent = 'Batch ' + cleanB;
-  closeTtBatchDropdown();
+export function pickSlotBatch(batchSetIdx, value) {
+  const clean = cleanBatch(value);
+  if (clean) localStorage.setItem('nie_batch_' + batchSetIdx, clean);
   if (currentTimetableData) {
-    updateTtBatchDropdownUI(currentTimetableData);
     renderTodaySchedule(currentTimetableData, currentTtDay);
   }
 }
+
+
 
 
 
@@ -1318,32 +1245,6 @@ export function resetTtToToday() {
   }
 }
 
-export function updateTtBatchDropdownUI(timetable) {
-  const menu = document.getElementById('tt-batch-menu');
-  const label = document.getElementById('tt-batch-trigger-label');
-  if (!menu) return;
-
-  const available = extractAvailableBatches(timetable);
-  const ddContainer = document.getElementById('tt-batch-dropdown');
-  if (available.length === 0) {
-    if (ddContainer) ddContainer.style.display = 'none';
-    return;
-  }
-  if (ddContainer) ddContainer.style.display = '';
-
-  const activeBatch = getUserLabBatch(available);
-  const cleanActive = cleanBatch(activeBatch) || (available.length ? cleanBatch(available[0]) : 'A1');
-
-  let html = '';
-  available.forEach(b => {
-    const cleanB = cleanBatch(b);
-    const isAct = (cleanActive === cleanB);
-    html += `<button type="button" class="sem-option ${isAct ? 'active' : ''}" onclick="pickTtBatch('${cleanB}', event)">Batch ${cleanB}</button>`;
-  });
-  menu.innerHTML = html;
-
-  if (label) label.textContent = 'Batch ' + cleanActive;
-}
 
 async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
@@ -1354,7 +1255,6 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       currentTimetableData = data;
       currentTimetableIsPending = false;
       try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
-      updateTtBatchDropdownUI(currentTimetableData);
       renderTodaySchedule(currentTimetableData, currentTtDay);
     } else if (data && data.pending) {
       currentTimetableIsPending = true;
@@ -1385,7 +1285,6 @@ export async function initTimetable() {
   currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
 
   updateTtDayNavUI();
-  updateTtBatchDropdownUI(currentTimetableData);
 
   getRegisteredCourseCodes();
 
@@ -1397,7 +1296,6 @@ export async function initTimetable() {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       currentTimetableData = JSON.parse(cached);
-      updateTtBatchDropdownUI(currentTimetableData);
       renderTodaySchedule(currentTimetableData, currentTtDay);
     }
   } catch (e) {
@@ -1443,10 +1341,9 @@ function updateTtDayNavUI() {
   });
 }
 
-function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch, timetable) {
+function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelections, timetable) {
   let matchedClass = null;
-  const isAllBatches = !selectedBatch || selectedBatch === 'ALL' || selectedBatch === 'All';
-  const cleanSelectedBatch = cleanBatch(selectedBatch);
+  const batchSets = timetable?.batchSets || [];
 
   for (const s of rawDaySchedule) {
     if (!s || s.type === 'break' || s.isBreak || s.type === 'free') continue;
@@ -1461,27 +1358,53 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
     if (sStart < 0 || sEnd < 0) continue;
     if (sStart >= 990) continue;
 
-    // Check if slot overlaps with this period
     if (sStart < slotDef.endMin && sEnd > slotDef.startMin) {
-      // 1. If slot has structured options
+
+      // 1. Structured options
       if (s.options && Array.isArray(s.options) && s.options.length > 0) {
-        // A. Check if options are segregated by lab batch
-        const hasBatchOpts = s.options.some(opt => opt.batch);
-        if (hasBatchOpts && !isAllBatches) {
-          const matchedBatchOpt = s.options.find(opt => batchMatches(opt.batch, cleanSelectedBatch));
-          if (matchedBatchOpt) {
-            matchedClass = {
-              code: matchedBatchOpt.code || s.code || '',
-              batch: cleanSelectedBatch,
-              isLab: true,
-              name: matchedBatchOpt.name || s.name || '',
-              rawSlot: s
-            };
-            break;
+        const batchOpts = s.options.filter(opt => opt.batch);
+        const nonBatchOpts = s.options.filter(opt => !opt.batch);
+
+        if (batchOpts.length > 0) {
+          // Find which batchSet these options use
+          const bsIdx = findBatchSetIndex(batchOpts[0].batch, batchSets);
+          const selectedForSet = bsIdx >= 0 ? (batchSelections[bsIdx] || '') : '';
+          const dropdownBatches = bsIdx >= 0 ? batchSets[bsIdx].map(b => cleanBatch(b)) : [];
+
+          let resolved = null;
+
+          if (selectedForSet) {
+            // Try batch match
+            const matched = batchOpts.find(opt => batchMatches(opt.batch, selectedForSet));
+            if (matched) {
+              resolved = { code: matched.code || '', name: matched.name || s.name || '', isLab: s.type === 'lab' || matched.type === 'lab' };
+            } else if (nonBatchOpts.length > 0) {
+              // Batch selected but doesn't match any batch option — try electives from non-batch options
+              if (regCodes.length > 0) {
+                const electiveMatch = nonBatchOpts.find(opt => matchesRegisteredCourse(opt.code, regCodes));
+                if (electiveMatch) {
+                  resolved = { code: electiveMatch.code, name: electiveMatch.name || s.name || '', isLab: s.type === 'lab' || electiveMatch.type === 'lab' };
+                }
+              }
+              if (!resolved) {
+                resolved = { code: nonBatchOpts.map(o => o.code).filter(Boolean).join(' / '), name: s.name || '', isLab: s.type === 'lab' };
+              }
+            }
           }
+
+          matchedClass = {
+            code: resolved ? resolved.code : s.options.map(o => o.code).filter(Boolean).join(' / '),
+            name: resolved ? resolved.name : (s.name || ''),
+            isLab: resolved ? resolved.isLab : (s.type === 'lab'),
+            rawSlot: s,
+            batchSetIdx: bsIdx,
+            batchOptions: dropdownBatches,
+            selectedBatchValue: selectedForSet
+          };
+          break;
         }
 
-        // B. Check if options are electives matching registered courses
+        // Pure elective options (no batch fields)
         if (regCodes.length > 0) {
           const matchedOpt = s.options.find(opt => matchesRegisteredCourse(opt.code, regCodes));
           if (matchedOpt) {
@@ -1494,40 +1417,22 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
             };
             break;
           }
-        } else {
-          // No reg codes loaded yet: show all options as fallback
-          matchedClass = {
-            code: s.options.map(o => o.code).filter(Boolean).join(' / '),
-            batch: s.batch || '',
-            isLab: s.type === 'lab',
-            name: s.name || '',
-            rawSlot: s
-          };
-          break;
         }
+        // Fallback: show all options
+        matchedClass = {
+          code: s.options.map(o => o.code).filter(Boolean).join(' / '),
+          batch: s.batch || '',
+          isLab: s.type === 'lab',
+          name: s.name || '',
+          rawSlot: s
+        };
+        break;
       }
 
-      // 2. Check if code has multiple parts / lines with batch or elective markers
+      // 2. Code with multiple parts (/ or newline)
       const rawCode = s.code || '';
       const parts = rawCode.includes('\n') ? rawCode.split('\n') : (rawCode.includes('/') ? rawCode.split('/') : null);
       if (parts && parts.length > 1) {
-        // Check if parts contain batches (e.g. Thu 11:30-01:30)
-        if (!isAllBatches) {
-          const matchedPart = parts.find(p => batchMatches(p, cleanSelectedBatch));
-          if (matchedPart) {
-            const m = matchedPart.match(/^([A-Z0-9]+)\s*(?:\(([^)]+)\))?/i);
-            matchedClass = {
-              code: m ? m[1] : matchedPart.trim(),
-              batch: selectedBatch,
-              isLab: true,
-              name: s.name || '',
-              rawSlot: s
-            };
-            break;
-          }
-        }
-
-        // Electives check for '/'
         if (regCodes.length > 0) {
           const matchedPart = parts.find(p => matchesRegisteredCourse(p, regCodes));
           if (matchedPart) {
@@ -1541,22 +1446,24 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
             };
             break;
           }
-        } else {
-          matchedClass = {
-            code: s.code,
-            batch: s.batch || '',
-            isLab: s.type === 'lab',
-            name: s.name || '',
-            rawSlot: s
-          };
-          break;
         }
+        matchedClass = {
+          code: s.code,
+          batch: s.batch || '',
+          isLab: s.type === 'lab',
+          name: s.name || '',
+          rawSlot: s
+        };
+        break;
       }
 
       // 3. Single course slot
-      // If slot has specific batch, verify against student batch
-      if (s.batch && !isAllBatches && !batchMatches(s.batch, cleanSelectedBatch)) {
-        continue;
+      if (s.batch) {
+        const bsIdx = findBatchSetIndex(s.batch, batchSets);
+        const selectedForSet = bsIdx >= 0 ? (batchSelections[bsIdx] || '') : '';
+        if (selectedForSet && !batchMatches(s.batch, selectedForSet)) {
+          continue; // Student's selected batch doesn't match this slot
+        }
       }
 
       if (regCodes.length > 0) {
@@ -1583,7 +1490,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, selectedBatch,
     }
   }
 
-  // Resolve subject name from timetable.subjects if not already set
+  // Resolve subject name
   if (matchedClass && !matchedClass.name && timetable?.subjects && Array.isArray(timetable.subjects)) {
     const code = (matchedClass.code || '').trim();
     if (code && !code.includes('/')) {
@@ -1632,6 +1539,15 @@ function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, 
   const subjectName = resolveSubjectName(matchedClass, timetable);
   const cleanName = subjectName.replace(/\s*\([A-Z0-9\s-]{2,10}\)\s*$/i, '').trim();
 
+  const batchDropdownHtml = (matchedClass.batchOptions && matchedClass.batchOptions.length > 0 && matchedClass.batchSetIdx >= 0)
+    ? `<select class="tt-batch-select" onchange="pickSlotBatch(${matchedClass.batchSetIdx}, this.value)">
+        ${!matchedClass.selectedBatchValue ? '<option value="" disabled selected>Batch</option>' : ''}
+        ${matchedClass.batchOptions.map(b =>
+          `<option value="${escHtml(b)}" ${b === matchedClass.selectedBatchValue ? 'selected' : ''}>${escHtml(b)}</option>`
+        ).join('')}
+       </select>`
+    : '';
+
   return `
     <div class="tt-slot ${is2hr ? 'is-2hr' : ''} ${isNow ? 'is-now' : ''}">
       <div class="tt-slot-time">
@@ -1642,6 +1558,7 @@ function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, 
       <div class="tt-slot-content">
         <div class="tt-slot-title-row">
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
+          ${batchDropdownHtml}
         </div>
         <div class="tt-slot-meta">
           ${matchedClass.code ? `<span class="tt-code-pill">${escHtml(matchedClass.code)}</span>` : ''}
@@ -1678,8 +1595,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
     return;
   }
 
-  const availableBatches = extractAvailableBatches(timetable);
-  const selectedBatch = getUserLabBatch(availableBatches);
+  const batchSelections = getBatchSelections(timetable);
   const rawDaySchedule = timetable?.schedule?.[dayName] || [];
   const regCodes = getRegisteredCourseCodes();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1706,8 +1622,8 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
       return;
     }
 
-    const classA = resolveClassForPeriod(item.pA, rawDaySchedule, regCodes, selectedBatch, timetable);
-    const classB = resolveClassForPeriod(item.pB, rawDaySchedule, regCodes, selectedBatch, timetable);
+    const classA = resolveClassForPeriod(item.pA, rawDaySchedule, regCodes, batchSelections, timetable);
+    const classB = resolveClassForPeriod(item.pB, rawDaySchedule, regCodes, batchSelections, timetable);
 
     const hasClassA = Boolean(classA && (classA.code || classA.name));
     const hasClassB = Boolean(classB && (classB.code || classB.name));
@@ -2247,12 +2163,8 @@ if (typeof window !== 'undefined') {
   window.submitTimetableUpload = submitTimetableUpload;
   window.handleTtFileChange = handleTtFileChange;
   window.updateCalendarLayout = updateCalendarLayout;
-  window.toggleTtBatchDropdown = toggleTtBatchDropdown;
-  window.closeTtBatchDropdown = closeTtBatchDropdown;
-  window.pickTtBatch = pickTtBatch;
-  window.getUserLabBatch = getUserLabBatch;
-  window.setUserLabBatch = setUserLabBatch;
   window.courseCodesMatch = courseCodesMatch;
+  window.pickSlotBatch = pickSlotBatch;
 
   // Listen for course registrations updated by attendance tab
   window.addEventListener('nie_courses_updated', () => {

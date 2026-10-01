@@ -93,12 +93,24 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
         // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
         try {
+          let profileSection = res.student.section || '';
+          if (res.student.usn) {
+            const usnMatch = res.student.usn.toUpperCase().match(/^\d[A-Z]{2}\d{2}([A-Z]{2})/);
+            if (usnMatch) {
+              const sectionAliases = { CI: { E: 'A', F: 'B', G: 'C', H: 'D', I: 'E', J: 'F' } };
+              const aliases = sectionAliases[usnMatch[1]];
+              if (aliases && aliases[profileSection.toUpperCase()]) {
+                profileSection = aliases[profileSection.toUpperCase()];
+              }
+            }
+          }
+
           const profile = {
             name: res.student.name,
             usn: res.student.usn,
             program: res.student.program,
             semNum: res.student.semNum || '',
-            section: res.student.section || '',
+            section: profileSection,
             photoUri: res.student.photoUri || null,
             sem: res.student.sem || ''
           };

@@ -21,6 +21,21 @@ const DEPT_SLUG_MAP = {
   CV: 'civil'
 };
 
+// Section alias normalization for branches that are sub-departments
+// AIML (CI) is under CSE — portal sometimes labels AIML section A as CSE section F
+const SECTION_ALIAS_MAP = {
+  CI: { E: 'A', F: 'B', G: 'C', H: 'D', I: 'E', J: 'F' }
+};
+
+function normalizeSection(branch, section) {
+  if (!branch || !section) return section || '';
+  const aliases = SECTION_ALIAS_MAP[branch.toUpperCase()];
+  if (aliases && aliases[section.toUpperCase()]) {
+    return aliases[section.toUpperCase()];
+  }
+  return section;
+}
+
 function openAnimatedModal(modalId, backdropId, triggerSelector) {
   const nm = document.getElementById(modalId);
   const nb = document.getElementById(backdropId);
@@ -400,13 +415,22 @@ export async function obNext() {
       const token = res.identityToken || res.student?.identityToken;
       if (token) setIdentityToken(token);
 
+      // Normalize section for sub-department branches (e.g., AIML under CSE)
+      let profileSection = res.student.section || '';
+      if (res.student.usn) {
+        const usnMatch = res.student.usn.toUpperCase().match(/^\d[A-Z]{2}\d{2}([A-Z]{2})/);
+        if (usnMatch && usnMatch[1]) {
+          profileSection = normalizeSection(usnMatch[1], profileSection);
+        }
+      }
+
       // Gate authentication succeeded: store verified student profile and attendance cache
       const profile = {
         name: res.student.name,
         usn: res.student.usn,
         program: res.student.program,
         semNum: res.student.semNum || '',
-        section: res.student.section || '',
+        section: profileSection,
         photoUri: res.student.photoUri || null,
         sem: res.student.sem || ''
       };
@@ -1159,10 +1183,13 @@ function getStudentTimetableParams() {
     if (m && m[1]) batch = '20' + m[1];
   }
 
+  const finalBranch = (branch || 'CS').toUpperCase();
+  const finalSection = normalizeSection(finalBranch, (section || 'A').toUpperCase());
+  
   return {
-    branch: (branch || 'CS').toUpperCase(),
+    branch: finalBranch,
     semester: parseInt(semester, 10) || 5,
-    section: (section || 'A').toUpperCase(),
+    section: finalSection,
     batch: batch || ''
   };
 }

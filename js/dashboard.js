@@ -1558,12 +1558,12 @@ function renderSlotHtml({ startLabel, endLabel, startMin, endMin, matchedClass, 
       <div class="tt-slot-content">
         <div class="tt-slot-title-row">
           <div class="tt-slot-title" title="${escHtml(subjectName)}">${escHtml(cleanName)}</div>
-          ${batchDropdownHtml}
         </div>
         <div class="tt-slot-meta">
           ${matchedClass.code ? `<span class="tt-code-pill">${escHtml(matchedClass.code)}</span>` : ''}
         </div>
       </div>
+      ${batchDropdownHtml ? `<div class="tt-slot-actions">${batchDropdownHtml}</div>` : ''}
     </div>
   `;
 }

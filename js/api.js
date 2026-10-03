@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { CONFIG } from './config.js';
+import { loadCreds, getStoredCookies, savePortalCookies, getSessionToken } from './shared.js';
 
 const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
 
@@ -64,6 +65,60 @@ export const api = {
     // If backend returns HTML fallback or text
     const text = await res.text();
     return { ok: res.ok, html: text };
+  },
+
+  // ── Session Resume / Auto-login for portal cookies ──
+  async ensurePortalCookies() {
+    // 1. Check sessionStorage (current tab session) with timestamp validation
+    try {
+      const session = JSON.parse(sessionStorage.getItem(CONFIG.ATT_SESSION_KEY) || '{}');
+      if (session.cookies) {
+        const creds = loadCreds();
+        if (creds && creds.cookiesAt && (Date.now() - creds.cookiesAt <= 15 * 60 * 1000)) {
+          return session.cookies;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Check localStorage (persisted cookies, < 15 min old)
+    const stored = getStoredCookies();
+    if (stored) return stored;
+
+    // 3. Auto-login with stored credentials
+    const creds = loadCreds();
+    if (!creds || !creds.usn || !creds.dob || !creds.code) return '';
+
+    try {
+      const loginPayload = {
+        usn: creds.usn,
+        dob: creds.dob,
+        idType: creds.idType || '1',
+        code: creds.code,
+      };
+
+      // Try resume with old cookies first (even if expired, backend handles fallback)
+      if (creds.cookies) {
+        loginPayload.action = 'resume';
+        loginPayload.cookies = creds.cookies;
+      } else {
+        loginPayload.action = 'login';
+        loginPayload.sessionToken = getSessionToken();
+      }
+
+      const res = await this.login(loginPayload);
+      if (res.student && res.student.cookies) {
+        savePortalCookies(res.student.cookies);
+        sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+        if (res.identityToken) {
+          localStorage.setItem(CONFIG.IDENTITY_TOKEN_KEY, res.identityToken);
+        }
+        return res.student.cookies;
+      }
+    } catch (e) {
+      console.warn('Auto-login for portal cookies failed:', e.message);
+    }
+
+    return '';
   },
 
   async _postPortalForm(path, { cookies = '', courseId = '', secId = '', semId = '', sem = '' } = {}) {

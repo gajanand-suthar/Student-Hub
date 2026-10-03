@@ -56,6 +56,24 @@ export function loadUser() {
   }
 }
 
+const COOKIE_TTL = 15 * 60 * 1000; // 15 minutes
+
+export function getStoredCookies() {
+  const creds = loadCreds();
+  if (!creds || !creds.cookies || !creds.cookiesAt) return null;
+  if (Date.now() - creds.cookiesAt > COOKIE_TTL) return null;
+  return creds.cookies;
+}
+
+export function savePortalCookies(cookies) {
+  if (!cookies) return;
+  const creds = loadCreds();
+  if (!creds) return;
+  creds.cookies = cookies;
+  creds.cookiesAt = Date.now();
+  try { localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds)); } catch (e) {}
+}
+
 export function getStoredUsn() {
   try {
     const c = loadCreds() || {};

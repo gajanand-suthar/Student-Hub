@@ -422,8 +422,12 @@ export async function obNext() {
         }
       } catch (err) {}
 
-      // Store verified credentials
+      // Store verified credentials + portal cookies for session resume
       const creds = { usn, dob, idType, code };
+      if (res.student.cookies) {
+        creds.cookies = res.student.cookies;
+        creds.cookiesAt = Date.now();
+      }
       const existingCreds = loadCreds();
       if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
         creds.moodleEmail = existingCreds.moodleEmail;

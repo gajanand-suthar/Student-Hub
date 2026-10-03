@@ -63,7 +63,6 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
   activeAttendancePromise = (async () => {
     try {
       const payload = {
-        action: 'login',
         usn: creds.usn,
         dob: creds.dob,
         idType: creds.idType,
@@ -71,9 +70,15 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
       };
       if (currentExplicitSem) payload.sem = currentExplicitSem;
 
-      // Attach session token for bot protection (already solved on homepage)
-      await ensureHumanSession(); // no-op if already solved
-      payload.sessionToken = getSessionToken();
+      // Try resume with stored cookies first, fall back to fresh login
+      if (creds.cookies) {
+        payload.action = 'resume';
+        payload.cookies = creds.cookies;
+      } else {
+        payload.action = 'login';
+        await ensureHumanSession();
+        payload.sessionToken = getSessionToken();
+      }
 
       const res = await api.login(payload);
 
@@ -81,6 +86,17 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
         currentStudentData = res.student;
         const token = res.identityToken || res.student?.identityToken;
         if (token) setIdentityToken(token);
+
+        // Persist portal cookies for future session resume
+        if (res.student.cookies) {
+          try {
+            const updCreds = loadCreds() || {};
+            updCreds.cookies = res.student.cookies;
+            updCreds.cookiesAt = Date.now();
+            localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(updCreds));
+          } catch (e) {}
+        }
+
         // Cache attendance for this particular session only
         try {
           sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
@@ -300,7 +316,7 @@ export async function fetchSgpa(e) {
 
   const creds = loadCreds();
   const usn = creds?.usn || '';
-  const cookies = currentStudentData?.cookies || '';
+  const cookies = currentStudentData?.cookies || (await api.ensurePortalCookies());
   const sem = currentExplicitSem || currentStudentData?.sem;
 
   try {
@@ -393,7 +409,7 @@ export async function onCieItemToggle(detailEl) {
   const courseId = detailEl.dataset.courseid;
   const secId = detailEl.dataset.secid;
   const semId = detailEl.dataset.semid;
-  const cookies = currentStudentData?.cookies || '';
+  const cookies = currentStudentData?.cookies || (await api.ensurePortalCookies());
   const body = detailEl.querySelector('.bd-body');
   if (!courseId || !semId || !body) return;
 
@@ -469,7 +485,7 @@ export async function showAttendanceDetail(code) {
   const courseId = row.dataset.courseid;
   const secId = row.dataset.secid;
   const semId = row.dataset.semid;
-  const cookies = currentStudentData?.cookies || '';
+  const cookies = currentStudentData?.cookies || (await api.ensurePortalCookies());
   const subjectName = row.dataset.name || code;
 
   const modal = document.getElementById('att-modal');

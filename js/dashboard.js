@@ -415,9 +415,12 @@ export async function obNext() {
       try {
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
         if (res.student.attendance && Array.isArray(res.student.attendance)) {
-          const enrolledCodes = res.student.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
-          if (enrolledCodes.length > 0) {
-            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+          const enrolledCourses = res.student.attendance.map(a => ({
+            code: (a.code || '').toUpperCase().trim(),
+            name: (a.name || '').trim()
+          })).filter(c => c.code);
+          if (enrolledCourses.length > 0) {
+            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCourses));
           }
         }
       } catch (err) {}
@@ -1041,18 +1044,48 @@ export function getRegisteredCourseCodes() {
   try {
     const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
     if (Array.isArray(cached) && cached.length) {
-      return cached.map(c => String(c).toUpperCase().trim()).filter(Boolean);
+      return cached.map(c => {
+        if (typeof c === 'string') return c.toUpperCase().trim();
+        return (c?.code || '').toUpperCase().trim();
+      }).filter(Boolean);
     }
   } catch (e) {}
 
   try {
     const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
     if (session.attendance && Array.isArray(session.attendance)) {
-      const codes = session.attendance.map(a => (a.code || '').toUpperCase().trim()).filter(Boolean);
-      if (codes.length) {
-        try { localStorage.setItem('nie_registered_courses', JSON.stringify(codes)); } catch (err) {}
-        return codes;
+      const courses = session.attendance.map(a => ({
+        code: (a.code || '').toUpperCase().trim(),
+        name: (a.name || '').trim()
+      })).filter(c => c.code);
+      if (courses.length) {
+        try { localStorage.setItem('nie_registered_courses', JSON.stringify(courses)); } catch (err) {}
+        return courses.map(c => c.code);
       }
+    }
+  } catch (e) {}
+
+  return [];
+}
+
+export function getRegisteredCourses() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
+    if (Array.isArray(cached) && cached.length) {
+      return cached.map(c => {
+        if (typeof c === 'string') return { code: c.toUpperCase().trim(), name: c.toUpperCase().trim() };
+        return { code: (c?.code || '').toUpperCase().trim(), name: (c?.name || c?.code || '').trim() };
+      }).filter(c => c.code);
+    }
+  } catch (e) {}
+
+  try {
+    const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
+    if (session.attendance && Array.isArray(session.attendance)) {
+      return session.attendance.map(a => ({
+        code: (a.code || '').toUpperCase().trim(),
+        name: (a.name || '').trim()
+      })).filter(c => c.code);
     }
   } catch (e) {}
 

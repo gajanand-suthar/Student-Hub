@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { CONFIG } from './config.js';
-import { loadCreds, getStoredCookies, savePortalCookies, getSessionToken } from './shared.js';
+import { loadCreds, getStoredCookies, savePortalCookies, getSessionToken, ensureHumanSession } from './shared.js';
 
 const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
 
@@ -16,7 +16,24 @@ function getAuthHeaders(extraHeaders = {}) {
       headers['Authorization'] = `Bearer ${token}`;
     }
   } catch (e) {}
+  try {
+    const sessionToken = getSessionToken();
+    if (sessionToken) {
+      headers['X-Session-Token'] = sessionToken;
+    }
+  } catch (e) {}
   return headers;
+}
+
+async function ensureSession() {
+  if (getSessionToken()) return;
+  try {
+    const it = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
+    if (it) return;
+  } catch (e) {}
+  try {
+    await ensureHumanSession();
+  } catch (e) {}
 }
 
 export const api = {
@@ -41,6 +58,7 @@ export const api = {
 
   // ── Authentication / Parents Portal ──
   async login(creds) {
+    await ensureSession();
     const fd = new FormData();
     fd.append('action', creds.action || 'login');
     fd.append('usn', (creds.usn || '').toUpperCase());
@@ -49,10 +67,12 @@ export const api = {
     fd.append('code', creds.code || '');
     if (creds.sem) fd.append('sem', creds.sem);
     if (creds.cookies) fd.append('cookies', creds.cookies);
-    if (creds.sessionToken) fd.append('session_token', creds.sessionToken);
+    const sessionToken = creds.sessionToken || getSessionToken();
+    if (sessionToken) fd.append('session_token', sessionToken);
 
     const res = await fetch(this.getApiUrl('/auth'), {
       method: 'POST',
+      headers: getAuthHeaders(),
       body: fd
     });
 
@@ -122,13 +142,18 @@ export const api = {
   },
 
   async _postPortalForm(path, { cookies = '', courseId = '', secId = '', semId = '', sem = '' } = {}) {
+    await ensureSession();
     const fd = new FormData();
     fd.append('cookies', cookies);
     fd.append('courseId', courseId);
     fd.append('secId', secId);
     fd.append('semId', semId);
     if (sem) fd.append('sem', sem);
-    const res = await fetch(this.getApiUrl(path), { method: 'POST', body: fd });
+    const res = await fetch(this.getApiUrl(path), {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: fd
+    });
     return this._checkPortalResponse(res);
   },
 
@@ -141,9 +166,9 @@ export const api = {
   },
 
   async getExamHistory(params) {
+    await ensureSession();
     const fd = new FormData();
     fd.append('cookies', params.cookies || '');
-    if (params.usn) fd.append('usn', params.usn.toUpperCase());
     if (params.sem) fd.append('sem', params.sem);
 
     const res = await fetch(this.getApiUrl('/exam-history'), {
@@ -157,13 +182,13 @@ export const api = {
 
   // ── Hall Ticket ──
   async downloadHallTicket(params) {
+    await ensureSession();
     const fd = new FormData();
     if (params.name) fd.append('name', params.name);
 
     if (params.bypass) {
       fd.append('bypass', 'true');
     } else {
-      fd.append('usn', (params.usn || '').toUpperCase());
       fd.append('dob', params.dob || '');
       fd.append('idType', params.idType || '1');
       fd.append('code', params.code || '');
@@ -188,6 +213,7 @@ export const api = {
 
   // ── Moodle ──
   async moodleLogin(email, pass, name) {
+    await ensureSession();
     const body = new URLSearchParams({
       username: email,
       password: pass,
@@ -211,10 +237,10 @@ export const api = {
   },
 
   async moodleCall(token, wsfunction, params = {}) {
+    await ensureSession();
     const query = new URLSearchParams({
       wstoken: token,
       wsfunction: wsfunction,
-      moodlewsrestformat: 'json',
       ...params
     });
 
@@ -222,7 +248,7 @@ export const api = {
     try {
       const proxyRes = await fetch(this.getApiUrl('/api/moodle/rest'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
         body: query.toString()
       });
       const data = await proxyRes.json();
@@ -241,7 +267,7 @@ export const api = {
     }
   },
 
-  getMoodleFileProxyUrl(fileurl, token, name, usn, download = false) {
+  getMoodleFileProxyUrl(fileurl, token, name, download = false) {
     const params = new URLSearchParams({
       url: fileurl,
       token: token,
@@ -251,13 +277,18 @@ export const api = {
       const it = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
       if (it) params.set('it', it);
     } catch (e) {}
+    try {
+      const st = getSessionToken();
+      if (st) params.set('st', st);
+    } catch (e) {}
     if (download) params.set('download', '1');
     return this.getApiUrl('/api/moodle/file?' + params.toString());
   },
 
   async getConfig() {
     try {
-      const res = await fetch(this.getApiUrl('/api/config'));
+      await ensureSession();
+      const res = await fetch(this.getApiUrl('/api/config'), { headers: getAuthHeaders() });
       if (!res.ok) return { hall_ticket_enabled: true };
       return await res.json();
     } catch (e) {
@@ -267,6 +298,7 @@ export const api = {
 
   // ── Notices & Department ──
   async getNotices(force = false) {
+    await ensureSession();
     const params = new URLSearchParams();
     if (force) params.set('force', 'true');
 
@@ -279,6 +311,7 @@ export const api = {
   },
 
   async getDepartment(slug) {
+    await ensureSession();
     const params = new URLSearchParams({ slug, tab: 'syllabus' });
     const res = await fetch(this.getApiUrl('/api/department?' + params.toString()), {
       headers: getAuthHeaders()
@@ -293,6 +326,7 @@ export const api = {
   },
 
   async getMySuggestions() {
+    await ensureSession();
     const res = await fetch(this.getApiUrl('/api/suggestions/my'), {
       headers: getAuthHeaders()
     });
@@ -301,6 +335,7 @@ export const api = {
   },
 
   async getUnreadSuggestions() {
+    await ensureSession();
     const res = await fetch(this.getApiUrl('/api/suggestions/unread'), {
       headers: getAuthHeaders()
     });
@@ -314,6 +349,7 @@ export const api = {
 
   // ── Results & Leaderboard ──
   async getResultsPerformance(sessionToken) {
+    await ensureSession();
     const headers = getAuthHeaders();
     if (sessionToken) headers['X-Session-Token'] = sessionToken;
     const res = await fetch(this.getApiUrl('/api/results/performance'), { headers });
@@ -325,6 +361,7 @@ export const api = {
   },
 
   async post(path, data) {
+    await ensureSession();
     const res = await fetch(this.getApiUrl(path), {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -337,25 +374,27 @@ export const api = {
     return res.json();
   },
 
-  async getResults(branch = '', batch = '') {
-    const params = new URLSearchParams();
-    if (branch) params.set('branch', branch);
-    if (batch) params.set('batch', batch);
-
-    const qs = params.toString();
-    const res = await fetch(this.getApiUrl('/api/results' + (qs ? '?' + qs : '')));
+  async getResults() {
+    await ensureSession();
+    const res = await fetch(this.getApiUrl('/api/results'), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
   async getResultsStatus() {
-    const res = await fetch(this.getApiUrl('/api/results/status'));
+    await ensureSession();
+    const res = await fetch(this.getApiUrl('/api/results/status'), {
+      headers: getAuthHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
   // ── Timetable ──
   async uploadTimetable(file, metadata = {}) {
+    await ensureSession();
     const fd = new FormData();
     if (file) fd.append('file', file);
     if (metadata.branch) fd.append('branch', metadata.branch);
@@ -382,12 +421,12 @@ export const api = {
     return res.json();
   },
 
-  async getTimetable({ branch, semester, section, batch, forceRefresh } = {}) {
+  async getTimetable({ branch, semester, section } = {}) {
+    await ensureSession();
     const params = new URLSearchParams();
     if (branch) params.set('branch', branch);
     if (semester) params.set('semester', semester);
     if (section) params.set('section', section);
-    if (batch) params.set('batch', batch);
     // Always attach timestamp cache-buster so browser HTTP disk cache and CDN proxies never serve stale timetable
     params.set('_t', Date.now().toString());
 

@@ -596,8 +596,8 @@ export async function openCourse(idx) {
             displayName = decodeHtml(displayName);
 
             // Proxy URL routes to backend proxy
-            const proxyUrl = api.getMoodleFileProxyUrl(f.fileurl, token, userName, userUsn, false);
-            const downloadProxyUrl = api.getMoodleFileProxyUrl(f.fileurl, token, userName, userUsn, true);
+            const proxyUrl = api.getMoodleFileProxyUrl(f.fileurl, token, userName, false);
+            const downloadProxyUrl = api.getMoodleFileProxyUrl(f.fileurl, token, userName, true);
 
             if (isImage) {
               const onclickAction = `openImageLightbox(${escHtml(JSON.stringify(proxyUrl))},${escHtml(JSON.stringify(displayName))})`;

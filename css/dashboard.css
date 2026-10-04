@@ -1305,12 +1305,13 @@ html, body {
 }
 
 .nm-list {
-  padding: 16px 20px 48px 20px;
+  padding: 16px 20px 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 .notice-card {
   background: var(--surface); border: 1.5px solid var(--border); border-radius: 16px; padding: 14px 16px;

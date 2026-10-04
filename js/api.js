@@ -245,9 +245,12 @@ export const api = {
     const params = new URLSearchParams({
       url: fileurl,
       token: token,
-      name: name || 'Anonymous',
-      usn: usn || 'Unknown'
+      name: name || 'Anonymous'
     });
+    try {
+      const it = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
+      if (it) params.set('it', it);
+    } catch (e) {}
     if (download) params.set('download', '1');
     return this.getApiUrl('/api/moodle/file?' + params.toString());
   },

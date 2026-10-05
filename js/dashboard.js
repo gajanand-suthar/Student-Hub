@@ -157,11 +157,10 @@ export function initDashboard() {
     if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
   }, { capture: true, passive: true });
 
-  initAcademicCalendar();
-  initTimetable();
-
   const consent = localStorage.getItem(CONFIG.CONSENT_KEY);
   if (!consent) {
+    initAcademicCalendar();
+    initTimetable();
     const cm = document.getElementById('consent-modal');
     if (cm) {
       cm.classList.add('active');
@@ -1304,6 +1303,32 @@ export function resetTtToToday() {
 }
 
 
+const TIMETABLE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+function getCachedTimetable(cacheKey) {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed) return null;
+
+    // Envelope format with cachedAt timestamp
+    if (parsed.data && parsed.cachedAt) {
+      const isFresh = (Date.now() - parsed.cachedAt) < TIMETABLE_CACHE_TTL;
+      return isFresh ? parsed.data : null;
+    }
+
+    // Legacy format: raw timetable object stored directly
+    if (parsed.schedule) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ data: parsed, cachedAt: Date.now() }));
+      } catch (e) {}
+      return parsed;
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
   try {
@@ -1312,7 +1337,12 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
     if (data && data.schedule) {
       currentTimetableData = data;
       currentTimetableIsPending = false;
-      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data,
+          cachedAt: Date.now()
+        }));
+      } catch (e) {}
       renderTodaySchedule(currentTimetableData, currentTtDay);
     } else if (data && data.pending) {
       currentTimetableIsPending = true;
@@ -1326,7 +1356,6 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       showEmptyTimetable(params);
     }
   } catch (err) {
-    console.warn('Timetable fetch failed:', err);
     if (!currentTimetableData) {
       showEmptyTimetable(params);
     }
@@ -1348,18 +1377,19 @@ export async function initTimetable() {
 
   const params = getStudentTimetableParams();
 
-  // Render from cache first for instant UX
+  // 1. Check localstorage cache (7-day TTL)
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      currentTimetableData = JSON.parse(cached);
-      renderTodaySchedule(currentTimetableData, currentTtDay);
-    }
-  } catch (e) {
-    console.warn('Cache timetable error:', e);
+  const cachedData = getCachedTimetable(cacheKey);
+
+  if (cachedData && cachedData.schedule) {
+    currentTimetableData = cachedData;
+    currentTimetableIsPending = false;
+    renderTodaySchedule(currentTimetableData, currentTtDay);
+    // Fresh cache exists (< 7 days) — do NOT refetch from server on page visit!
+    return;
   }
 
+  // 2. Only fetch from server when no valid cache or cache expired (> 7 days)
   await fetchAndApplyTimetable(params);
 }
 

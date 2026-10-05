@@ -391,7 +391,7 @@ body.page-scrollable #view-moodle .page {
   white-space: nowrap;
 }
 .section-body { overflow: visible; }
-.section-body-inner { padding: 8px 12px 16px; }
+.section-body-inner { padding: 8px 12px; }
 
 /* Resource Items */
 .res-item {
@@ -404,6 +404,7 @@ body.page-scrollable #view-moodle .page {
   margin-bottom: 4px;
   transition: background 0.2s;
 }
+.res-item:last-child { margin-bottom: 0; }
 .res-item:hover { background: rgba(0, 0, 0, 0.015); }
 [data-theme=dark] .res-item:hover { background: rgba(255, 255, 255, 0.015); }
 .res-item.no-link { color: var(--muted); }
@@ -600,11 +601,14 @@ body.page-scrollable #view-moodle .page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64px 24px;
+  flex: 1;
+  min-height: 50vh;
+  padding: 40px 24px;
   gap: 16px;
   color: var(--muted);
   font-weight: 700;
   font-size: 0.88rem;
+  text-align: center;
 }
 .spinner {
   width: 36px;
@@ -787,6 +791,7 @@ body.page-scrollable #view-moodle .page {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 1;

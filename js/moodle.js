@@ -947,7 +947,7 @@ export function closeDocLightbox() {
 export async function renderPdf(url) {
   const container = document.getElementById('pdf-container');
   if (!container) return;
-  container.innerHTML = '<div style="padding:40px; text-align:center; color:#64748b; font-weight:600; font-family:sans-serif;"><div class="spinner" style="margin: 0 auto 16px;"></div>Loading PDF...</div>';
+  container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:300px;color:#64748b;font-weight:600;font-family:sans-serif;gap:16px;"><div class="spinner"></div>Loading PDF...</div>';
 
   try {
     const pdfjs = await loadPdfJs();

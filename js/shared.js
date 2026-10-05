@@ -259,7 +259,7 @@ export async function loadSugHistory() {
               <div class="sug-history-reply-text">${escHtml(s.admin_reply)}</div>
             </div>`;
         } else {
-          replyHtml = '<div class="sug-history-pending">⏳ Awaiting reply...</div>';
+          replyHtml = '<div class="sug-history-pending">Awaiting reply...</div>';
         }
         return `
           <div class="sug-history-card">

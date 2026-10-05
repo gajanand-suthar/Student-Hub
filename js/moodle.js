@@ -86,12 +86,6 @@ export function parseCourseInfo(fullname) {
 
 // ── Boot / Initialization ─────────────────────────────────────
 export async function initMoodle() {
-
-  // Setup PDF.js worker
-  if (typeof window.pdfjsLib !== 'undefined') {
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
-
   token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
 
   try {
@@ -753,6 +747,65 @@ export function closeImageLightbox() {
   }, 300);
 }
 
+// ── Lazy-Load PDF.js & Plyr on Demand ────────────────────────
+let pdfjsPromise = null;
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfjsPromise) return pdfjsPromise;
+
+  pdfjsPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else {
+        reject(new Error('PDF.js failed to initialize'));
+      }
+    };
+    s.onerror = () => {
+      pdfjsPromise = null;
+      reject(new Error('Failed to load PDF viewer script'));
+    };
+    document.head.appendChild(s);
+  });
+  return pdfjsPromise;
+}
+
+let plyrPromise = null;
+function loadPlyr() {
+  if (window.Plyr) return Promise.resolve(window.Plyr);
+  if (plyrPromise) return plyrPromise;
+
+  plyrPromise = new Promise((resolve, reject) => {
+    // 1. Inject Plyr CSS if not already present
+    if (!document.querySelector('link[href*="plyr"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
+      document.head.appendChild(link);
+    }
+
+    // 2. Inject Plyr JS
+    const s = document.createElement('script');
+    s.src = 'https://cdn.plyr.io/3.7.8/plyr.polyfilled.js';
+    s.onload = () => {
+      if (window.Plyr) {
+        resolve(window.Plyr);
+      } else {
+        reject(new Error('Plyr failed to initialize'));
+      }
+    };
+    s.onerror = () => {
+      plyrPromise = null;
+      reject(new Error('Failed to load media player script'));
+    };
+    document.head.appendChild(s);
+  });
+  return plyrPromise;
+}
+
 // ── Document Lightbox Handlers ───────────────────────────────
 export function openDocLightbox(url, name, ext) {
   const lb = document.getElementById('doc-lightbox');
@@ -808,25 +861,17 @@ export function openDocLightbox(url, name, ext) {
       targetEl.style.display = 'block';
       targetEl.src = url;
 
-      const initPlyrInstance = () => {
-        if (typeof window.Plyr !== 'undefined' && !window.currentPlyr) {
+      loadPlyr().then(Plyr => {
+        if (targetEl.src && !window.currentPlyr) {
           try {
-            window.currentPlyr = new window.Plyr(targetEl, {
+            window.currentPlyr = new Plyr(targetEl, {
               title: name,
               controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
               autoplay: false
             });
-          } catch(e) {
-            console.warn('Plyr error:', e);
-          }
+          } catch(e) {}
         }
-      };
-
-      if (typeof window.Plyr !== 'undefined') {
-        initPlyrInstance();
-      } else {
-        setTimeout(initPlyrInstance, 300);
-      }
+      }).catch(() => {});
     }
   } else if (isMsDoc || isGoogleDoc || (!isPdf && !isVideo && !isAudio)) {
     if (loader) loader.style.display = 'flex';
@@ -899,17 +944,14 @@ export function closeDocLightbox() {
 }
 
 // ── PDF.js Multi-Page Canvas Renderer ─────────────────────────
-export function renderPdf(url) {
+export async function renderPdf(url) {
   const container = document.getElementById('pdf-container');
   if (!container) return;
   container.innerHTML = '<div style="padding:40px; text-align:center; color:#64748b; font-weight:600; font-family:sans-serif;"><div class="spinner" style="margin: 0 auto 16px;"></div>Loading PDF...</div>';
 
-  if (typeof window.pdfjsLib === 'undefined') {
-    container.innerHTML = '<div style="padding:40px; text-align:center;"><a href="' + url + '" target="_blank" class="res-btn btn-view">Open PDF in New Tab</a></div>';
-    return;
-  }
-
-  window.pdfjsLib.getDocument(url).promise.then(pdf => {
+  try {
+    const pdfjs = await loadPdfJs();
+    const pdf = await pdfjs.getDocument(url).promise;
     container.innerHTML = '';
     for (let i = 1; i <= pdf.numPages; i++) {
       const canvasWrapper = document.createElement('div');
@@ -932,9 +974,9 @@ export function renderPdf(url) {
 
       renderPdfPage(pdf, i, canvas, canvasWrapper);
     }
-  }).catch(err => {
-    container.innerHTML = '<div style="padding:40px; text-align:center; color:#ef4444; font-weight:600;">Failed to load PDF: ' + escHtml(err.message) + '</div>';
-  });
+  } catch (err) {
+    container.innerHTML = '<div style="padding:40px; text-align:center; color:#ef4444; font-weight:600;">Failed to load PDF: ' + escHtml(err.message) + '<div style="margin-top:16px;"><a href="' + url + '" target="_blank" class="res-btn btn-view">Open PDF in New Tab</a></div></div>';
+  }
 }
 
 export function renderPdfPage(pdf, num, canvas, wrapper) {

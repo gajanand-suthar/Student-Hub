@@ -7,53 +7,12 @@ import { initAttendance } from './attendance.js';
 import { initMoodle } from './moodle.js';
 import { initResults } from './results.js';
 
-// CDN scripts loaded flag
-let moodleCdnLoaded = false;
-
 const VIEW_INIT_FNS = {
   dashboard: initDashboard,
   attendance: initAttendance,
   moodle: initMoodle,
   results: initResults,
 };
-
-// ── Load Moodle CDN dependencies ──
-async function loadMoodleCdn() {
-  if (moodleCdnLoaded) return;
-  moodleCdnLoaded = true;
-  
-  const loads = [];
-  
-  // PDF.js
-  if (!window.pdfjsLib) {
-    loads.push(loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'));
-  }
-  
-  // Plyr CSS
-  if (!document.querySelector('link[href*="plyr"]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
-    document.head.appendChild(link);
-  }
-  
-  // Plyr JS
-  if (!window.Plyr) {
-    loads.push(loadScript('https://cdn.plyr.io/3.7.8/plyr.polyfilled.js'));
-  }
-  
-  await Promise.all(loads);
-}
-
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = src;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
 
 // ── Update bottom nav active state ──
 function updateNav(viewName) {
@@ -110,10 +69,6 @@ export function loadView(viewName, oldViewName) {
     drawerAttSem.style.display = viewName === 'attendance' ? 'block' : 'none';
   }
   
-  // Load Moodle CDN deps if needed
-  if (viewName === 'moodle') {
-    loadMoodleCdn();
-  }
   
   // Scroll to top
   window.scrollTo(0, 0);

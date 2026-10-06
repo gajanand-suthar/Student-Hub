@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml, getSessionToken, ensureHumanSession, setIdentityToken } from './shared.js';
+import { loadCreds, loadUser, escHtml, getSessionToken, ensureHumanSession, setIdentityToken } from './shared.js';
 import { navigate } from './router.js';
 
 let sgpaLoaded = false;
@@ -109,13 +109,15 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
         // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
         try {
+          const existing = loadUser() || {};
           const profile = {
-            name: res.student.name,
-            usn: res.student.usn || creds.usn,
+            ...existing,
+            name: res.student.name || existing.name,
+            usn: res.student.usn || creds.usn || existing.usn,
             program: res.student.program,
             semNum: res.student.semNum || '',
             section: res.student.section || '',
-            photoUri: res.student.photoUri || null,
+            photoUri: res.student.photoUri || existing.photoUri || null,
             sem: res.student.sem || ''
           };
           localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));

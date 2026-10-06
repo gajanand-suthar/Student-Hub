@@ -399,14 +399,15 @@ export async function obNext() {
       const token = res.identityToken || res.student?.identityToken;
       if (token) setIdentityToken(token);
 
-      // Gate authentication succeeded: store verified student profile and attendance cache
+      const existing = loadUser() || {};
       const profile = {
-        name: res.student.name,
-        usn: res.student.usn || usn,
+        ...existing,
+        name: res.student.name || existing.name,
+        usn: res.student.usn || usn || existing.usn,
         program: res.student.program,
         semNum: res.student.semNum || '',
         section: res.student.section || '',
-        photoUri: res.student.photoUri || null,
+        photoUri: res.student.photoUri || existing.photoUri || null,
         sem: res.student.sem || ''
       };
       localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
@@ -1176,7 +1177,9 @@ function getStudentTimetableParams() {
   let branch = user.branch || '';
   if (!branch && user.program) {
     const prog = user.program.toUpperCase();
-    if (prog.includes('ELECTRICAL')) branch = 'EE';
+    const pm = prog.match(/B\.E-([A-Z]{2,4})/);
+    if (pm) branch = pm[1];
+    else if (prog.includes('ELECTRICAL')) branch = 'EE';
     else if (prog.includes('ELECTRONICS') && prog.includes('COMMUNICATION')) branch = 'EC';
     else if (prog.includes('COMPUTER')) branch = 'CS';
     else if (prog.includes('INFORMATION')) branch = 'IS';
@@ -1206,6 +1209,13 @@ function getStudentTimetableParams() {
   }
 
   let section = user.section || 'A';
+  if ((!semester || !user.section) && user.program) {
+    const semSecMatch = user.program.match(/SEM\s*0*(\d+),?\s*[A-Z]+\s+([A-Z])/i);
+    if (semSecMatch) {
+      if (!semester) semester = String(parseInt(semSecMatch[1], 10));
+      if (!user.section) section = semSecMatch[2].toUpperCase();
+    }
+  }
   let batch = user.batch || '';
   if (!batch && usn) {
     const upper = usn.toUpperCase();

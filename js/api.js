@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { CONFIG } from './config.js';
-import { loadCreds, getStoredCookies, savePortalCookies, getSessionToken, ensureHumanSession } from './shared.js';
+import { loadCreds, loadUser, getStoredCookies, savePortalCookies, getSessionToken, ensureHumanSession } from './shared.js';
 
 const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
 
@@ -132,6 +132,20 @@ export const api = {
         if (res.identityToken) {
           localStorage.setItem(CONFIG.IDENTITY_TOKEN_KEY, res.identityToken);
         }
+        try {
+          const existing = loadUser() || {};
+          const profile = {
+            ...existing,
+            name: res.student.name || existing.name,
+            usn: res.student.usn || existing.usn,
+            program: res.student.program,
+            semNum: res.student.semNum || '',
+            section: res.student.section || '',
+            sem: res.student.sem || '',
+            photoUri: res.student.photoUri || existing.photoUri || null
+          };
+          localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+        } catch (e) {}
         return res.student.cookies;
       }
     } catch (e) {

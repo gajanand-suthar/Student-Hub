@@ -515,14 +515,26 @@ export function obFinish(saveMoodle) {
 // ── Calendar Carousel ──
 function getInferredSemFromUsn(usn) {
   if (!usn) return null;
-  const match = usn.trim().toUpperCase().match(/^4NI(\d{2})[A-Z]{2}(\d{3})$/);
-  if (!match) return null;
+  const upper = usn.trim().toUpperCase();
+  let entryYear = null;
+  let isLateral = false;
 
-  const yy = parseInt(match[1], 10);
-  const rollNum = parseInt(match[2], 10);
-  const isLateral = rollNum >= 400 && rollNum <= 499;
+  const match = upper.match(/^4NI(\d{2})[A-Z]{2}(\d{3})$/);
+  if (match) {
+    const yy = parseInt(match[1], 10);
+    const rollNum = parseInt(match[2], 10);
+    isLateral = rollNum >= 400 && rollNum <= 499;
+    entryYear = 2000 + yy;
+  } else {
+    const t = upper.match(/^(20\d{2})(L?)[A-Z]{2,4}\d{2,4}$/);
+    if (t) {
+      entryYear = parseInt(t[1], 10);
+      isLateral = t[2] === 'L';
+    }
+  }
 
-  const entryYear = 2000 + yy;
+  if (!entryYear) return null;
+
   const now = new Date();
   const yearDiff = now.getFullYear() - entryYear;
   const isOddSem = now.getMonth() >= 7 || now.getMonth() === 0;
@@ -1173,8 +1185,13 @@ function getStudentTimetableParams() {
     else if (prog.includes('CIVIL')) branch = 'CV';
   }
   if (!branch && usn) {
-    const m = usn.toUpperCase().match(/^\d[A-Z]{2}(\d{2})([A-Z]{2})(\d{3})/);
+    const upper = usn.toUpperCase();
+    const m = upper.match(/^\d[A-Z]{2}(\d{2})([A-Z]{2})(\d{3})/);
     if (m && m[2]) branch = m[2];
+    else {
+      const t = upper.match(/^(?:20\d{2})L?([A-Z]{2,4})\d{2,4}$/);
+      if (t && t[1]) branch = t[1];
+    }
   }
 
   let semester = user.semNum || '';
@@ -1191,8 +1208,17 @@ function getStudentTimetableParams() {
   let section = user.section || 'A';
   let batch = user.batch || '';
   if (!batch && usn) {
-    const m = usn.toUpperCase().match(/^\d[A-Z]{2}(\d{2})/);
+    const upper = usn.toUpperCase();
+    const m = upper.match(/^\d[A-Z]{2}(\d{2})/);
     if (m && m[1]) batch = '20' + m[1];
+    else {
+      const t = upper.match(/^(20\d{2})(L?)[A-Z]{2,4}\d{2,4}$/);
+      if (t) {
+        let yr = parseInt(t[1], 10);
+        if (t[2] === 'L') yr -= 1;
+        batch = String(yr);
+      }
+    }
   }
 
   const finalBranch = (branch || 'CS').toUpperCase();
@@ -2127,9 +2153,14 @@ export async function fetchNotices(forceRefresh = false) {
 function getDepartmentSlug() {
   const creds = loadCreds();
   if (creds && creds.usn) {
-    const match = creds.usn.toUpperCase().match(/^[0-9]{1}[A-Z]{2}[0-9]{2}([A-Z]{2})/);
+    const upper = creds.usn.toUpperCase();
+    const match = upper.match(/^[0-9]{1}[A-Z]{2}[0-9]{2}([A-Z]{2})/);
     if (match && match[1]) {
       return DEPT_SLUG_MAP[match[1]] || null;
+    }
+    const t = upper.match(/^(?:20\d{2})L?([A-Z]{2,4})\d{2,4}$/);
+    if (t && t[1]) {
+      return DEPT_SLUG_MAP[t[1]] || null;
     }
   }
   return null;

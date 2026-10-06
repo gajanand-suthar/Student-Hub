@@ -408,7 +408,8 @@ export async function obNext() {
         semNum: res.student.semNum || '',
         section: res.student.section || '',
         photoUri: res.student.photoUri || existing.photoUri || null,
-        sem: res.student.sem || ''
+        sem: res.student.sem || '',
+        primarySem: res.student.sem || existing.primarySem || ''
       };
       localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
 

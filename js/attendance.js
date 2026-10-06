@@ -17,6 +17,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 export function initAttendance() {
   sgpaLoaded = false;
+  currentExplicitSem = null;
 
   const creds = loadCreds();
   if (!creds || !creds.usn) {
@@ -87,41 +88,45 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
         const token = res.identityToken || res.student?.identityToken;
         if (token) setIdentityToken(token);
 
-        // Persist portal cookies for future session resume
-        if (res.student.cookies) {
+        const existing = loadUser() || {};
+        const primarySem = (existing.primarySem || existing.sem || '').toLowerCase();
+        const targetSem = (currentExplicitSem || explicitSem || '').toLowerCase();
+        const isAlternateSem = Boolean(targetSem && primarySem && targetSem !== primarySem);
+
+        if (!isAlternateSem) {
+          if (res.student.cookies) {
+            try {
+              const updCreds = loadCreds() || {};
+              updCreds.cookies = res.student.cookies;
+              updCreds.cookiesAt = Date.now();
+              localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(updCreds));
+            } catch (e) {}
+          }
+
           try {
-            const updCreds = loadCreds() || {};
-            updCreds.cookies = res.student.cookies;
-            updCreds.cookiesAt = Date.now();
-            localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(updCreds));
+            sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
+            const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
+            if (enrolledCodes.length > 0) {
+              localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
+              window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
+            }
+          } catch (e) {}
+
+          try {
+            const profile = {
+              ...existing,
+              name: res.student.name || existing.name,
+              usn: res.student.usn || creds.usn || existing.usn,
+              program: res.student.program,
+              semNum: res.student.semNum || '',
+              section: res.student.section || '',
+              photoUri: res.student.photoUri || existing.photoUri || null,
+              sem: res.student.sem || '',
+              primarySem: existing.primarySem || res.student.sem || ''
+            };
+            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
           } catch (e) {}
         }
-
-        // Cache attendance for this particular session only
-        try {
-          sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
-          const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
-          if (enrolledCodes.length > 0) {
-            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
-            window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
-          }
-        } catch (e) {}
-
-        // Persist student profile in localStorage for app functionality (greeting, calendar, notices)
-        try {
-          const existing = loadUser() || {};
-          const profile = {
-            ...existing,
-            name: res.student.name || existing.name,
-            usn: res.student.usn || creds.usn || existing.usn,
-            program: res.student.program,
-            semNum: res.student.semNum || '',
-            section: res.student.section || '',
-            photoUri: res.student.photoUri || existing.photoUri || null,
-            sem: res.student.sem || ''
-          };
-          localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
-        } catch (e) {}
 
         renderStudentView(res.student);
       }

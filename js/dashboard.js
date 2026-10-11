@@ -172,19 +172,6 @@ export function initDashboard() {
 }
 
 function continueBoot() {
-  const user = loadUser();
-
-  if (user && user.name) {
-    const gName = document.getElementById('greeting-name');
-    if (gName) gName.textContent = toTitleCase(user.name);
-    const hour = new Date().getHours();
-    let timeStr = 'Good evening,';
-    if (hour < 12) timeStr = 'Good morning,';
-    else if (hour < 17) timeStr = 'Good afternoon,';
-    const gTime = document.getElementById('greeting-time');
-    if (gTime) gTime.textContent = timeStr;
-  }
-
   initAcademicCalendar();
   initTimetable();
 
@@ -438,10 +425,6 @@ export async function obNext() {
         creds.moodlePass = existingCreds.moodlePass;
       }
       localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
-
-      // Update greeting name immediately
-      const gName = document.getElementById('greeting-name');
-      if (gName && res.student.name) gName.textContent = toTitleCase(res.student.name);
 
       // If Moodle credentials already exist, finish onboarding; otherwise proceed to Step 3
       if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
@@ -1010,12 +993,13 @@ let selectedTtFile = null;
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 
-export function toggleHomeSection(section) {
+export function toggleHomeSection(section, push = true) {
   const sections = ['calendar', 'notices', 'syllabus'];
   const panelTimetable = document.getElementById('panel-timetable');
 
   // If already active or explicitly timetable, toggle off -> back to timetable
   if (currentHomeSection === section || section === 'timetable') {
+    const wasOther = currentHomeSection !== 'timetable';
     currentHomeSection = 'timetable';
     sections.forEach(s => {
       const btn = document.getElementById(`btn-toggle-${s}`);
@@ -1024,11 +1008,17 @@ export function toggleHomeSection(section) {
     });
     panelTimetable?.classList.add('active');
     resetTtToToday();
+    if (push && wasOther && history.state?.modal === 'home-section') {
+      history.back();
+    }
     return;
   }
 
   // Activate selected section
   currentHomeSection = section;
+  if (push && history.state?.modal !== 'home-section') {
+    history.pushState({ modal: 'home-section', section, route: 'dashboard' }, '', window.location.href);
+  }
   panelTimetable?.classList.remove('active');
   sections.forEach(s => {
     const btn = document.getElementById(`btn-toggle-${s}`);
@@ -1864,7 +1854,7 @@ function showEmptyTimetable(params) {
   `;
 }
 
-export function openTtUploadModal(mode = 'upload') {
+export function openTtUploadModal(mode = 'upload', push = true) {
   if (currentTimetableIsPending) {
     showAppNoticeToast(
       'Submission Already Pending',
@@ -1879,10 +1869,10 @@ export function openTtUploadModal(mode = 'upload') {
     const titleEl = document.getElementById('tt-upload-modal-title');
     const btnEl = document.getElementById('tt-upload-btn');
     if (titleEl) {
-      titleEl.textContent = isEdit ? 'Suggest Timetable Correction' : 'Upload Timetable';
+      titleEl.textContent = isEdit ? 'Edit Timetable' : 'Upload Timetable';
     }
     if (btnEl) {
-      btnEl.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+      btnEl.textContent = isEdit ? 'Submit' : 'Upload';
       btnEl.setAttribute('data-mode', mode);
       btnEl.disabled = false;
       btnEl.style.background = '';
@@ -1898,8 +1888,8 @@ export function openTtUploadModal(mode = 'upload') {
     const dropLabel = document.getElementById('tt-dropzone-label');
     const editFileLabel = document.getElementById('tt-edit-file-label');
 
-    if (dropLabel) dropLabel.textContent = 'Click to select timetable file';
-    if (editFileLabel) editFileLabel.textContent = 'Timetable (optional)';
+    if (dropLabel) dropLabel.textContent = 'File';
+    if (editFileLabel) editFileLabel.textContent = 'File (optional)';
 
     if (isEdit) {
       if (dropzone) dropzone.style.display = 'none';
@@ -1921,6 +1911,9 @@ export function openTtUploadModal(mode = 'upload') {
     if (status) { status.style.display = 'none'; status.textContent = ''; }
 
     modal.classList.add('active');
+    if (push && history.state?.modal !== 'tt-upload-modal') {
+      history.pushState({ modal: 'tt-upload-modal', route: 'dashboard' }, '', window.location.href);
+    }
 
     if (dropzone && !dropzone._dragInit) {
       dropzone._dragInit = true;
@@ -1950,9 +1943,12 @@ export function openTtUploadModal(mode = 'upload') {
   }
 }
 
-export function closeTtUploadModal() {
+export function closeTtUploadModal(fromUi = true) {
   const modal = document.getElementById('tt-upload-modal');
   if (modal) modal.classList.remove('active');
+  if (fromUi && history.state?.modal === 'tt-upload-modal') {
+    history.back();
+  }
 }
 
 export function handleTtFileChange(input) {
@@ -2059,7 +2055,7 @@ export async function submitTimetableUpload(e) {
 function resetUploadBtn(btn, isEdit) {
   if (!btn) return;
   btn.disabled = false;
-  btn.textContent = isEdit ? 'Submit Correction' : 'Submit for Review';
+  btn.textContent = isEdit ? 'Submit' : 'Upload';
   btn.style.background = '';
   btn.style.borderColor = '';
   btn.style.color = '';
@@ -2275,11 +2271,19 @@ export async function shareApp() {
           if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
         }, 1200);
       }
-      const btn = document.querySelector('.drawer-share-btn, button.share-btn');
-      if (btn && !label) {
-        const original = btn.innerHTML;
-        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-        setTimeout(() => (btn.innerHTML = original), 1500);
+      const headerShareBtn = document.querySelector('.header-share-btn');
+      if (headerShareBtn) {
+        const headerLabel = document.getElementById('header-share-label');
+        const isLabelVisible = headerLabel && window.getComputedStyle(headerLabel).display !== 'none';
+        if (isLabelVisible) {
+          const origText = headerLabel.textContent;
+          headerLabel.textContent = 'Copied!';
+          setTimeout(() => (headerLabel.textContent = origText), 1500);
+        } else {
+          const origHtml = headerShareBtn.innerHTML;
+          headerShareBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+          setTimeout(() => (headerShareBtn.innerHTML = origHtml), 1500);
+        }
       }
     }
   } catch (e) {}

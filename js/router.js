@@ -80,7 +80,77 @@ export function initRouter(callback) {
 
   // Listen for back/forward
   window.addEventListener('popstate', (e) => {
-    // If inside Moodle course content and popping back, return to courses list
+    // 1. Doc lightbox or image lightbox in Moodle (close it, stay on course content)
+    const docLb = document.getElementById('doc-lightbox');
+    if (docLb && (docLb.classList.contains('show') || docLb.style.display === 'flex')) {
+      if (typeof window.closeDocLightbox === 'function') window.closeDocLightbox(false);
+      return;
+    }
+    const imgLb = document.getElementById('image-lightbox');
+    if (imgLb && (imgLb.classList.contains('show') || imgLb.style.display === 'flex')) {
+      if (typeof window.closeImageLightbox === 'function') window.closeImageLightbox(false);
+      return;
+    }
+
+    // 2. Attendance detail modal (close modal, stay on attendance view)
+    const attModal = document.getElementById('att-modal');
+    if (attModal && attModal.style.display !== 'none' && attModal.style.display !== '') {
+      if (typeof window.closeAttModal === 'function') window.closeAttModal(false);
+      return;
+    }
+
+    // 3. Suggestions modal (close modal)
+    const sugModal = document.getElementById('sug-modal');
+    if (sugModal && (sugModal.classList.contains('active') || sugModal.style.display === 'flex')) {
+      if (typeof window.closeSugModal === 'function') window.closeSugModal(false);
+      return;
+    }
+
+    // 4. Timetable upload / edit modal (close modal)
+    const ttUploadModal = document.getElementById('tt-upload-modal');
+    if (ttUploadModal && ttUploadModal.classList.contains('active')) {
+      if (typeof window.closeTtUploadModal === 'function') window.closeTtUploadModal(false);
+      return;
+    }
+
+    // 5. Logout confirm modal (close modal)
+    const logoutModal = document.getElementById('logout-confirm-modal');
+    if (logoutModal && logoutModal.classList.contains('active')) {
+      if (typeof window.closeLogoutConfirm === 'function') window.closeLogoutConfirm(false);
+      return;
+    }
+
+    // 6. Drawer menu (close drawer)
+    const drawer = document.getElementById('drawer-overlay');
+    if (drawer && drawer.classList.contains('active')) {
+      if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false, false);
+      return;
+    }
+
+    // 7. CIE tab in Attendance -> switch back to Attendance tab
+    const viewAtt = document.getElementById('view-attendance');
+    const tabCie = document.getElementById('tab-cie');
+    if (viewAtt && viewAtt.classList.contains('active') && tabCie && tabCie.classList.contains('active')) {
+      const attBtn = document.getElementById('tab-btn-att');
+      if (attBtn && typeof window.switchTab === 'function') {
+        window.switchTab('att', attBtn, false);
+        return;
+      }
+    }
+
+    // 8. Homepage sections (calendar, notices, syllabus) -> return to timetable
+    const viewDash = document.getElementById('view-dashboard');
+    if (viewDash && viewDash.classList.contains('active')) {
+      const activePanel = document.querySelector('#panel-calendar.active, #panel-notices.active, #panel-syllabus.active');
+      if (activePanel) {
+        if (typeof window.toggleHomeSection === 'function') {
+          window.toggleHomeSection('timetable', false);
+          return;
+        }
+      }
+    }
+
+    // 9. Moodle course content -> return to course list
     const contentEl = document.getElementById('view-content');
     if (contentEl && contentEl.classList.contains('active')) {
       if (typeof window.showCourses === 'function') {
@@ -92,6 +162,7 @@ export function initRouter(callback) {
       }
     }
 
+    // 10. Normal route navigation
     const route = e.state?.route || resolveRoute(window.location.pathname);
     const oldRoute = currentRoute;
     currentRoute = route;

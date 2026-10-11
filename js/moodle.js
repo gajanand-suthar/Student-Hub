@@ -720,7 +720,7 @@ export function getFileBadge(filename, modname) {
 }
 
 // ── Image Lightbox Handlers ──────────────────────────────────
-export function openImageLightbox(url, name) {
+export function openImageLightbox(url, name, push = true) {
   const lb = document.getElementById('image-lightbox');
   const img = document.getElementById('lightbox-img');
   const cap = document.getElementById('lightbox-caption');
@@ -733,9 +733,12 @@ export function openImageLightbox(url, name) {
   setTimeout(() => {
     lb.classList.add('show');
   }, 12);
+  if (push && history.state?.modal !== 'moodle-lightbox') {
+    history.pushState({ modal: 'moodle-lightbox', route: 'moodle' }, '', window.location.href);
+  }
 }
 
-export function closeImageLightbox() {
+export function closeImageLightbox(fromUi = true) {
   const lb = document.getElementById('image-lightbox');
   if (!lb) return;
   lb.classList.remove('show');
@@ -745,6 +748,9 @@ export function closeImageLightbox() {
     const img = document.getElementById('lightbox-img');
     if (img) img.src = '';
   }, 300);
+  if (fromUi && history.state?.modal === 'moodle-lightbox') {
+    history.back();
+  }
 }
 
 // ── Lazy-Load PDF.js & Plyr on Demand ────────────────────────
@@ -807,7 +813,7 @@ function loadPlyr() {
 }
 
 // ── Document Lightbox Handlers ───────────────────────────────
-export function openDocLightbox(url, name, ext) {
+export function openDocLightbox(url, name, ext, push = true) {
   const lb = document.getElementById('doc-lightbox');
   const ifr = document.getElementById('doc-iframe');
   const pdfC = document.getElementById('pdf-container');
@@ -897,6 +903,9 @@ export function openDocLightbox(url, name, ext) {
   setTimeout(() => {
     lb.classList.add('show');
   }, 12);
+  if (push && history.state?.modal !== 'moodle-lightbox') {
+    history.pushState({ modal: 'moodle-lightbox', route: 'moodle' }, '', window.location.href);
+  }
 }
 
 export function hideDocLoader() {
@@ -904,7 +913,7 @@ export function hideDocLoader() {
   if (loader) loader.style.display = 'none';
 }
 
-export function closeDocLightbox() {
+export function closeDocLightbox(fromUi = true) {
   const lb = document.getElementById('doc-lightbox');
   if (!lb) return;
   lb.classList.remove('show');
@@ -941,6 +950,10 @@ export function closeDocLightbox() {
       window.currentPlyr = null;
     }
   }, 300);
+
+  if (fromUi && history.state?.modal === 'moodle-lightbox') {
+    history.back();
+  }
 }
 
 // ── PDF.js Multi-Page Canvas Renderer ─────────────────────────
@@ -1010,6 +1023,6 @@ if (typeof window !== 'undefined') {
   // Auto-close image lightbox when clicking outside
   document.addEventListener('click', e => {
     const lb = document.getElementById('image-lightbox');
-    if (e.target === lb) closeImageLightbox();
+    if (e.target === lb) closeImageLightbox(true);
   });
 }

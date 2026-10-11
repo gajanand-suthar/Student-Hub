@@ -289,12 +289,18 @@ export function renderStudentView(data) {
   }
 }
 
-export function switchTab(id, btn) {
+export function switchTab(id, btn, push = true) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   const panel = document.getElementById('tab-' + id);
   if (panel) panel.classList.add('active');
+
+  if (id === 'cie' && push && history.state?.modal !== 'cie-tab') {
+    history.pushState({ modal: 'cie-tab', route: 'attendance' }, '', window.location.href);
+  } else if (id === 'att' && push && history.state?.modal === 'cie-tab') {
+    history.back();
+  }
 }
 
 export function flipCard() {
@@ -486,7 +492,7 @@ function renderCieBreakdownBody(detail) {
     .join('');
 }
 
-export async function showAttendanceDetail(code) {
+export async function showAttendanceDetail(code, push = true) {
   const row = document.querySelector(`.cr[data-code="${code}"]`);
   if (!row) return;
   const courseId = row.dataset.courseid;
@@ -510,12 +516,18 @@ export async function showAttendanceDetail(code) {
     if (cached && (cached.present || cached.absent || cached.counts)) {
       renderAttendanceModal(cached);
       modal.style.display = 'flex';
+      if (push && history.state?.modal !== 'att-modal') {
+        history.pushState({ modal: 'att-modal', route: 'attendance' }, '', window.location.href);
+      }
       return;
     }
   } catch (e) {}
 
   body.innerHTML = '<div style="text-align:center;padding:32px 0"><div class="big-spinner" style="margin:0 auto"></div></div>';
   modal.style.display = 'flex';
+  if (push && history.state?.modal !== 'att-modal') {
+    history.pushState({ modal: 'att-modal', route: 'attendance' }, '', window.location.href);
+  }
 
   const sem = currentExplicitSem || currentStudentData?.sem;
 
@@ -653,16 +665,19 @@ export function menuSwitchSem(newSem) {
   }
 }
 
-export function closeAttModal() {
+export function closeAttModal(fromUi = true) {
   const modal = document.getElementById('att-modal');
   if (modal) modal.style.display = 'none';
+  if (fromUi && history.state?.modal === 'att-modal') {
+    history.back();
+  }
 }
 
 // Click backdrop to close modal
 if (typeof document !== 'undefined') {
   document.addEventListener('click', function(e) {
     const modal = document.getElementById('att-modal');
-    if (e.target === modal) closeAttModal();
+    if (e.target === modal) closeAttModal(true);
   });
 }
 

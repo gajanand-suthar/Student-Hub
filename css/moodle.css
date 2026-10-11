@@ -11,15 +11,21 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 16px 16px 0;
+  padding: 16px 20px 0;
   margin: 0 auto calc(58px + env(safe-area-inset-bottom, 0px));
   max-width: 600px;
   width: 100%;
   min-height: 0;
 }
 
+@media (max-width: 767px) {
+  #view-moodle .page {
+    padding: 12px 12px 0;
+  }
+}
+
 /* Header Section */
-.dashboard-header { margin: 8px 0 20px; }
+.dashboard-header { margin: 4px 4px 14px; }
 .header-row {
   display: flex;
   align-items: center;
@@ -27,10 +33,16 @@
   gap: 12px;
 }
 .dashboard-title {
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  letter-spacing: -0.7px;
+  letter-spacing: -0.5px;
   color: var(--text);
+  line-height: 1.2;
+}
+
+@media (max-width: 767px) {
+  .dashboard-header { margin: 2px 4px 10px; }
+  .dashboard-title { font-size: 1.4rem; }
 }
 
 /* Custom Semester Dropdown */
@@ -134,15 +146,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .search-row .search-container { flex: 1; min-width: 0; margin-bottom: 0; }
 
 .btn-refresh {
   background: var(--surface);
   border: 1.5px solid var(--border);
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   display: flex;
   align-items: center;

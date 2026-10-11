@@ -117,27 +117,44 @@ export function clearIdentityToken() {
 }
 
 // ── Drawer Menu ──
-export function toggleDrawer(open) {
+export function toggleDrawer(open, push = true) {
   const overlay = document.getElementById('drawer-overlay');
   if (overlay) {
-    overlay.classList.toggle('active', open);
-    if (open) {
+    const isCurrentlyActive = overlay.classList.contains('active');
+    if (open && !isCurrentlyActive) {
+      overlay.classList.add('active');
       const theme = document.documentElement.getAttribute('data-theme') || 'light';
       applyTheme(theme);
+      if (push && history.state?.modal !== 'drawer') {
+        history.pushState({ modal: 'drawer', route: getCurrentRoute() || 'dashboard' }, '', window.location.href);
+      }
+    } else if (!open && isCurrentlyActive) {
+      overlay.classList.remove('active');
+      if (push && history.state?.modal === 'drawer') {
+        history.back();
+      }
     }
   }
 }
 
 // ── Logout ──
-export function confirmLogout() {
-  toggleDrawer(false);
+export function confirmLogout(push = true) {
+  toggleDrawer(false, false);
   const modal = document.getElementById('logout-confirm-modal');
-  if (modal) modal.classList.add('active');
+  if (modal) {
+    modal.classList.add('active');
+    if (push && history.state?.modal !== 'logout-modal') {
+      history.pushState({ modal: 'logout-modal', route: getCurrentRoute() || 'dashboard' }, '', window.location.href);
+    }
+  }
 }
 
-export function closeLogoutConfirm() {
+export function closeLogoutConfirm(fromUi = true) {
   const modal = document.getElementById('logout-confirm-modal');
   if (modal) modal.classList.remove('active');
+  if (fromUi && history.state?.modal === 'logout-modal') {
+    history.back();
+  }
 }
 
 export function executeLogout() {
@@ -169,7 +186,7 @@ export function executeLogout() {
 }
 
 // ── Suggestions & Feedback ──
-export function openSugModal(tab = 'send') {
+export function openSugModal(tab = 'send', push = true) {
   const textEl = document.getElementById('sug-modal-text');
   if (textEl) textEl.value = '';
   const formEl = document.getElementById('sug-modal-form');
@@ -181,15 +198,21 @@ export function openSugModal(tab = 'send') {
   if (m) {
     m.style.display = 'flex';
     setTimeout(() => m.classList.add('active'), 10);
+    if (push && history.state?.modal !== 'sug-modal') {
+      history.pushState({ modal: 'sug-modal', route: getCurrentRoute() || 'dashboard' }, '', window.location.href);
+    }
   }
   switchSugTab(tab);
 }
 
-export function closeSugModal() {
+export function closeSugModal(fromUi = true) {
   const m = document.getElementById('sug-modal');
   if (m) {
     m.classList.remove('active');
     setTimeout(() => (m.style.display = 'none'), 200);
+  }
+  if (fromUi && history.state?.modal === 'sug-modal') {
+    history.back();
   }
 }
 

@@ -53,8 +53,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Never cache API calls or external worker requests
-  if (url.pathname.includes('/api/') || url.pathname.includes('/auth') || url.hostname.includes('workers.dev')) {
+  // Never cache API calls, external worker requests, or analytics
+  if (url.pathname.includes('/api/') || url.pathname.includes('/auth') || url.hostname.includes('workers.dev') || url.hostname.includes('cloudflareinsights.com')) {
     return;
   }
 

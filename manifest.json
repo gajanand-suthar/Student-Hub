@@ -1,7 +1,7 @@
 {
   "name": "Student Hub",
   "short_name": "Student Hub",
-  "description": "Your all-in-one student portal — access Moodle notes, attendance, CIE marks, and exam results.",
+  "description": "Your all-in-one student portal — access timetable, Moodle notes, attendance, CIE marks, and exam results.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

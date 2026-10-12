@@ -2253,7 +2253,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
 export async function shareApp() {
   const shareData = {
     title: 'Student Hub',
-    text: 'Check out Student Hub — the all-in-one academic portal for students! Access attendance, results, courses and more.',
+    text: 'Check out Student Hub — the all-in-one academic portal for students! Access timetable, attendance, results, courses and more.',
     url: window.location.origin + window.location.pathname.replace(/\/index\.html$/, '')
   };
   try {

@@ -4,7 +4,7 @@ A fast, modern Progressive Web App (PWA) and academic portal for NIE students to
 
 ---
 
-## Notice: 100% Vibe Coded & Disclaimer
+## Notice & Disclaimer
 
 ### Important Disclaimer
 This project is an **independent, unofficial, community-built tool**. It is **NOT** affiliated with, authorized by, endorsed by, sponsored by, or in any way officially connected with any educational institution, college, university, or any of their administrative bodies. 

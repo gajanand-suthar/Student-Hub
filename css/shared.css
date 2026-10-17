@@ -36,7 +36,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
   body.pwa-standalone #view-results .page-wrap{padding-bottom:calc(58px + 16px)}
   body.pwa-standalone .center-state{padding-bottom:calc(58px + 20px)}
   body.pwa-standalone #auth-overlay{bottom:58px}
-  body.pwa-standalone #notices-modal,body.pwa-standalone #department-modal{bottom:76px}
 }
 /* Moodle scrollable mode override */
 @supports (-webkit-touch-callout: none) {
@@ -103,7 +102,13 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
   padding: 24px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
 }
 .drawer-title { font-size: 1.25rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
-.drawer-close-btn {
+/* Consolidated Square Icon / Close Buttons */
+.drawer-close-btn,
+.sug-toast-close,
+.nm-icon-btn,
+.att-modal-close,
+.doc-header .lightbox-close,
+.doc-close-btn {
   background: var(--surface);
   border: 1.5px solid var(--border);
   color: var(--muted);
@@ -119,24 +124,47 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
   box-sizing: border-box;
   flex-shrink: 0;
 }
-.drawer-close-btn:hover {
+.drawer-close-btn:hover,
+.sug-toast-close:hover,
+.nm-icon-btn:hover,
+.att-modal-close:hover,
+.doc-header .lightbox-close:hover,
+.doc-close-btn:hover {
   background: var(--bg);
   color: var(--text);
   border-color: var(--muted);
 }
-.drawer-close-btn:active {
+.drawer-close-btn:active,
+.sug-toast-close:active,
+.nm-icon-btn:active,
+.att-modal-close:active,
+.doc-header .lightbox-close:active,
+.doc-close-btn:active {
   transform: scale(0.92);
 }
-[data-theme=dark] .drawer-close-btn {
+[data-theme=dark] .drawer-close-btn,
+[data-theme=dark] .sug-toast-close,
+[data-theme=dark] .nm-icon-btn,
+[data-theme=dark] .att-modal-close,
+[data-theme=dark] .doc-header .lightbox-close,
+[data-theme=dark] .doc-close-btn {
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border-color: var(--border);
   color: var(--muted);
 }
-[data-theme=dark] .drawer-close-btn:hover {
+[data-theme=dark] .drawer-close-btn:hover,
+[data-theme=dark] .sug-toast-close:hover,
+[data-theme=dark] .nm-icon-btn:hover,
+[data-theme=dark] .att-modal-close:hover,
+[data-theme=dark] .doc-header .lightbox-close:hover,
+[data-theme=dark] .doc-close-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: #64748b;
   color: #fff;
 }
+.sug-toast-close { width: 28px; height: 28px; border-radius: 10px; }
+.att-modal-close { width: 34px; height: 34px; }
+.doc-header .lightbox-close, .doc-close-btn { position: static; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .drawer-menu-list { padding: 10px 16px 24px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
 .drawer-menu-list::-webkit-scrollbar { width: 4px; }
 .drawer-menu-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
@@ -194,39 +222,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .sug-toast-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(37,99,235,0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 [data-theme=dark] .sug-toast-icon { background: rgba(37,99,235,0.2); }
 .sug-toast-text { flex: 1; font-size: 0.85rem; font-weight: 600; color: var(--text); }
-.sug-toast-close {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  color: var(--muted);
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-.sug-toast-close:hover {
-  background: var(--bg);
-  color: var(--text);
-  border-color: var(--muted);
-}
-.sug-toast-close:active {
-  transform: scale(0.92);
-}
-[data-theme=dark] .sug-toast-close {
-  background: var(--surface);
-  border-color: var(--border);
-}
-[data-theme=dark] .sug-toast-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: #64748b;
-  color: #fff;
-}
 .app-notice-toast {
   top: -220px;
   align-items: flex-start;

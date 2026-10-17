@@ -4,62 +4,18 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, initTheme, initPwa, loadUser, toTitleCase, escHtml, getStoredUsn, ensureHumanSession, getSessionToken, setIdentityToken, showAppNoticeToast } from './shared.js';
+import { loadCreds, loadUser, saveUserProfile, saveRegisteredCourses, savePortalCookies, parseUsn, escHtml, ensureHumanSession, getSessionToken, setIdentityToken, showAppNoticeToast } from './shared.js';
 
 function getTodayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const DEPT_SLUG_MAP = {
-  EE: 'electrical-electronics',
-  EC: 'electronics-communication',
-  IS: 'information-science',
-  CS: 'computer-science',
-  CI: 'cse-ai-ml',
-  ME: 'mechanical',
-  CV: 'civil'
-};
-
-function openAnimatedModal(modalId, backdropId, triggerSelector) {
-  const nm = document.getElementById(modalId);
-  const nb = document.getElementById(backdropId);
-  const btn = document.querySelector(triggerSelector);
-  if (!nm) return;
-  if (btn) {
-    const rect = btn.getBoundingClientRect();
-    nm.style.transformOrigin = (rect.left + rect.width / 2 - 16) + 'px ' + (rect.top + rect.height / 2 - 16) + 'px';
-  }
-  nm.style.transform = 'scale(0.3)';
-  nm.classList.add('active');
-  if (nb) nb.classList.add('active');
-  void nm.offsetWidth;
-  nm.classList.add('show');
-  nm.style.transform = '';
-  if (nb) nb.classList.add('show');
-}
-
-function closeAnimatedModal(modalId, backdropId) {
-  const nm = document.getElementById(modalId);
-  const nb = document.getElementById(backdropId);
-  if (!nm) return;
-  nm.classList.remove('show');
-  nm.style.transform = 'scale(0.3)';
-  if (nb) nb.classList.remove('show');
-  setTimeout(() => {
-    nm.classList.remove('active');
-    nm.style.display = '';
-    nm.style.transform = '';
-    if (nb) {
-      nb.classList.remove('active');
-      nb.style.display = '';
-    }
-  }, 300);
-}
-
 let obStep = 0;
 let isVerifying = false;
 let isTouchDevice = false;
+let listenersAttached = false;
+let obListenersAttached = false;
 
 // ── Academic Events Database (Client-Side Static) ──
 const ACADEMIC_EVENTS = [
@@ -151,15 +107,19 @@ let selectedCalSem = 'III';
 
 // ── Boot & Init ──
 export function initDashboard() {
-
-  window.addEventListener('touchstart', () => (isTouchDevice = true), { capture: true, passive: true });
-  window.addEventListener('mousemove', e => {
-    if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
-  }, { capture: true, passive: true });
+  if (!listenersAttached) {
+    listenersAttached = true;
+    window.addEventListener('touchstart', () => (isTouchDevice = true), { capture: true, passive: true });
+    window.addEventListener('mousemove', e => {
+      if (e.movementX !== 0 || e.movementY !== 0) isTouchDevice = false;
+    }, { capture: true, passive: true });
+  }
 
   const consent = localStorage.getItem(CONFIG.CONSENT_KEY);
   if (!consent) {
-    initAcademicCalendar();
+    if (document.getElementById('panel-calendar')?.classList.contains('active')) {
+      initAcademicCalendar();
+    }
     initTimetable();
     const cm = document.getElementById('consent-modal');
     if (cm) {
@@ -172,7 +132,9 @@ export function initDashboard() {
 }
 
 function continueBoot() {
-  initAcademicCalendar();
+  if (document.getElementById('panel-calendar')?.classList.contains('active')) {
+    initAcademicCalendar();
+  }
   initTimetable();
 
   const creds = loadCreds();
@@ -183,6 +145,9 @@ function continueBoot() {
       setTimeout(() => document.getElementById('ob-usn')?.focus(), 150);
     }
   }
+
+  if (obListenersAttached) return;
+  obListenersAttached = true;
 
   const obUsn = document.getElementById('ob-usn');
   if (obUsn) {
@@ -386,45 +351,24 @@ export async function obNext() {
       const token = res.identityToken || res.student?.identityToken;
       if (token) setIdentityToken(token);
 
-      const existing = loadUser() || {};
-      const profile = {
-        ...existing,
-        name: res.student.name || existing.name,
-        usn: res.student.usn || usn || existing.usn,
-        program: res.student.program,
-        semNum: res.student.semNum || '',
-        section: res.student.section || '',
-        photoUri: res.student.photoUri || existing.photoUri || null,
-        sem: res.student.sem || '',
-        primarySem: res.student.sem || existing.primarySem || ''
-      };
-      localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+      saveUserProfile(res.student, usn);
 
       try {
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
-        if (res.student.attendance && Array.isArray(res.student.attendance)) {
-          const enrolledCourses = res.student.attendance.map(a => ({
-            code: (a.code || '').toUpperCase().trim(),
-            name: (a.name || '').trim()
-          })).filter(c => c.code);
-          if (enrolledCourses.length > 0) {
-            localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCourses));
-          }
-        }
       } catch (err) {}
+      saveRegisteredCourses(res.student);
 
       // Store verified credentials + portal cookies for session resume
       const creds = { usn, dob, idType, code };
-      if (res.student.cookies) {
-        creds.cookies = res.student.cookies;
-        creds.cookiesAt = Date.now();
-      }
       const existingCreds = loadCreds();
       if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
         creds.moodleEmail = existingCreds.moodleEmail;
         creds.moodlePass = existingCreds.moodlePass;
       }
       localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds));
+      if (res.student.cookies) {
+        savePortalCookies(res.student.cookies);
+      }
 
       // If Moodle credentials already exist, finish onboarding; otherwise proceed to Step 3
       if (existingCreds && existingCreds.moodleEmail && existingCreds.moodlePass) {
@@ -493,46 +437,13 @@ export function obFinish(saveMoodle) {
   }
 
   document.getElementById('onboarding')?.classList.remove('active');
-  initAcademicCalendar();
+  if (document.getElementById('panel-calendar')?.classList.contains('active')) {
+    initAcademicCalendar();
+  }
   initTimetable();
 }
 
 // ── Calendar Carousel ──
-function getInferredSemFromUsn(usn) {
-  if (!usn) return null;
-  const upper = usn.trim().toUpperCase();
-  let entryYear = null;
-  let isLateral = false;
-
-  const match = upper.match(/^4NI(\d{2})[A-Z]{2}(\d{3})$/);
-  if (match) {
-    const yy = parseInt(match[1], 10);
-    const rollNum = parseInt(match[2], 10);
-    isLateral = rollNum >= 400 && rollNum <= 499;
-    entryYear = 2000 + yy;
-  } else {
-    const t = upper.match(/^(20\d{2})(L?)[A-Z]{2,4}\d{2,4}$/);
-    if (t) {
-      entryYear = parseInt(t[1], 10);
-      isLateral = t[2] === 'L';
-    }
-  }
-
-  if (!entryYear) return null;
-
-  const now = new Date();
-  const yearDiff = now.getFullYear() - entryYear;
-  const isOddSem = now.getMonth() >= 7 || now.getMonth() === 0;
-
-  const baseSem = isLateral ? 3 : 1;
-  const sem = baseSem + yearDiff * 2 + (isOddSem ? 0 : 1);
-
-  if (sem <= 1) return 'I';
-  if (sem <= 3) return 'III';
-  if (sem <= 5) return 'V';
-  return 'VII';
-}
-
 export function initAcademicCalendar() {
   let usn = null;
   let resolved = false;
@@ -552,7 +463,7 @@ export function initAcademicCalendar() {
     const creds = loadCreds();
     if (creds && creds.usn) usn = creds.usn;
     if (usn) {
-      const inferred = getInferredSemFromUsn(usn);
+      const inferred = parseUsn(usn)?.oddSemRoman;
       if (inferred) selectedCalSem = inferred;
     }
   }
@@ -674,13 +585,14 @@ export function renderCalMonth() {
   const prevMonthDays = new Date(mObj.year, mObj.month, 0).getDate();
 
   const todayISO = getTodayISO();
+  const frag = document.createDocumentFragment();
 
   for (let p = 0; p < firstDayIndex; p++) {
     const prevDayNum = prevMonthDays - firstDayIndex + 1 + p;
     const pCell = document.createElement('div');
     pCell.className = 'cal-day-cell other-month past';
     pCell.textContent = prevDayNum;
-    grid.appendChild(pCell);
+    frag.appendChild(pCell);
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -732,7 +644,7 @@ export function renderCalMonth() {
       }
     };
 
-    grid.appendChild(cell);
+    frag.appendChild(cell);
   }
 
   const totalDaysSoFar = firstDayIndex + daysInMonth;
@@ -742,8 +654,10 @@ export function renderCalMonth() {
     const nCell = document.createElement('div');
     nCell.className = 'cal-day-cell other-month';
     nCell.textContent = n;
-    grid.appendChild(nCell);
+    frag.appendChild(nCell);
   }
+
+  grid.appendChild(frag);
 }
 
 function showCalPopover(targetEl, dateStr, eventList) {
@@ -787,31 +701,6 @@ export function hideCalPopover() {
   document.querySelectorAll('.cal-day-cell.selected').forEach(c => c.classList.remove('selected'));
 }
 
-export function scrollToCalCard(idx) {
-  const car = document.getElementById('calendar-carousel');
-  if (car && car.children[idx]) {
-    car.scrollTo({ left: car.children[idx].offsetLeft, behavior: 'smooth' });
-  }
-}
-
-export function updateCalCarouselDots() {
-  const car = document.getElementById('calendar-carousel');
-  if (!car || !car.children.length) return;
-  const scrollPos = car.scrollLeft;
-  let activeIdx = 0;
-  let minDiff = Infinity;
-  for (let i = 0; i < car.children.length; i++) {
-    const diff = Math.abs(car.children[i].offsetLeft - scrollPos);
-    if (diff < minDiff) {
-      minDiff = diff;
-      activeIdx = i;
-    }
-  }
-  document.querySelectorAll('.cal-dot').forEach((d, i) => {
-    d.classList.toggle('active', i === activeIdx);
-  });
-}
-
 function renderCalHolidays() {
   const list = document.getElementById('cal-holidays-list');
   if (!list) return;
@@ -821,6 +710,7 @@ function renderCalHolidays() {
   let firstUpcomingEl = null;
 
   const semHolidays = HOLIDAYS_LIST.filter(h => !h.sems || h.sems.includes(selectedCalSem));
+  const frag = document.createDocumentFragment();
 
   semHolidays.forEach(h => {
     const item = document.createElement('div');
@@ -841,8 +731,10 @@ function renderCalHolidays() {
     item.innerHTML = `
       <div class="cal-item-title">${h.title}</div>
       <div class="cal-item-date-right">${dateLabel}</div>`;
-    list.appendChild(item);
+    frag.appendChild(item);
   });
+
+  list.appendChild(frag);
 
   if (firstUpcomingEl) {
     setTimeout(() => {
@@ -876,6 +768,7 @@ function renderCalEvents() {
   const todayISO = getTodayISO();
   const semEvents = ACADEMIC_EVENTS.filter(ev => ev.sems.includes(selectedCalSem));
   let firstUpcomingEl = null;
+  const frag = document.createDocumentFragment();
 
   semEvents.forEach(ev => {
     const item = document.createElement('div');
@@ -891,8 +784,10 @@ function renderCalEvents() {
     item.innerHTML = `
       <div class="cal-item-title">${ev.title}</div>
       <div class="cal-item-date-right">${formatDateRange(ev.startDate, ev.endDate)}</div>`;
-    list.appendChild(item);
+    frag.appendChild(item);
   });
+
+  list.appendChild(frag);
 
   if (firstUpcomingEl) {
     setTimeout(() => {
@@ -900,84 +795,6 @@ function renderCalEvents() {
       list.scrollTop = Math.max(0, offset);
     }, 50);
   }
-}
-
-// ── Hall Ticket Download ──
-export async function downloadHallTicket() {
-  const creds = loadCreds();
-  if (!creds || !creds.usn) {
-    alert('Please complete setup first to download your hall ticket.');
-    return;
-  }
-
-  const btn = document.getElementById('download-ht-btn');
-  const isBypass = btn?.getAttribute('data-bypass') === 'true';
-
-  if (btn && !btn.getAttribute('data-original')) {
-    btn.setAttribute('data-original', btn.innerHTML);
-  }
-
-  if (btn) {
-    btn.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .7s linear infinite"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg> Downloading...</span>`;
-    btn.disabled = true;
-  }
-
-  let studentName = '';
-  const user = loadUser();
-  if (user.name) studentName = user.name;
-
-  try {
-    const res = await api.downloadHallTicket({
-      usn: creds.usn,
-      dob: creds.dob,
-      idType: creds.idType,
-      code: creds.code,
-      name: studentName,
-      bypass: isBypass
-    });
-
-    if (res.isJson) {
-      if (res.data.survey_required) {
-        if (btn) {
-          btn.setAttribute('data-bypass', 'true');
-          btn.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;line-height:1.2"><div style="display:flex;align-items:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span style="font-weight:800">Survey Required</span></div><div style="font-size:0.7rem;opacity:0.9;font-weight:600;margin-top:2px">Tap to download anyway</div></div>`;
-          btn.style.background = '#ef4444';
-          btn.disabled = false;
-        }
-        return;
-      }
-      if (res.data.error) throw new Error(res.data.error);
-    } else {
-      const url = window.URL.createObjectURL(res.blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `HallTicket_${creds.usn}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-      resetHtBtn();
-    }
-  } catch (err) {
-    alert(err.message);
-    resetHtBtn();
-  } finally {
-    if (btn && (btn.getAttribute('data-bypass') !== 'true' || btn.disabled)) {
-      btn.disabled = false;
-    }
-  }
-}
-
-function resetHtBtn() {
-  const btn = document.getElementById('download-ht-btn');
-  if (!btn) return;
-  const original = btn.getAttribute('data-original');
-  if (original) btn.innerHTML = original;
-  btn.style.background = '';
-  btn.style.height = '48px';
-  btn.removeAttribute('data-bypass');
-  btn.disabled = false;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1056,46 +873,14 @@ export function getRegisteredCourseCodes() {
 
   try {
     const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
-    if (session.attendance && Array.isArray(session.attendance)) {
-      const courses = session.attendance.map(a => ({
-        code: (a.code || '').toUpperCase().trim(),
-        name: (a.name || '').trim()
-      })).filter(c => c.code);
-      if (courses.length) {
-        try { localStorage.setItem('nie_registered_courses', JSON.stringify(courses)); } catch (err) {}
-        return courses.map(c => c.code);
-      }
+    const courses = saveRegisteredCourses(session);
+    if (courses.length) {
+      return courses.map(c => c.code);
     }
   } catch (e) {}
 
   return [];
 }
-
-export function getRegisteredCourses() {
-  try {
-    const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
-    if (Array.isArray(cached) && cached.length) {
-      return cached.map(c => {
-        if (typeof c === 'string') return { code: c.toUpperCase().trim(), name: c.toUpperCase().trim() };
-        return { code: (c?.code || '').toUpperCase().trim(), name: (c?.name || c?.code || '').trim() };
-      }).filter(c => c.code);
-    }
-  } catch (e) {}
-
-  try {
-    const session = JSON.parse(sessionStorage.getItem('nie_att_session') || '{}');
-    if (session.attendance && Array.isArray(session.attendance)) {
-      return session.attendance.map(a => ({
-        code: (a.code || '').toUpperCase().trim(),
-        name: (a.name || '').trim()
-      })).filter(c => c.code);
-    }
-  } catch (e) {}
-
-  return [];
-}
-
-// ensureRegisteredCoursesLoaded removed — callers use getRegisteredCourseCodes() directly
 
 // Standard NIE period slots with fixed Break timings
 const FIXED_DAY_SLOTS = [
@@ -1164,6 +949,7 @@ function getStudentTimetableParams() {
   const creds = loadCreds() || {};
   const user = loadUser() || {};
   const usn = creds.usn || user.usn || '';
+  const parsedUsn = parseUsn(usn);
 
   let branch = user.branch || '';
   if (!branch && user.program) {
@@ -1178,25 +964,18 @@ function getStudentTimetableParams() {
     else if (prog.includes('MECHANICAL')) branch = 'ME';
     else if (prog.includes('CIVIL')) branch = 'CV';
   }
-  if (!branch && usn) {
-    const upper = usn.toUpperCase();
-    const m = upper.match(/^\d[A-Z]{2}(\d{2})([A-Z]{2})(\d{3})/);
-    if (m && m[2]) branch = m[2];
-    else {
-      const t = upper.match(/^(?:20\d{2})L?([A-Z]{2,4})\d{2,4}$/);
-      if (t && t[1]) branch = t[1];
-    }
+  if (!branch && parsedUsn?.branch) {
+    branch = parsedUsn.branch;
   }
 
-  let semester = user.semNum || '';
+  let semester = user.semNum || user.semester || '';
   if (!semester && user.sem) {
     const roman = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
     semester = roman[user.sem.toUpperCase()] || '';
   }
-  if (!semester && usn) {
-    const inf = getInferredSemFromUsn(usn);
+  if (!semester && parsedUsn?.oddSemRoman) {
     const roman = { I: 1, III: 3, V: 5, VII: 7 };
-    semester = roman[inf] || 5;
+    semester = roman[parsedUsn.oddSemRoman] || 5;
   }
 
   let section = user.section || 'A';
@@ -1207,23 +986,9 @@ function getStudentTimetableParams() {
       if (!user.section) section = semSecMatch[2].toUpperCase();
     }
   }
-  let batch = user.batch || '';
-  if (!batch && usn) {
-    const upper = usn.toUpperCase();
-    const m = upper.match(/^\d[A-Z]{2}(\d{2})/);
-    if (m && m[1]) batch = '20' + m[1];
-    else {
-      const t = upper.match(/^(20\d{2})(L?)[A-Z]{2,4}\d{2,4}$/);
-      if (t) {
-        let yr = parseInt(t[1], 10);
-        if (t[2] === 'L') yr -= 1;
-        batch = String(yr);
-      }
-    }
-  }
-
+  const batch = user.batch || parsedUsn?.batch || '';
   const finalBranch = (branch || 'CS').toUpperCase();
-  
+
   return {
     branch: finalBranch,
     semester: parseInt(semester, 10) || 5,
@@ -1915,30 +1680,19 @@ export function openTtUploadModal(mode = 'upload', push = true) {
       history.pushState({ modal: 'tt-upload-modal', route: 'dashboard' }, '', window.location.href);
     }
 
-    if (dropzone && !dropzone._dragInit) {
-      dropzone._dragInit = true;
-      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
-      dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = ''; });
-      dropzone.addEventListener('drop', e => {
-        e.preventDefault();
-        dropzone.style.borderColor = '';
-        if (e.dataTransfer?.files?.[0]) {
-          handleTtFileChange({ files: e.dataTransfer.files });
-        }
-      });
-    }
-
-    if (editFileRow && !editFileRow._dragInit) {
-      editFileRow._dragInit = true;
-      editFileRow.addEventListener('dragover', e => { e.preventDefault(); editFileRow.style.borderColor = 'var(--accent)'; });
-      editFileRow.addEventListener('dragleave', () => { editFileRow.style.borderColor = ''; });
-      editFileRow.addEventListener('drop', e => {
-        e.preventDefault();
-        editFileRow.style.borderColor = '';
-        if (e.dataTransfer?.files?.[0]) {
-          handleTtFileChange({ files: e.dataTransfer.files });
-        }
-      });
+    for (const el of [dropzone, editFileRow]) {
+      if (el && !el._dragInit) {
+        el._dragInit = true;
+        el.addEventListener('dragover', e => { e.preventDefault(); el.style.borderColor = 'var(--accent)'; });
+        el.addEventListener('dragleave', () => { el.style.borderColor = ''; });
+        el.addEventListener('drop', e => {
+          e.preventDefault();
+          el.style.borderColor = '';
+          if (e.dataTransfer?.files?.[0]) {
+            handleTtFileChange({ files: e.dataTransfer.files });
+          }
+        });
+      }
     }
   }
 }
@@ -2063,38 +1817,16 @@ function resetUploadBtn(btn, isEdit) {
 
 // ── Department & Notices Sections ──
 let noticesLoaded = false;
-let currentDeptTab = 'syllabus';
 let cachedDeptData = null;
 
-export function openNoticesModal() {
-  toggleHomeSection('notices');
-}
-
-export function closeNoticesModal() {
-  if (currentHomeSection === 'notices') toggleHomeSection('timetable');
-}
-
-function getNoticeIconSvg(link, idPrefix = 'n') {
+function getNoticeIconSvg(link) {
   const linkLower = (link || '').toLowerCase();
   if (linkLower.endsWith('.pdf')) {
     return `<svg viewBox="0 0 1024 1024" width="34" height="34" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PDF file icon">
-      <defs>
-        <linearGradient id="${idPrefix}-paperGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#f1f2f6"/></linearGradient>
-        <linearGradient id="${idPrefix}-paperFoldGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#eceef4"/><stop offset="100%" stop-color="#dfe3eb"/></linearGradient>
-        <linearGradient id="${idPrefix}-redGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff4a3d"/><stop offset="100%" stop-color="#ef1f1b"/></linearGradient>
-        <filter id="${idPrefix}-softShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#cfd4df" flood-opacity="0.55"/></filter>
-        <filter id="${idPrefix}-labelShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#d43a32" flood-opacity="0.35"/></filter>
-      </defs>
-      <g filter="url(#${idPrefix}-softShadow)">
-        <path d="M360 170 Q360 130 400 130 H728 L880 282 V860 Q880 894 846 894 H400 Q360 894 360 854 Z" fill="url(#${idPrefix}-paperGrad)"/>
-        <path d="M728 130 L880 282 H760 Q728 282 728 250 Z" fill="url(#${idPrefix}-paperFoldGrad)"/>
-        <path d="M728 130 L880 282 H760 Q728 282 728 250 Z" fill="none" stroke="#e1e5ec" stroke-width="1"/>
-      </g>
-      <g filter="url(#${idPrefix}-labelShadow)">
-        <rect x="145" y="540" width="534" height="230" rx="28" ry="28" fill="url(#${idPrefix}-redGrad)"/>
-        <rect x="145" y="540" width="534" height="230" rx="28" ry="28" fill="none" stroke="#ff6a61" stroke-opacity="0.35"/>
-        <text x="412" y="706" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="2" fill="#ffffff">PDF</text>
-      </g>
+      <path d="M360 170 Q360 130 400 130 H728 L880 282 V860 Q880 894 846 894 H400 Q360 894 360 854 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="18"/>
+      <path d="M728 130 L880 282 H760 Q728 282 728 250 Z" fill="#e2e8f0"/>
+      <rect x="145" y="540" width="534" height="230" rx="28" ry="28" fill="#ef4444"/>
+      <text x="412" y="706" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="2" fill="#ffffff">PDF</text>
     </svg>`;
   } else if (linkLower.endsWith('.doc') || linkLower.endsWith('.docx')) {
     return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
@@ -2117,11 +1849,6 @@ export async function fetchNotices(forceRefresh = false) {
     loader.classList.add('show');
   }
 
-  const creds = loadCreds() || {};
-  const user = loadUser();
-  const usn = creds.usn || '';
-  const name = user.name || '';
-
   try {
     const notices = await api.getNotices(forceRefresh);
     loader.classList.remove('show');
@@ -2130,7 +1857,8 @@ export async function fetchNotices(forceRefresh = false) {
     if (!notices || !notices.length) {
       list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--muted); margin: auto 0;">No notices found.</div>';
     } else {
-      notices.forEach((n, idx) => {
+      const frag = document.createDocumentFragment();
+      notices.forEach(n => {
         const card = document.createElement('a');
         card.className = 'notice-card';
         card.href = n.link;
@@ -2139,14 +1867,15 @@ export async function fetchNotices(forceRefresh = false) {
 
         card.innerHTML = `
           <div class="notice-icon">
-            ${getNoticeIconSvg(n.link, 'n-' + idx)}
+            ${getNoticeIconSvg(n.link)}
           </div>
           <div class="notice-content">
             <div class="notice-title" title="${n.title.replace(/"/g, '&quot;')}">${n.title}</div>
             <div class="notice-meta"><span>${n.date}</span></div>
           </div>`;
-        list.appendChild(card);
+        frag.appendChild(card);
       });
+      list.appendChild(frag);
     }
     noticesLoaded = true;
   } catch (err) {
@@ -2159,29 +1888,8 @@ export async function fetchNotices(forceRefresh = false) {
 
 function getDepartmentSlug() {
   const creds = loadCreds();
-  if (creds && creds.usn) {
-    const upper = creds.usn.toUpperCase();
-    const match = upper.match(/^[0-9]{1}[A-Z]{2}[0-9]{2}([A-Z]{2})/);
-    if (match && match[1]) {
-      return DEPT_SLUG_MAP[match[1]] || null;
-    }
-    const t = upper.match(/^(?:20\d{2})L?([A-Z]{2,4})\d{2,4}$/);
-    if (t && t[1]) {
-      return DEPT_SLUG_MAP[t[1]] || null;
-    }
-  }
-  return null;
-}
-
-export function openDepartmentModal(tab = 'syllabus') {
-  currentDeptTab = 'syllabus';
-  const titleEl = document.getElementById('dept-modal-title');
-  if (titleEl) titleEl.textContent = 'Department Syllabus';
-  toggleHomeSection('syllabus');
-}
-
-export function closeDepartmentModal() {
-  if (currentHomeSection === 'syllabus') toggleHomeSection('timetable');
+  const user = loadUser();
+  return parseUsn(creds?.usn || user?.usn)?.deptSlug || null;
 }
 
 export async function fetchDepartmentData(forceRefresh = false) {
@@ -2204,13 +1912,8 @@ export async function fetchDepartmentData(forceRefresh = false) {
       return;
     }
 
-    const creds = loadCreds() || {};
-    const user = loadUser();
-    const usn = creds.usn || '';
-    const name = user.name || '';
-
     try {
-      const data = await api.getDepartment(slug, 'syllabus');
+      const data = await api.getDepartment(slug);
       cachedDeptData = data.department;
     } catch (err) {
       loader.classList.remove('show');
@@ -2227,7 +1930,8 @@ export async function fetchDepartmentData(forceRefresh = false) {
   if (!items || !items.length) {
     list.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--muted); margin: auto 0;">No syllabus files found.</div>`;
   } else {
-    items.forEach((item, idx) => {
+    const frag = document.createDocumentFragment();
+    items.forEach(item => {
       const card = document.createElement('a');
       card.className = 'notice-card';
       card.href = item.file;
@@ -2237,14 +1941,15 @@ export async function fetchDepartmentData(forceRefresh = false) {
 
       card.innerHTML = `
         <div class="notice-icon">
-          ${getNoticeIconSvg(item.file, 'dept-' + idx)}
+          ${getNoticeIconSvg(item.file)}
         </div>
         <div class="notice-content">
           <div class="notice-title" title="${item.title.replace(/"/g, '&quot;')}">${item.title}</div>
           ${metaText ? `<div class="notice-meta"><span>${metaText}</span></div>` : ''}
         </div>`;
-      list.appendChild(card);
+      frag.appendChild(card);
     });
+    list.appendChild(frag);
   }
 
   if (forceRefresh && refreshIcon) refreshIcon.classList.remove('spin');
@@ -2262,15 +1967,6 @@ export async function shareApp() {
       await navigator.share(shareData);
     } else {
       await navigator.clipboard.writeText(shareData.url);
-      const label = document.getElementById('drawer-share-label');
-      if (label) {
-        const original = label.textContent;
-        label.textContent = 'Link Copied!';
-        setTimeout(() => {
-          label.textContent = original;
-          if (typeof window.toggleDrawer === 'function') window.toggleDrawer(false);
-        }, 1200);
-      }
       const headerShareBtn = document.querySelector('.header-share-btn');
       if (headerShareBtn) {
         const headerLabel = document.getElementById('header-share-label');
@@ -2289,8 +1985,6 @@ export async function shareApp() {
   } catch (e) {}
 }
 
-
-
 // Attach window handlers for dashboard events
 if (typeof window !== 'undefined') {
   window.checkCmScroll = checkCmScroll;
@@ -2300,12 +1994,7 @@ if (typeof window !== 'undefined') {
   window.obFinish = obFinish;
   window.toggleObDd = toggleObDd;
   window.pickObIdType = pickObIdType;
-  window.downloadHallTicket = downloadHallTicket;
-  window.openNoticesModal = openNoticesModal;
-  window.closeNoticesModal = closeNoticesModal;
   window.fetchNotices = fetchNotices;
-  window.openDepartmentModal = openDepartmentModal;
-  window.closeDepartmentModal = closeDepartmentModal;
   window.fetchDepartmentData = fetchDepartmentData;
   window.shareApp = shareApp;
   window.prevCalMonth = prevCalMonth;
@@ -2313,8 +2002,6 @@ if (typeof window !== 'undefined') {
   window.toggleCalSemDropdown = toggleCalSemDropdown;
   window.closeCalSemDropdown = closeCalSemDropdown;
   window.pickCalSem = pickCalSem;
-  window.scrollToCalCard = scrollToCalCard;
-  window.updateCalCarouselDots = updateCalCarouselDots;
   window.toggleHomeSection = toggleHomeSection;
   window.selectTtDay = selectTtDay;
   window.initTimetable = initTimetable;

@@ -4,7 +4,7 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, loadUser, escHtml, getSessionToken, ensureHumanSession, setIdentityToken } from './shared.js';
+import { loadCreds, loadUser, escHtml, getSessionToken, ensureHumanSession, setIdentityToken, savePortalCookies, saveUserProfile, saveRegisteredCourses } from './shared.js';
 import { navigate } from './router.js';
 
 let sgpaLoaded = false;
@@ -94,38 +94,12 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
         const isAlternateSem = Boolean(targetSem && primarySem && targetSem !== primarySem);
 
         if (!isAlternateSem) {
-          if (res.student.cookies) {
-            try {
-              const updCreds = loadCreds() || {};
-              updCreds.cookies = res.student.cookies;
-              updCreds.cookiesAt = Date.now();
-              localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(updCreds));
-            } catch (e) {}
-          }
-
+          savePortalCookies(res.student.cookies);
           try {
             sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
-            const enrolledCodes = (res.student.attendance || []).map(a => (a.code || '').toUpperCase()).filter(Boolean);
-            if (enrolledCodes.length > 0) {
-              localStorage.setItem('nie_registered_courses', JSON.stringify(enrolledCodes));
-              window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: enrolledCodes }));
-            }
           } catch (e) {}
-
-          try {
-            const profile = {
-              ...existing,
-              name: res.student.name || existing.name,
-              usn: res.student.usn || creds.usn || existing.usn,
-              program: res.student.program,
-              semNum: res.student.semNum || '',
-              section: res.student.section || '',
-              photoUri: res.student.photoUri || existing.photoUri || null,
-              sem: res.student.sem || '',
-              primarySem: existing.primarySem || res.student.sem || ''
-            };
-            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
-          } catch (e) {}
+          saveRegisteredCourses(res.student);
+          saveUserProfile(res.student, creds.usn);
         }
 
         renderStudentView(res.student);
@@ -230,10 +204,8 @@ export function renderStudentView(data) {
       .join('');
   }
 
-  const attMobile = document.getElementById('att-rows-container');
-  const attDesk = document.getElementById('desk-att-rows');
-  if (attMobile) attMobile.innerHTML = attHtml;
-  if (attDesk) attDesk.innerHTML = attHtml;
+  const attContainer = document.getElementById('att-rows-container');
+  if (attContainer) attContainer.innerHTML = attHtml;
 
   // CIE Breakdown
   let cieHtml = '';
@@ -259,10 +231,8 @@ export function renderStudentView(data) {
       .join('');
   }
 
-  const cieMobile = document.getElementById('cie-accordion-container');
-  const cieDesk = document.getElementById('desk-cie-accordion');
-  if (cieMobile) cieMobile.innerHTML = cieHtml;
-  if (cieDesk) cieDesk.innerHTML = cieHtml;
+  const cieContainer = document.getElementById('cie-accordion-container');
+  if (cieContainer) cieContainer.innerHTML = cieHtml;
 
   // Restore cached SGPA data if present in session storage
   if (!currentSgpaData) {
@@ -327,8 +297,6 @@ export async function fetchSgpa(e) {
   btn.disabled = true;
   btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:4px auto"></div>';
 
-  const creds = loadCreds();
-  const usn = creds?.usn || '';
   const cookies = currentStudentData?.cookies || (await api.ensurePortalCookies());
   const sem = currentExplicitSem || currentStudentData?.sem;
 
@@ -687,7 +655,7 @@ if (typeof document !== 'undefined') {
     var summary = e.target.closest && e.target.closest('details.bd-item > summary');
     if (!summary) return;
     var detail = summary.closest('details.bd-item');
-    var panel = detail.closest('#cie-accordion-container') || detail.closest('#desk-cie-accordion');
+    var panel = detail.closest('#cie-accordion-container');
     if (!panel) return;
 
     var isOpening = !detail.open;
@@ -766,7 +734,6 @@ if (typeof window !== 'undefined') {
   window.onCieItemToggle = onCieItemToggle;
   window.showAttendanceDetail = showAttendanceDetail;
   window.closeAttModal = closeAttModal;
-  window.switchSem = menuSwitchSem;
   window.menuSwitchSem = menuSwitchSem;
   window.refreshData = refreshData;
 }

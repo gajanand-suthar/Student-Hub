@@ -9,9 +9,10 @@ import { getCurrentRoute, navigate } from './router.js';
 // ── Theme Management ──
 export function initTheme() {
   try {
+    const current = document.documentElement.getAttribute('data-theme');
     const saved = localStorage.getItem(CONFIG.THEME_KEY);
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = saved || (prefersDark ? 'dark' : 'light');
+    const theme = current || saved || (prefersDark ? 'dark' : 'light');
     applyTheme(theme);
   } catch (e) {}
 }
@@ -39,7 +40,75 @@ export function toggleTheme() {
   applyTheme(current);
 }
 
-// ── Credentials Management ──
+// ── Branch & USN Parsing ──
+export const BRANCH_MAP = {
+  EE: { name: 'Electrical & Electronics', slug: 'electrical-electronics' },
+  EC: { name: 'Electronics & Communication', slug: 'electronics-communication' },
+  IS: { name: 'Information Science', slug: 'information-science' },
+  CS: { name: 'Computer Science', slug: 'computer-science' },
+  CI: { name: 'CSE (AI & ML)', slug: 'cse-ai-ml' },
+  ME: { name: 'Mechanical', slug: 'mechanical' },
+  CV: { name: 'Civil', slug: 'civil' }
+};
+
+export function parseUsn(usn) {
+  if (!usn || typeof usn !== 'string') return null;
+  const upper = usn.trim().toUpperCase();
+  if (!upper) return null;
+
+  let branch = '';
+  let entryYear = null;
+  let isLateral = false;
+  let batch = '';
+
+  const stdMatch = upper.match(/^[0-9][A-Z]{2}(\d{2})([A-Z]{2})(?:(\d{3}))?$/);
+  if (stdMatch) {
+    const yy = parseInt(stdMatch[1], 10);
+    branch = stdMatch[2];
+    const rollNum = stdMatch[3] ? parseInt(stdMatch[3], 10) : 0;
+    isLateral = rollNum >= 400 && rollNum <= 499;
+    entryYear = 2000 + yy;
+    batch = '20' + stdMatch[1];
+  } else {
+    const tempMatch = upper.match(/^(20\d{2})(L?)([A-Z]{2,4})\d{2,4}$/);
+    if (tempMatch) {
+      entryYear = parseInt(tempMatch[1], 10);
+      isLateral = tempMatch[2] === 'L';
+      branch = tempMatch[3];
+      batch = String(isLateral ? entryYear - 1 : entryYear);
+    }
+  }
+
+  if (!branch && !entryYear) return null;
+
+  let semNum = null;
+  let oddSemRoman = null;
+  if (entryYear) {
+    const now = new Date();
+    const yearDiff = now.getFullYear() - entryYear;
+    const isOddSem = now.getMonth() >= 7 || now.getMonth() === 0;
+    const baseSem = isLateral ? 3 : 1;
+    semNum = Math.max(1, Math.min(8, baseSem + yearDiff * 2 + (isOddSem ? 0 : 1)));
+    if (semNum <= 1) oddSemRoman = 'I';
+    else if (semNum <= 3) oddSemRoman = 'III';
+    else if (semNum <= 5) oddSemRoman = 'V';
+    else oddSemRoman = 'VII';
+  }
+
+  return {
+    usn: upper,
+    branch,
+    branchName: BRANCH_MAP[branch]?.name || branch,
+    deptSlug: BRANCH_MAP[branch]?.slug || null,
+    entryYear,
+    batch,
+    isLateral,
+    semNum,
+    oddSemRoman
+  };
+}
+
+// ── Credentials & Profile Management ──
 export function loadCreds() {
   try {
     return JSON.parse(localStorage.getItem(CONFIG.CRED_KEY));
@@ -53,6 +122,63 @@ export function loadUser() {
     return JSON.parse(localStorage.getItem(CONFIG.USER_KEY)) || {};
   } catch (e) {
     return {};
+  }
+}
+
+export function saveUserProfile(student, fallbackUsn = '') {
+  if (!student) return null;
+  try {
+    const existing = loadUser() || {};
+    const usn = (student.usn || fallbackUsn || existing.usn || '').trim().toUpperCase();
+    const parsed = parseUsn(usn);
+    const semNum = student.semNum || student.semester || existing.semNum || existing.semester || '';
+    const profile = {
+      ...existing,
+      name: student.name || existing.name || '',
+      usn,
+      program: student.program || existing.program || '',
+      semNum,
+      semester: semNum,
+      section: student.section || existing.section || '',
+      batch: student.batch || existing.batch || parsed?.batch || '',
+      sem: student.sem || existing.sem || '',
+      primarySem: existing.primarySem || student.sem || '',
+      photoUri: student.photoUri || existing.photoUri || null,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
+    return profile;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function saveRegisteredCourses(student) {
+  if (!student) return [];
+  try {
+    const map = new Map();
+    for (const list of [student.attendance, student.cie]) {
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          const code = (item?.code || '').toUpperCase().trim();
+          if (!code) continue;
+          const name = (item?.name || '').trim();
+          if (!map.has(code) || (!map.get(code).name && name)) {
+            map.set(code, { code, name: name || code });
+          }
+        }
+      }
+    }
+    const courses = Array.from(map.values());
+    if (courses.length > 0) {
+      localStorage.setItem('nie_registered_courses', JSON.stringify(courses));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nie_courses_updated', { detail: courses }));
+      }
+    }
+    return courses;
+  } catch (e) {
+    return [];
   }
 }
 
@@ -72,16 +198,6 @@ export function savePortalCookies(cookies) {
   creds.cookies = cookies;
   creds.cookiesAt = Date.now();
   try { localStorage.setItem(CONFIG.CRED_KEY, JSON.stringify(creds)); } catch (e) {}
-}
-
-export function getStoredUsn() {
-  try {
-    const c = loadCreds() || {};
-    const p = loadUser();
-    return (c.usn || p.usn || '').trim().toUpperCase();
-  } catch (e) {
-    return '';
-  }
 }
 
 // ── Identity Token Management ──
@@ -108,12 +224,6 @@ export function setIdentityToken(token) {
       localStorage.setItem(CONFIG.IDENTITY_TOKEN_KEY, token);
     } catch (e) {}
   }
-}
-
-export function clearIdentityToken() {
-  try {
-    localStorage.removeItem(CONFIG.IDENTITY_TOKEN_KEY);
-  } catch (e) {}
 }
 
 // ── Drawer Menu ──
@@ -164,12 +274,31 @@ export function executeLogout() {
     CONFIG.TOKEN_KEY,
     CONFIG.COURSES_KEY,
     CONFIG.IDENTITY_TOKEN_KEY,
-    'nie_session_token'
+    CONFIG.PHOTO_CONSENT_KEY,
+    'nie_session_token',
+    'nie_registered_courses',
+    'nie_moodle_userid'
   ].forEach(k => localStorage.removeItem(k));
 
-  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
-  sessionStorage.removeItem('student_sgpa_cache');
-  sessionStorage.removeItem('sug_unread_checked');
+  Object.keys(localStorage).forEach(k => {
+    if (k.startsWith('nie_tt_cache_') || k.startsWith('nie_batch_')) {
+      localStorage.removeItem(k);
+    }
+  });
+
+  [
+    CONFIG.ATT_SESSION_KEY,
+    'student_sgpa_cache',
+    'sug_unread_checked',
+    'nie_results_cache'
+  ].forEach(k => sessionStorage.removeItem(k));
+
+  Object.keys(sessionStorage).forEach(k => {
+    if (k.startsWith('att_detail_') || k.startsWith('cie_detail_')) {
+      sessionStorage.removeItem(k);
+    }
+  });
+
   sessionStorage.setItem(CONFIG.SKIP_AUTOLOGIN_KEY, '1');
 
   if ('caches' in window) {
@@ -428,47 +557,7 @@ export function initPwa() {
   const isIos = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   function ensureModal() {
-    let modal = document.getElementById('pwa-modal');
-    if (!modal) {
-      const container = document.createElement('div');
-      container.id = 'pwa-modal';
-      container.innerHTML = `
-        <div class="pwa-card">
-          <div class="pwa-app-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 512 512" style="width:72px;height:72px;display:block;">
-              <rect width="512" height="512" fill="#2563eb" rx="120"/>
-              <g transform="translate(256,256) scale(0.55) translate(-256,-256)">
-                <rect x="64" y="64" width="171" height="171" rx="43" fill="#fff"/>
-                <rect x="277" y="64" width="171" height="107" rx="43" fill="#fff"/>
-                <rect x="277" y="213" width="171" height="235" rx="43" fill="#fff"/>
-                <rect x="64" y="277" width="171" height="171" rx="43" fill="#fff"/>
-              </g>
-            </svg>
-          </div>
-          <div class="pwa-title" id="pwa-title">Install Student Hub</div>
-          <div class="pwa-sub" id="pwa-sub-text">Add to your home screen for instant access.</div>
-          <div id="pwa-ios-guide" style="display: none; text-align: left; background: var(--bg); padding: 12px 14px; border-radius: 12px; margin-bottom: 18px; font-size: 0.82rem; line-height: 1.6; border: 1px solid var(--border);">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">1</span>
-              <span>Tap the <strong>Share</strong> button in Safari (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>)</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">2</span>
-              <span>Scroll down &amp; tap <strong>&quot;Add to Home Screen&quot;</strong></span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 700; color: var(--accent); width: 20px; height: 20px; border-radius: 50%; background: rgba(37,99,235,0.12); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0;">3</span>
-              <span>Tap <strong>Add</strong> in the top right</span>
-            </div>
-          </div>
-          <button class="pwa-install-btn" id="pwa-install-btn">Install</button>
-          <button class="pwa-later-btn" id="pwa-later-btn">Maybe later</button>
-        </div>
-      `;
-      document.body.appendChild(container);
-      modal = container;
-    }
-    return modal;
+    return document.getElementById('pwa-modal');
   }
 
   function isSnoozed() {

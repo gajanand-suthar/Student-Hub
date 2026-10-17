@@ -149,7 +149,7 @@
         <!-- PANEL 2: ACADEMIC CALENDAR -->
         <div class="dash-panel" id="panel-calendar">
           <div class="cal-section">
-            <div class="calendar-carousel" id="calendar-carousel" onscroll="updateCalCarouselDots()">
+            <div class="calendar-carousel" id="calendar-carousel">
               
               <!-- CARD 1: CALENDAR -->
               <div class="cal-card" id="cal-card-1">
@@ -501,8 +501,6 @@
   <!-- ATTENDANCE VIEW                                                 -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <div id="view-attendance" class="spa-view">
-    <input type="hidden" id="att-cookies" value="" />
-    <input type="hidden" id="att-usn" value="" />
     <input type="hidden" id="att-sem" value="" />
 
     <div class="page">
@@ -540,54 +538,33 @@
 
       <!-- DATA SECTION -->
       <div class="data-section">
-        <!-- MOBILE TAB VIEW -->
         <div class="tab-card">
           <div class="tab-bar">
             <button class="tab-btn active" id="tab-btn-att" onclick="switchTab('att',this)">Attendance</button>
             <button class="tab-btn" id="tab-btn-cie" onclick="switchTab('cie',this)">CIE</button>
           </div>
           <div class="tab-panel active" id="tab-att">
-            <div class="card-legend">
-              <span class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>&lt;75%</span>
-              <span class="leg-item"><span class="leg-dot" style="background:#f59e0b"></span>75–84%</span>
-              <span class="leg-item"><span class="leg-dot" style="background:#3b82f6"></span>&ge;85%</span>
-            </div>
-            <div class="att-rows" id="att-rows-container">
-              <div class="empty-panel">Loading attendance records...</div>
-            </div>
-          </div>
-          <div class="tab-panel" id="tab-cie">
-            <div class="cie-panel" id="cie-accordion-container">
-              <div class="empty-panel">Loading CIE records...</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DESKTOP 2-COLUMN VIEW -->
-        <div class="desktop-grid">
-          <div class="desk-panel">
             <div class="desk-panel-head">
               <span class="desk-panel-title">Attendance</span>
-              <div class="card-legend" style="margin-bottom:0">
+              <div class="card-legend">
                 <span class="leg-item"><span class="leg-dot" style="background:#ef4444"></span>&lt;75%</span>
                 <span class="leg-item"><span class="leg-dot" style="background:#f59e0b"></span>75–84%</span>
                 <span class="leg-item"><span class="leg-dot" style="background:#3b82f6"></span>&ge;85%</span>
               </div>
             </div>
             <div class="desk-panel-body">
-              <div class="att-rows" id="desk-att-rows">
+              <div class="att-rows" id="att-rows-container">
                 <div class="empty-panel">Loading attendance records...</div>
               </div>
             </div>
           </div>
-
-          <div class="desk-panel">
-            <div class="desk-panel-head">
+          <div class="tab-panel" id="tab-cie">
+            <div class="desk-panel-head desk-panel-head--cie">
               <span class="desk-panel-title">CIE Breakdown</span>
-              <span style="font-size:.68rem;color:var(--muted)">tap to expand</span>
+              <span class="desk-panel-sub">tap to expand</span>
             </div>
             <div class="desk-panel-body desk-panel-body--cie">
-              <div class="cie-panel" id="desk-cie-accordion">
+              <div class="cie-panel" id="cie-accordion-container">
                 <div class="empty-panel">Loading CIE records...</div>
               </div>
             </div>

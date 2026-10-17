@@ -10,13 +10,6 @@
 [data-theme=dark] .drawer-sem-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
 
 /* DASHBOARD SPECIFIC STYLES */
-html, body {
-  height: 100% !important;
-  overflow: hidden !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
 .hub-container {
   padding: 16px 20px 16px;
   display: flex;
@@ -55,7 +48,6 @@ html, body {
   flex-shrink: 0;
 }
 
-.share-btn,
 .header-icon-btn {
   height: 38px;
   border-radius: 12px;
@@ -111,17 +103,6 @@ html, body {
 [data-theme=dark] .header-icon-btn:hover .header-btn-label {
   color: #93c5fd;
 }
-[data-theme=dark] .share-btn,
-[data-theme=dark] .header-icon-btn {
-  background: var(--surface);
-  border-color: var(--border);
-}
-[data-theme=dark] .share-btn:hover,
-[data-theme=dark] .header-icon-btn:hover {
-  background: rgba(37, 99, 235, 0.15);
-  color: #93c5fd;
-  border-color: #93c5fd;
-}
 
 /* ONBOARDING */
 #onboarding{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--bg);transition:opacity .25s,background .25s,backdrop-filter .25s}
@@ -138,7 +119,6 @@ html, body {
 .ob-dot.active{width:20px;border-radius:3px;background:var(--accent)}
 .ob-dot.done{background:var(--accent);opacity:.4}
 .ob-icon{width:48px;height:48px;border-radius:14px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
-[data-theme=dark] .ob-icon img { filter: grayscale(100%) invert(1) !important; opacity: 0.8 !important; }
 .ob-step{display:none}.ob-step.active{display:block;animation:obFadeIn .2s ease}
 @keyframes obFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .ob-title{font-size:1.05rem;font-weight:800;color:var(--text);margin-bottom:4px;text-align:center;letter-spacing:-.3px;margin-top:4px}
@@ -151,7 +131,6 @@ html, body {
 #ob-moodle-email::placeholder { text-align: left; }
 #ob-moodle-pass::placeholder { text-align: left; }
 [data-theme=dark] .ob-input{background:#0f172a;color:var(--text)}
-.ob-select{display:none}
 .ob-dropdown{position:relative;margin-bottom:10px;user-select:none}
 .ob-dd-trigger{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:border-color .15s,box-shadow .15s;gap:8px}
 .ob-dd-trigger:hover,.ob-dropdown.open .ob-dd-trigger{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
@@ -169,8 +148,7 @@ html, body {
 .ob-btn{display:block;width:100%;height:48px;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:background .15s,transform .1s;margin-top:22px;margin-bottom:0}
 .ob-btn:hover{background:var(--accent-h)}.ob-btn:active{transform:scale(.98)}.ob-btn:disabled{opacity:.55;cursor:not-allowed}
 #ob-3 .ob-btn{margin-top:18px;margin-bottom:4px}
-.ob-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:obSpin .6s linear infinite;vertical-align:-2px;margin-right:8px}
-@keyframes obSpin{to{transform:rotate(360deg)}}
+.ob-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:-2px;margin-right:8px}
 .ob-skip{width:100%;height:32px;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;border:none;cursor:pointer;margin-top:0;margin-bottom:0;border-radius:10px;transition:color .15s}
 .ob-skip:hover{color:var(--text)}
 .ob-err{display:none;font-size:.76rem;color:var(--danger);min-height:16px;margin-bottom:8px;text-align:center;line-height:1.45;padding:0 4px}
@@ -452,7 +430,6 @@ html, body {
     padding: 11px 12px;
     font-size: 0.84rem;
   }
-  .cal-dots { display: none !important; }
 }
 
 /* Academic Calendar: 3-column desktop layout only when space allows (>= 940px) */
@@ -963,13 +940,6 @@ html, body {
   font-weight: 600;
 }
 
-.tt-loading svg.spin,
-.nm-loader svg.spin {
-  animation: spin 0.85s linear infinite !important;
-  transform-origin: center;
-  transform-box: fill-box;
-}
-
 /* Period Pair Container (Ensures identical slot heights across all days) */
 .tt-period-pair {
   display: flex;
@@ -1303,16 +1273,6 @@ html, body {
   background: rgba(37, 99, 235, 0.03) !important;
 }
 
-/* Batch pill for day view */
-.tt-batch-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 1px 6px;
-  border-radius: 5px;
-}
-
 .nm-scroll-area {
   overflow-y: auto;
   flex: 1;
@@ -1326,50 +1286,6 @@ html, body {
 .nm-scroll-area::-webkit-scrollbar-track { background: transparent; }
 .nm-scroll-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
 [data-theme=dark] .nm-scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
-
-.nm-header {
-  flex-shrink: 0;
-  padding: 24px 20px 16px; display: flex; justify-content: space-between; align-items: center;
-  position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  z-index: 10; border-bottom: 1px solid var(--border);
-}
-[data-theme=dark] .nm-header { background: rgba(15,23,42,0.9); }
-.nm-title { font-size: 1.4rem; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
-.nm-controls { display: flex; gap: 12px; align-items: center; }
-.nm-icon-btn {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--muted);
-  transition: all 0.2s ease;
-  padding: 0;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-.nm-icon-btn:hover {
-  background: var(--bg);
-  color: var(--text);
-  border-color: var(--muted);
-}
-.nm-icon-btn:active {
-  transform: scale(0.92);
-}
-[data-theme=dark] .nm-icon-btn {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--muted);
-}
-[data-theme=dark] .nm-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: #64748b;
-  color: #fff;
-}
 
 .nm-list {
   padding: 16px 20px 24px 20px;

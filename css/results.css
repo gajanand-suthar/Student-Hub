@@ -56,13 +56,8 @@
 .lb-right{text-align:right;flex-shrink:0;width:32px}
 .lb-sgpa{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:800;color:var(--text)}
 
-.lb-fail-badge{display:inline-block;font-size:.58rem;font-weight:700;background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:20px;margin-left:4px}
-[data-theme=dark] .lb-fail-badge{background:rgba(220,38,38,.15);color:#f87171}
-
 /* Loading / Error States */
 .center-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px calc(58px + env(safe-area-inset-bottom, 0px) + 20px);gap:14px;flex:1;min-height:0;box-sizing:border-box}
-.loader{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .err-title{font-size:1.1rem;font-weight:800;color:var(--text)}
 .err-sub{font-size:.85rem;color:var(--muted);max-width:300px;line-height:1.5}
 .back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.85rem;border:none;cursor:pointer;transition:opacity .15s}

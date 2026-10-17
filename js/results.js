@@ -2,21 +2,10 @@
 //  STUDENT HUB — Results & Leaderboard Client Logic
 // ═══════════════════════════════════════════════════════════════
 
-import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, escHtml, toTitleCase, loadUser, getStoredUsn, getSessionToken, ensureHumanSession } from './shared.js';
+import { loadCreds, loadUser, escHtml, toTitleCase, getSessionToken, ensureHumanSession, BRANCH_MAP } from './shared.js';
 
-const BRANCH_NAMES = {
-  'EE': 'Electrical & Electronics',
-  'EC': 'Electronics & Communication',
-  'IS': 'Information Science',
-  'CS': 'Computer Science',
-  'CI': 'CSE (AI & ML)',
-  'ME': 'Mechanical',
-  'CV': 'Civil'
-};
-
-let currentUsn = '';
+let cachedResultsData = null;
 
 function fmtVal(val, decimals = 2) {
   return val !== null && val !== undefined ? Number(val).toFixed(decimals) : '—';
@@ -54,7 +43,7 @@ function showError(title, sub) {
 function renderLeaderboard(data) {
   showState('main-content');
 
-  const branchName = BRANCH_NAMES[data.branch] || data.branch;
+  const branchName = BRANCH_MAP[data.branch]?.name || data.branch;
   const perfTitle = document.getElementById('perf-title');
   const perfSub = document.getElementById('perf-sub');
   if (perfTitle) perfTitle.textContent = 'Semester Leaderboard';
@@ -133,16 +122,35 @@ function renderLeaderboard(data) {
 }
 
 export async function initResults() {
+  const activeUsn = (loadUser().usn || loadCreds()?.usn || '').toUpperCase();
+
+  if (cachedResultsData && (!activeUsn || !cachedResultsData.myUsn || cachedResultsData.myUsn.toUpperCase() === activeUsn)) {
+    renderLeaderboard(cachedResultsData);
+    return;
+  }
+
+  try {
+    const sessionCached = JSON.parse(sessionStorage.getItem('nie_results_cache'));
+    if (sessionCached && Array.isArray(sessionCached.leaderboard) && (!activeUsn || !sessionCached.myUsn || sessionCached.myUsn.toUpperCase() === activeUsn)) {
+      cachedResultsData = sessionCached;
+      renderLeaderboard(sessionCached);
+      return;
+    }
+  } catch (e) {}
+
   try {
     // Ensure session is ready (instant if already solved on homepage)
     await ensureHumanSession();
 
-    var data = await api.getResultsPerformance(getSessionToken());
+    const data = await api.getResultsPerformance(getSessionToken());
     if (data.error) {
       showError('Error', data.error);
       return;
     }
-    currentUsn = data.myUsn || '';
+    cachedResultsData = data;
+    try {
+      sessionStorage.setItem('nie_results_cache', JSON.stringify(data));
+    } catch (e) {}
     renderLeaderboard(data);
   } catch(e) {
     if (e.message && (e.message.includes('Authentication required') || e.message.includes('401'))) {

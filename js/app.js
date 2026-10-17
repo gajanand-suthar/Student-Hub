@@ -1,6 +1,6 @@
 // Student Hub — SPA App Shell
 
-import { initRouter, navigate, getCurrentRoute } from './router.js';
+import { initRouter, getCurrentRoute } from './router.js';
 import { initTheme, initPwa, checkSugUnread, ensureHumanSession } from './shared.js';
 import { initDashboard } from './dashboard.js';
 import { initAttendance } from './attendance.js';

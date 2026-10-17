@@ -3,34 +3,26 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { CONFIG } from './config.js';
-import { loadCreds, loadUser, getStoredCookies, savePortalCookies, getSessionToken, ensureHumanSession } from './shared.js';
+import { loadCreds, getStoredCookies, savePortalCookies, saveUserProfile, getIdentityToken, setIdentityToken, getSessionToken, ensureHumanSession } from './shared.js';
 
 const API_BASE = CONFIG.API_BASE.replace(/\/$/, '');
 
 function getAuthHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
-  try {
-    const token = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
-    if (token) {
-      headers['X-Identity-Token'] = token;
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  } catch (e) {}
-  try {
-    const sessionToken = getSessionToken();
-    if (sessionToken) {
-      headers['X-Session-Token'] = sessionToken;
-    }
-  } catch (e) {}
+  const token = getIdentityToken();
+  if (token) {
+    headers['X-Identity-Token'] = token;
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const sessionToken = getSessionToken();
+  if (sessionToken) {
+    headers['X-Session-Token'] = sessionToken;
+  }
   return headers;
 }
 
 async function ensureSession() {
-  if (getSessionToken()) return;
-  try {
-    const it = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
-    if (it) return;
-  } catch (e) {}
+  if (getSessionToken() || getIdentityToken()) return;
   try {
     await ensureHumanSession();
   } catch (e) {}
@@ -130,22 +122,9 @@ export const api = {
         savePortalCookies(res.student.cookies);
         sessionStorage.setItem(CONFIG.ATT_SESSION_KEY, JSON.stringify(res.student));
         if (res.identityToken) {
-          localStorage.setItem(CONFIG.IDENTITY_TOKEN_KEY, res.identityToken);
+          setIdentityToken(res.identityToken);
         }
-        try {
-          const existing = loadUser() || {};
-          const profile = {
-            ...existing,
-            name: res.student.name || existing.name,
-            usn: res.student.usn || existing.usn,
-            program: res.student.program,
-            semNum: res.student.semNum || '',
-            section: res.student.section || '',
-            sem: res.student.sem || '',
-            photoUri: res.student.photoUri || existing.photoUri || null
-          };
-          localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(profile));
-        } catch (e) {}
+        saveUserProfile(res.student, creds.usn);
         return res.student.cookies;
       }
     } catch (e) {
@@ -192,37 +171,6 @@ export const api = {
     });
 
     return this._checkPortalResponse(res);
-  },
-
-  // ── Hall Ticket ──
-  async downloadHallTicket(params) {
-    await ensureSession();
-    const fd = new FormData();
-    if (params.name) fd.append('name', params.name);
-
-    if (params.bypass) {
-      fd.append('bypass', 'true');
-    } else {
-      fd.append('dob', params.dob || '');
-      fd.append('idType', params.idType || '1');
-      fd.append('code', params.code || '');
-      if (params.sem) fd.append('sem', params.sem);
-    }
-
-    const res = await fetch(this.getApiUrl('/api/hallticket'), {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: fd
-    });
-
-    const ct = res.headers.get('Content-Type') || '';
-    if (ct.includes('application/json')) {
-      const data = await res.json();
-      return { isJson: true, data };
-    }
-    if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
-    const blob = await res.blob();
-    return { isJson: false, blob };
   },
 
   // ── Moodle ──
@@ -287,27 +235,12 @@ export const api = {
       token: token,
       name: name || 'Anonymous'
     });
-    try {
-      const it = localStorage.getItem(CONFIG.IDENTITY_TOKEN_KEY);
-      if (it) params.set('it', it);
-    } catch (e) {}
-    try {
-      const st = getSessionToken();
-      if (st) params.set('st', st);
-    } catch (e) {}
+    const it = getIdentityToken();
+    if (it) params.set('it', it);
+    const st = getSessionToken();
+    if (st) params.set('st', st);
     if (download) params.set('download', '1');
     return this.getApiUrl('/api/moodle/file?' + params.toString());
-  },
-
-  async getConfig() {
-    try {
-      await ensureSession();
-      const res = await fetch(this.getApiUrl('/api/config'), { headers: getAuthHeaders() });
-      if (!res.ok) return { hall_ticket_enabled: true };
-      return await res.json();
-    } catch (e) {
-      return { hall_ticket_enabled: true };
-    }
   },
 
   // ── Notices & Department ──
@@ -388,24 +321,6 @@ export const api = {
     return res.json();
   },
 
-  async getResults() {
-    await ensureSession();
-    const res = await fetch(this.getApiUrl('/api/results'), {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  },
-
-  async getResultsStatus() {
-    await ensureSession();
-    const res = await fetch(this.getApiUrl('/api/results/status'), {
-      headers: getAuthHeaders()
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  },
-
   // ── Timetable ──
   async uploadTimetable(file, metadata = {}) {
     await ensureSession();
@@ -435,23 +350,18 @@ export const api = {
     return res.json();
   },
 
-  async getTimetable({ branch, semester, section } = {}) {
+  async getTimetable({ branch, semester, section, forceRefresh } = {}) {
     await ensureSession();
     const params = new URLSearchParams();
     if (branch) params.set('branch', branch);
     if (semester) params.set('semester', semester);
     if (section) params.set('section', section);
-    // Always attach timestamp cache-buster so browser HTTP disk cache and CDN proxies never serve stale timetable
-    params.set('_t', Date.now().toString());
+    if (forceRefresh) params.set('_t', Date.now().toString());
 
     const qs = params.toString();
     const res = await fetch(this.getApiUrl('/api/timetable' + (qs ? '?' + qs : '')), {
-      headers: {
-        ...getAuthHeaders(),
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      },
-      cache: 'no-store'
+      headers: getAuthHeaders(),
+      cache: forceRefresh ? 'no-store' : 'default'
     });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

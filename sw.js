@@ -53,13 +53,17 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // Never cache API calls, external worker requests, or analytics
-  if (url.pathname.includes('/api/') || url.pathname.includes('/auth') || url.hostname.includes('workers.dev') || url.hostname.includes('cloudflareinsights.com')) {
+  // Ignore cross-origin requests (Google Fonts, CDNs, external APIs, analytics)
+  if (url.origin !== self.location.origin) return;
+
+  // Never cache same-origin API or auth calls
+  if (url.pathname.includes('/api/') || url.pathname.includes('/auth')) {
     return;
   }
 
-  // SPA Navigation Fallback: serve index.html for all known SPA routes
-  if (e.request.mode === 'navigate' && (SPA_ROUTES.includes(url.pathname) || !url.pathname.includes('.'))) {
+  // SPA Navigation Fallback: serve index.html for all navigation requests to SPA routes (including subpath deployments)
+  const isSpaRoute = SPA_ROUTES.some(r => url.pathname === r || (r !== '/' && url.pathname.endsWith(r)));
+  if (e.request.mode === 'navigate' && (isSpaRoute || !url.pathname.includes('.'))) {
     e.respondWith(
       fetch(e.request)
         .then(res => cacheResponse(e.request, res))

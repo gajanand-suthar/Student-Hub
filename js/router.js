@@ -7,10 +7,6 @@ export function getCurrentRoute() {
   return currentRoute;
 }
 
-export function isRoute(name) {
-  return currentRoute === name;
-}
-
 // Automatically detect base path (e.g., '/Student-Hub/' on GitHub Pages, or '/' on custom domains / localhost)
 export function getBasePath() {
   const pathname = window.location.pathname;

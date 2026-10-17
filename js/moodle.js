@@ -15,7 +15,41 @@ let allSemesters = [];     // sorted list of unique semester numbers found
 let cachedCourses = [];    // courses for the currently selected semester
 let displayedCourses = []; // currently rendered courses (filtered or searched)
 let userName = 'Anonymous';
-let userUsn = 'Unknown';
+let pdfObserver = null;
+
+// ── File Extension Classification Sets & Badge Map ────────────
+const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif', 'heic']);
+const MS_DOC_EXTS = new Set(['doc', 'docx', 'xls', 'xlsx', 'csv']);
+const GOOGLE_DOC_EXTS = new Set(['ppt', 'pptx', 'odp', 'odt', 'ods', 'rtf']);
+const OFFICE_DOC_EXTS = new Set([...MS_DOC_EXTS, ...GOOGLE_DOC_EXTS, 'txt']);
+const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg']);
+const AUDIO_EXTS = new Set(['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi']);
+
+const MOD_BADGE_MAP = {
+  assign: 'TASK', quiz: 'QUIZ', resource: 'PDF', folder: 'FLDR',
+  url: 'LINK', forum: 'DISC', page: 'PAGE', label: 'INFO'
+};
+
+const EXT_BADGE_MAP = {
+  // PDF & HTML
+  pdf: 'PDF', html: 'HTML', htm: 'HTML', xhtml: 'HTML',
+  // Images
+  png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', webp: 'IMG', svg: 'IMG', bmp: 'IMG', ico: 'IMG', tiff: 'IMG', tif: 'IMG', avif: 'IMG', heic: 'IMG',
+  // Presentations
+  ppt: 'PPT', pptx: 'PPT', odp: 'PPT',
+  // Documents
+  doc: 'DOC', docx: 'DOC', odt: 'DOC', rtf: 'DOC', txt: 'TXT',
+  // Spreadsheets
+  xls: 'XLS', xlsx: 'XLS', ods: 'XLS', csv: 'XLS',
+  // Archives
+  zip: 'ZIP', rar: 'ZIP', '7z': 'ZIP', tar: 'ZIP', gz: 'ZIP',
+  // Videos
+  mp4: 'VIDEO', webm: 'VIDEO', mkv: 'VIDEO', avi: 'VIDEO', mov: 'VIDEO', wmv: 'VIDEO', flv: 'VIDEO', m4v: 'VIDEO', '3gp': 'VIDEO', ogv: 'VIDEO', ts: 'VIDEO', m2ts: 'VIDEO', vob: 'VIDEO', mpg: 'VIDEO', mpeg: 'VIDEO',
+  // Audios
+  mp3: 'AUDIO', wav: 'AUDIO', aac: 'AUDIO', ogg: 'AUDIO', m4a: 'AUDIO', flac: 'AUDIO', wma: 'AUDIO', opus: 'AUDIO', aiff: 'AUDIO', alac: 'AUDIO', mid: 'AUDIO', midi: 'AUDIO',
+  // Code & Data
+  py: 'CODE', java: 'CODE', c: 'CODE', cpp: 'CODE', cs: 'CODE', js: 'CODE', css: 'CODE', php: 'CODE', json: 'CODE', xml: 'CODE', sql: 'CODE', sh: 'CODE', ipynb: 'NOTE', md: 'DOC'
+};
 
 // ── HTML & String Utilities ───────────────────────────────────
 export function decodeHtml(str) {
@@ -37,7 +71,9 @@ export function stateHtml(msg) {
 
 function handleInvalidToken() {
   token = '';
+  currentUserId = null;
   localStorage.removeItem(CONFIG.TOKEN_KEY);
+  localStorage.removeItem('nie_moodle_userid');
   showView('auth');
 }
 
@@ -87,14 +123,13 @@ export function parseCourseInfo(fullname) {
 // ── Boot / Initialization ─────────────────────────────────────
 export async function initMoodle() {
   token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+  currentUserId = Number(localStorage.getItem('nie_moodle_userid')) || currentUserId || null;
 
   try {
     const u = loadUser();
     if (u.name) {
       userName = toTitleCase(u.name);
     }
-    const cCreds = loadCreds() || {};
-    if (cCreds.usn) userUsn = cCreds.usn;
   } catch (e) {}
 
   // Prefill Moodle credentials if saved
@@ -198,6 +233,8 @@ export async function doLoginWithCreds(email, pass) {
     const data = await api.moodleLogin(email, pass, userName);
     if (!data.token) throw new Error('No token received');
     token = data.token;
+    currentUserId = null;
+    localStorage.removeItem('nie_moodle_userid');
     localStorage.setItem(CONFIG.TOKEN_KEY, token);
     hideAuthOverlay();
     showView('courses');
@@ -270,11 +307,28 @@ export async function fetchCoursesFromApi(forceRefresh = false) {
   }
 
   try {
-    const info = await api.moodleCall(token, 'core_webservice_get_site_info');
-    if (!info || !info.userid) throw new Error('no userid');
-    currentUserId = info.userid;
+    if (!currentUserId) {
+      currentUserId = Number(localStorage.getItem('nie_moodle_userid')) || null;
+    }
+    if (!currentUserId) {
+      const info = await api.moodleCall(token, 'core_webservice_get_site_info');
+      if (!info || !info.userid) throw new Error('no userid');
+      currentUserId = info.userid;
+      try { localStorage.setItem('nie_moodle_userid', String(currentUserId)); } catch (e) {}
+    }
 
-    const all = await api.moodleCall(token, 'core_enrol_get_users_courses', { userid: currentUserId });
+    let all;
+    try {
+      all = await api.moodleCall(token, 'core_enrol_get_users_courses', { userid: currentUserId });
+    } catch (courseErr) {
+      if (courseErr.message === 'invalidtoken') throw courseErr;
+      const info = await api.moodleCall(token, 'core_webservice_get_site_info');
+      if (!info || !info.userid) throw new Error('no userid');
+      currentUserId = info.userid;
+      try { localStorage.setItem('nie_moodle_userid', String(currentUserId)); } catch (e) {}
+      all = await api.moodleCall(token, 'core_enrol_get_users_courses', { userid: currentUserId });
+    }
+
     if (btn) btn.classList.remove('spinning');
 
     if (!Array.isArray(all) || !all.length) {
@@ -570,12 +624,11 @@ export async function openCourse(idx) {
             if (!f.fileurl) return;
             const ext = (f.filename || '').split('.').pop().toLowerCase();
             const size = f.filesize ? (f.filesize > 1048576 ? (f.filesize / 1048576).toFixed(1) + ' MB' : Math.ceil(f.filesize / 1024) + ' KB') : '';
-            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif', 'heic'].includes(ext);
+            const isImage = IMAGE_EXTS.has(ext);
             const isPdf = ext === 'pdf';
-            const isHtml = ['html', 'htm', 'xhtml'].includes(ext);
-            const isOfficeDoc = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'odt', 'ods', 'odp', 'rtf', 'txt'].includes(ext);
-            const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
-            const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
+            const isOfficeDoc = OFFICE_DOC_EXTS.has(ext);
+            const isVideo = VIDEO_EXTS.has(ext);
+            const isAudio = AUDIO_EXTS.has(ext);
 
             // Determine file badge
             const badge = getFileBadge(f.filename, mod.modname);
@@ -614,7 +667,7 @@ export async function openCourse(idx) {
               const isMedia = isVideo || isAudio;
               const btnIcon = isMedia
                 ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'
-                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
               const btnLabel = isMedia ? 'Play' : 'View';
 
               html += `
@@ -692,31 +745,10 @@ export async function openCourse(idx) {
 // ── Badge Helpers ────────────────────────────────────────────
 export function getFileBadge(filename, modname) {
   if (!filename) {
-    const map = { assign: 'TASK', quiz: 'QUIZ', resource: 'PDF', folder: 'FLDR', url: 'LINK', forum: 'DISC', page: 'PAGE', label: 'INFO' };
-    return map[modname] || (modname || 'FILE').toUpperCase().slice(0, 4);
+    return MOD_BADGE_MAP[modname] || (modname || 'FILE').toUpperCase().slice(0, 4);
   }
   const ext = filename.split('.').pop().toLowerCase();
-  const map = {
-    // PDF & HTML
-    pdf: 'PDF', html: 'HTML', htm: 'HTML', xhtml: 'HTML',
-    // Images
-    png: 'IMG', jpg: 'IMG', jpeg: 'IMG', gif: 'IMG', webp: 'IMG', svg: 'IMG', bmp: 'IMG', ico: 'IMG', tiff: 'IMG', tif: 'IMG', avif: 'IMG', heic: 'IMG',
-    // Presentations
-    ppt: 'PPT', pptx: 'PPT', odp: 'PPT',
-    // Documents
-    doc: 'DOC', docx: 'DOC', odt: 'DOC', rtf: 'DOC', txt: 'TXT',
-    // Spreadsheets
-    xls: 'XLS', xlsx: 'XLS', ods: 'XLS', csv: 'XLS',
-    // Archives
-    zip: 'ZIP', rar: 'ZIP', '7z': 'ZIP', tar: 'ZIP', gz: 'ZIP',
-    // Videos
-    mp4: 'VIDEO', webm: 'VIDEO', mkv: 'VIDEO', avi: 'VIDEO', mov: 'VIDEO', wmv: 'VIDEO', flv: 'VIDEO', m4v: 'VIDEO', '3gp': 'VIDEO', ogv: 'VIDEO', ts: 'VIDEO', m2ts: 'VIDEO', vob: 'VIDEO', mpg: 'VIDEO', mpeg: 'VIDEO',
-    // Audios
-    mp3: 'AUDIO', wav: 'AUDIO', aac: 'AUDIO', ogg: 'AUDIO', m4a: 'AUDIO', flac: 'AUDIO', wma: 'AUDIO', opus: 'AUDIO', aiff: 'AUDIO', alac: 'AUDIO', mid: 'AUDIO', midi: 'AUDIO',
-    // Code & Data
-    py: 'CODE', java: 'CODE', c: 'CODE', cpp: 'CODE', cs: 'CODE', js: 'CODE', ts: 'CODE', html: 'HTML', css: 'CODE', php: 'CODE', json: 'CODE', xml: 'CODE', sql: 'CODE', sh: 'CODE', ipynb: 'NOTE', md: 'DOC'
-  };
-  return map[ext] || (ext.length <= 4 ? ext.toUpperCase() : 'FILE');
+  return EXT_BADGE_MAP[ext] || (ext.length <= 4 ? ext.toUpperCase() : 'FILE');
 }
 
 // ── Image Lightbox Handlers ──────────────────────────────────
@@ -826,11 +858,11 @@ export function openDocLightbox(url, name, ext, push = true) {
 
   title.textContent = name;
 
-  const isMsDoc = ['doc', 'docx', 'xls', 'xlsx', 'csv'].includes(ext);
-  const isGoogleDoc = ['ppt', 'pptx', 'odp', 'odt', 'ods', 'rtf'].includes(ext);
+  const isMsDoc = MS_DOC_EXTS.has(ext);
+  const isGoogleDoc = GOOGLE_DOC_EXTS.has(ext);
   const isPdf = ext === 'pdf';
-  const isVideo = ['mp4', 'webm', 'ogg', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', '3gp', 'ogv', 'ts', 'm2ts', 'vob', 'mpg', 'mpeg'].includes(ext);
-  const isAudio = ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'wma', 'opus', 'aiff', 'alac', 'mid', 'midi'].includes(ext);
+  const isVideo = VIDEO_EXTS.has(ext);
+  const isAudio = AUDIO_EXTS.has(ext);
   const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
 
   if (ifr) ifr.style.display = 'none';
@@ -918,6 +950,11 @@ export function closeDocLightbox(fromUi = true) {
   if (!lb) return;
   lb.classList.remove('show');
 
+  if (pdfObserver) {
+    pdfObserver.disconnect();
+    pdfObserver = null;
+  }
+
   if (window.currentPlyr) {
     try {
       window.currentPlyr.stop();
@@ -956,18 +993,30 @@ export function closeDocLightbox(fromUi = true) {
   }
 }
 
-// ── PDF.js Multi-Page Canvas Renderer ─────────────────────────
+// ── PDF.js Multi-Page Canvas Renderer (Lazy via IntersectionObserver) ──
 export async function renderPdf(url) {
   const container = document.getElementById('pdf-container');
   if (!container) return;
+  if (pdfObserver) {
+    pdfObserver.disconnect();
+    pdfObserver = null;
+  }
   container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:300px;color:#64748b;font-weight:600;font-family:sans-serif;gap:16px;"><div class="spinner"></div>Loading PDF...</div>';
 
   try {
     const pdfjs = await loadPdfJs();
     const pdf = await pdfjs.getDocument(url).promise;
+    const firstPage = await pdf.getPage(1);
+    const baseVp = firstPage.getViewport({ scale: 1 });
+    const aspectRatio = baseVp.width && baseVp.height ? `${baseVp.width} / ${baseVp.height}` : '1 / 1.414';
+
     container.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    const wrappers = [];
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const canvasWrapper = document.createElement('div');
+      canvasWrapper.dataset.page = String(i);
       canvasWrapper.style.marginBottom = '12px';
       canvasWrapper.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
       canvasWrapper.style.borderRadius = '8px';
@@ -975,7 +1024,7 @@ export async function renderPdf(url) {
       canvasWrapper.style.background = '#fff';
       canvasWrapper.style.display = 'flex';
       canvasWrapper.style.justifyContent = 'center';
-      canvasWrapper.style.minHeight = '400px';
+      canvasWrapper.style.aspectRatio = aspectRatio;
 
       const canvas = document.createElement('canvas');
       canvas.style.width = '100%';
@@ -983,21 +1032,46 @@ export async function renderPdf(url) {
       canvas.style.display = 'block';
 
       canvasWrapper.appendChild(canvas);
-      container.appendChild(canvasWrapper);
+      frag.appendChild(canvasWrapper);
+      wrappers.push({ wrapper: canvasWrapper, canvas, num: i });
+    }
 
-      renderPdfPage(pdf, i, canvas, canvasWrapper);
+    container.appendChild(frag);
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      pdfObserver = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const wrapper = entry.target;
+          obs.unobserve(wrapper);
+          if (wrapper.dataset.rendered === '1') return;
+          wrapper.dataset.rendered = '1';
+          const pageNum = Number(wrapper.dataset.page);
+          const canvas = wrapper.querySelector('canvas');
+          if (canvas && pageNum) {
+            renderPdfPage(pdf, pageNum, canvas, wrapper, pageNum === 1 ? firstPage : null);
+          }
+        });
+      }, { root: container, rootMargin: '600px 0px' });
+
+      wrappers.forEach(({ wrapper }) => pdfObserver.observe(wrapper));
+    } else {
+      wrappers.forEach(({ wrapper, canvas, num }) => {
+        renderPdfPage(pdf, num, canvas, wrapper, num === 1 ? firstPage : null);
+      });
     }
   } catch (err) {
     container.innerHTML = '<div style="padding:40px; text-align:center; color:#ef4444; font-weight:600;">Failed to load PDF: ' + escHtml(err.message) + '<div style="margin-top:16px;"><a href="' + url + '" target="_blank" class="res-btn btn-view">Open PDF in New Tab</a></div></div>';
   }
 }
 
-export function renderPdfPage(pdf, num, canvas, wrapper) {
-  pdf.getPage(num).then(page => {
+export function renderPdfPage(pdf, num, canvas, wrapper, preloadedPage = null) {
+  const pagePromise = preloadedPage ? Promise.resolve(preloadedPage) : pdf.getPage(num);
+  pagePromise.then(page => {
     const viewport = page.getViewport({ scale: window.devicePixelRatio > 1 ? 2 : 1.5 });
     canvas.height = viewport.height;
     canvas.width = viewport.width;
-    wrapper.style.minHeight = 'auto';
+    wrapper.style.aspectRatio = 'auto';
     const ctx = canvas.getContext('2d');
     page.render({ canvasContext: ctx, viewport: viewport });
   });
@@ -1019,10 +1093,4 @@ if (typeof window !== 'undefined') {
   window.openDocLightbox = openDocLightbox;
   window.closeDocLightbox = closeDocLightbox;
   window.hideDocLoader = hideDocLoader;
-
-  // Auto-close image lightbox when clicking outside
-  document.addEventListener('click', e => {
-    const lb = document.getElementById('image-lightbox');
-    if (e.target === lb) closeImageLightbox(true);
-  });
 }

@@ -83,8 +83,10 @@ export function showView(v) {
   if (el) el.classList.add('active');
 
   if (v === 'content') {
+    document.documentElement.classList.add('page-scrollable');
     document.body.classList.add('page-scrollable');
   } else {
+    document.documentElement.classList.remove('page-scrollable');
     document.body.classList.remove('page-scrollable');
   }
 

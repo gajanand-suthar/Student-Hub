@@ -382,8 +382,8 @@ export async function obNext() {
         errMsg = 'Invalid USN, Date of Birth, or Verification Code.';
       } else if (errMsg.includes('Verification failed. Please refresh') || errMsg.includes('403')) {
         errMsg = 'Security check failed. Please refresh the page and try again.';
-      } else if (errMsg.includes('Cannot reach portal') || errMsg.includes('502')) {
-        errMsg = 'College portal is temporarily unavailable. Please try again later.';
+      } else if (errMsg.includes('Cannot reach') || errMsg.includes('502') || errMsg.includes('503') || errMsg.includes('522') || errMsg.includes('down')) {
+        errMsg = 'Parents portal is currently down or unreachable. Please try again later.';
       } else if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('Load failed')) {
         errMsg = 'Network error. Please check your connection and try again.';
       }

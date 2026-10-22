@@ -113,6 +113,17 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
           if (progEl) {
             progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span>';
           }
+        } else if (err.message.includes('down') || err.message.includes('522') || err.message.includes('524') || err.message.includes('502') || err.message.includes('503') || err.message.includes('504') || err.message.includes('unreachable') || err.message.includes('Cannot reach')) {
+          const nameEl = document.getElementById('stu-name-el');
+          if (nameEl && (!currentStudentData || !currentStudentData.name)) nameEl.textContent = 'Portal Down';
+          const progEl = document.getElementById('stu-prog-el');
+          if (progEl) {
+            progEl.innerHTML = '<span style="color:var(--danger);font-weight:700">Parents portal is currently down. Please try again later.</span>';
+          }
+          const rowsContainer = document.getElementById('att-rows-container');
+          if (rowsContainer && !rowsContainer.querySelector('.cr')) {
+            rowsContainer.innerHTML = '<div class="empty-panel" style="color:var(--danger);font-weight:600">The Parents Portal (parents.nie.ac.in) is currently down or unreachable.<br><br><button onclick="refreshData()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:.8rem;cursor:pointer">Retry</button></div>';
+          }
         } else {
           alert('Could not fetch attendance data: ' + err.message);
         }

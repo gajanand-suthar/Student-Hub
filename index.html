@@ -498,12 +498,23 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
-  <!-- ATTENDANCE VIEW                                                 -->
-  <!-- ═══════════════════════════════════════════════════════════════ -->
   <div id="view-attendance" class="spa-view">
     <input type="hidden" id="att-sem" value="" />
 
-    <div class="page">
+    <!-- Error State (when portal is down or error) -->
+    <div class="center-state" id="att-error-state" style="display:none">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <div class="err-title" id="att-err-title">Parents Portal is Down</div>
+      <div class="err-sub" id="att-err-sub">The official parents portal (parents.nie.ac.in) is currently unreachable. Please try again later.</div>
+      <button class="back-btn" onclick="refreshData()" style="cursor:pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Retry
+      </button>
+    </div>
+
+    <div class="page" id="att-page-content">
       <!-- FLIP CARD -->
       <div class="flip-wrap" id="flip-wrap" style="cursor:default" onclick="flipCard()">
         <div class="flip-inner" id="flip-inner">

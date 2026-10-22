@@ -113,13 +113,16 @@
 #view-auth { overflow-y: auto; flex: 1; }
 #view-auth.active { display: flex; flex-direction: column; }
 
-body.page-scrollable #view-moodle .page {
-  display: block;
-  overflow: visible;
-  max-height: none;
-  padding: 16px 16px calc(58px + env(safe-area-inset-bottom, 0px) + 16px);
-  margin: 0 auto;
+#view-content {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
 }
+#view-content.active { display: flex; }
 
 .search-container { position: relative; margin-bottom: 20px; }
 .search-icon-svg {
@@ -230,17 +233,16 @@ body.page-scrollable #view-moodle .page {
   position: sticky;
   top: 0;
   z-index: 20;
-  min-height: 38px;
+  min-height: 44px;
   margin-bottom: 16px;
   background: var(--bg);
-  padding: 26px 0 16px;
-  margin-top: -26px;
+  padding: 10px 0 12px;
 }
 .ch-back {
   position: absolute;
   left: 0;
   top: 50%;
-  transform: translateY(calc(-50% + 5px));
+  transform: translateY(-50%);
   background: var(--surface);
   border: 1.5px solid var(--border);
   width: 38px;
@@ -259,7 +261,7 @@ body.page-scrollable #view-moodle .page {
   box-sizing: border-box;
 }
 .ch-back:hover { border-color: var(--muted); color: var(--text); background: var(--bg); }
-.ch-back:active { transform: translateY(calc(-50% + 5px)) scale(0.92); }
+.ch-back:active { transform: translateY(-50%) scale(0.92); }
 .ch-back svg { transition: transform 0.2s ease; }
 .ch-back:hover svg { transform: translateX(-3px); }
 .ch-course-details { width: 100%; padding: 0 48px; text-align: center; min-width: 0; }

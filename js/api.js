@@ -62,21 +62,33 @@ export const api = {
     const sessionToken = creds.sessionToken || getSessionToken();
     if (sessionToken) fd.append('session_token', sessionToken);
 
-    const res = await fetch(this.getApiUrl('/auth'), {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: fd
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 18000);
+    try {
+      const res = await fetch(this.getApiUrl('/auth'), {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: fd,
+        signal: controller.signal
+      });
 
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Authentication failed');
-      return data;
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Authentication failed');
+        return data;
+      }
+      // If backend returns HTML fallback or text
+      const text = await res.text();
+      return { ok: res.ok, html: text };
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw new Error('Parents portal is currently down (Connection timed out).');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    // If backend returns HTML fallback or text
-    const text = await res.text();
-    return { ok: res.ok, html: text };
   },
 
   // ── Session Resume / Auto-login for portal cookies ──

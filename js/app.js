@@ -39,7 +39,6 @@ function cleanupView(viewName) {
   
   // Moodle-specific cleanup
   if (viewName === 'moodle') {
-    document.documentElement.classList.remove('page-scrollable');
     document.body.classList.remove('page-scrollable');
     if (window.currentPlyr) {
       try { window.currentPlyr.stop(); } catch(e) {}

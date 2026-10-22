@@ -82,16 +82,16 @@ export function showView(v) {
   const el = document.getElementById('view-' + v);
   if (el) el.classList.add('active');
 
-  if (v === 'content') {
-    document.documentElement.classList.add('page-scrollable');
-    document.body.classList.add('page-scrollable');
-  } else {
-    document.documentElement.classList.remove('page-scrollable');
-    document.body.classList.remove('page-scrollable');
+  const semDd = document.getElementById('sem-dropdown');
+  if (semDd) {
+    if (v === 'courses') semDd.classList.add('visible');
+    else semDd.classList.remove('visible');
   }
 
-  // Scroll window back to top
-  window.scrollTo({ top: 0 });
+  if (v === 'content') {
+    const contentEl = document.getElementById('view-content');
+    if (contentEl) contentEl.scrollTop = 0;
+  }
 }
 
 // ── Course Name Cleaner ──────────────────────────────────────

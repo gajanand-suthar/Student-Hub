@@ -106,24 +106,28 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
       }
     } catch (err) {
       if (showLoading) {
-        if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
-          const nameEl = document.getElementById('stu-name-el');
-          if (nameEl) nameEl.textContent = 'Authentication Failed';
-          const progEl = document.getElementById('stu-prog-el');
-          if (progEl) {
-            progEl.innerHTML = '<span style="color:var(--danger)">Login details may be incorrect or expired</span>';
+        const isPortalDown = /522|524|502|503|504|down|unreachable|Cannot reach portal|unexpected_status/i.test(err.message);
+        const errState = document.getElementById('att-error-state');
+        const pageContent = document.getElementById('att-page-content');
+
+        if (isPortalDown && (!currentStudentData || !currentStudentData.attendance)) {
+          if (errState) {
+            const errTitle = document.getElementById('att-err-title');
+            const errSub = document.getElementById('att-err-sub');
+            if (errTitle) errTitle.textContent = 'Parents Portal is Down';
+            if (errSub) errSub.textContent = 'The official parents portal (parents.nie.ac.in) is currently unreachable. Please try again later.';
+            errState.style.display = 'flex';
           }
-        } else if (err.message.includes('down') || err.message.includes('522') || err.message.includes('524') || err.message.includes('502') || err.message.includes('503') || err.message.includes('504') || err.message.includes('unreachable') || err.message.includes('Cannot reach')) {
-          const nameEl = document.getElementById('stu-name-el');
-          if (nameEl && (!currentStudentData || !currentStudentData.name)) nameEl.textContent = 'Portal Down';
-          const progEl = document.getElementById('stu-prog-el');
-          if (progEl) {
-            progEl.innerHTML = '<span style="color:var(--danger);font-weight:700">Parents portal is currently down. Please try again later.</span>';
+          if (pageContent) pageContent.style.display = 'none';
+        } else if ((err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') && (!currentStudentData || !currentStudentData.attendance)) {
+          if (errState) {
+            const errTitle = document.getElementById('att-err-title');
+            const errSub = document.getElementById('att-err-sub');
+            if (errTitle) errTitle.textContent = 'Authentication Failed';
+            if (errSub) errSub.textContent = 'Your login details or session may be expired. Please check your credentials.';
+            errState.style.display = 'flex';
           }
-          const rowsContainer = document.getElementById('att-rows-container');
-          if (rowsContainer && !rowsContainer.querySelector('.cr')) {
-            rowsContainer.innerHTML = '<div class="empty-panel" style="color:var(--danger);font-weight:600">The Parents Portal (parents.nie.ac.in) is currently down or unreachable.<br><br><button onclick="refreshData()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:.8rem;cursor:pointer">Retry</button></div>';
-          }
+          if (pageContent) pageContent.style.display = 'none';
         } else {
           alert('Could not fetch attendance data: ' + err.message);
         }
@@ -139,6 +143,11 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
 
 export function renderStudentView(data) {
   if (!data) return;
+  const errState = document.getElementById('att-error-state');
+  const pageContent = document.getElementById('att-page-content');
+  if (errState) errState.style.display = 'none';
+  if (pageContent) pageContent.style.display = '';
+
   const name = data.name || 'Student';
   const usn = data.usn || '';
   const program = data.program || '';
@@ -725,6 +734,11 @@ if (typeof document !== 'undefined') {
 }
 
 export function refreshData() {
+  const errState = document.getElementById('att-error-state');
+  const pageContent = document.getElementById('att-page-content');
+  if (errState) errState.style.display = 'none';
+  if (pageContent) pageContent.style.display = '';
+
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
   sessionStorage.removeItem('student_sgpa_cache');
   Object.keys(sessionStorage).forEach(k => {

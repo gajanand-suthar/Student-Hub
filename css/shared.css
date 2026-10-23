@@ -31,7 +31,7 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 
   /* Content areas: remove safe-area-inset-bottom (match Android where it's 0) */
   body.pwa-standalone .hub-container{margin-bottom:58px}
-  body.pwa-standalone #view-moodle .page{margin:0 auto 58px}
+  body.pwa-standalone #view-moodle .page{margin:0 auto 64px}
   body.pwa-standalone #view-attendance .page{padding-bottom:calc(58px + 16px)}
   body.pwa-standalone #view-results .page-wrap{padding-bottom:calc(58px + 16px)}
   body.pwa-standalone .center-state{padding-bottom:calc(58px + 20px)}

@@ -89,8 +89,8 @@ export function showView(v) {
   }
 
   if (v === 'content') {
-    const contentEl = document.getElementById('view-content');
-    if (contentEl) contentEl.scrollTop = 0;
+    const contentList = document.getElementById('content-list');
+    if (contentList) contentList.scrollTop = 0;
   }
 }
 

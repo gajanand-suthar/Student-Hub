@@ -90,7 +90,10 @@ export function showView(v) {
 
   if (v === 'content') {
     const contentList = document.getElementById('content-list');
-    if (contentList) contentList.scrollTop = 0;
+    if (contentList) {
+      contentList.scrollTop = 0;
+      initStickyHeaders();
+    }
   }
 }
 
@@ -734,7 +737,10 @@ export async function openCourse(idx) {
     });
 
     if (!hasAny) html = stateHtml('No downloadable content in this course.');
-    if (listEl) listEl.innerHTML = html;
+    if (listEl) {
+      listEl.innerHTML = html;
+      initStickyHeaders();
+    }
   } catch (e) {
     if (e.message === 'invalidtoken') {
       handleInvalidToken();
@@ -742,6 +748,34 @@ export async function openCourse(idx) {
     }
     if (listEl) listEl.innerHTML = stateHtml('Could not load course contents. Please try again.');
   }
+}
+
+export function initStickyHeaders() {
+  const contentList = document.getElementById('content-list');
+  if (!contentList) return;
+
+  if (contentList._stickyHandler) {
+    contentList.removeEventListener('scroll', contentList._stickyHandler);
+  }
+
+  const update = () => {
+    const listRect = contentList.getBoundingClientRect();
+    const cards = contentList.querySelectorAll('.section-card');
+    cards.forEach(card => {
+      const header = card.querySelector('.section-header');
+      if (!header) return;
+      const cardRect = card.getBoundingClientRect();
+      const isStuck = cardRect.top < listRect.top - 1 && cardRect.bottom > listRect.top + header.offsetHeight;
+      header.classList.toggle('is-stuck', isStuck);
+    });
+  };
+
+  contentList._stickyHandler = () => {
+    requestAnimationFrame(update);
+  };
+
+  contentList.addEventListener('scroll', contentList._stickyHandler, { passive: true });
+  update();
 }
 
 // ── Badge Helpers ────────────────────────────────────────────

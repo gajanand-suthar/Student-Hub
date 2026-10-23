@@ -311,7 +311,11 @@
 
 /* Section Cards */
 .section-card {
+  background: var(--surface);
+  border-radius: 20px;
   margin-bottom: 16px;
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow);
   position: relative;
 }
 .section-card:last-child {
@@ -322,21 +326,30 @@
   top: 0;
   z-index: 10;
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 18px;
-  padding: 12px 18px;
+  padding: 14px 20px;
   min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  border-bottom: 1.5px solid var(--border);
   box-sizing: border-box;
+  box-shadow: 0 4px 6px -4px rgba(0,0,0,0.05);
+  transition: border-radius 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background 0.2s ease,
+              border-color 0.2s ease;
 }
-[data-theme=dark] .section-header {
+.section-header.is-stuck {
+  border-radius: 18px;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+[data-theme=dark] .section-header.is-stuck {
   background: #1e293b;
   border-color: #334155;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 .section-title {
   font-size: 0.95rem;
@@ -350,13 +363,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.section-body {
-  background: var(--surface);
-  border-radius: 18px;
-  border: 1.5px solid var(--border);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
+.section-body { overflow: visible; }
 .section-body-inner { padding: 8px 12px; }
 
 /* Resource Items */

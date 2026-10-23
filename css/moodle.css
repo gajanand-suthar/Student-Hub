@@ -317,6 +317,10 @@
   border: 1.5px solid var(--border);
   box-shadow: var(--shadow);
   position: relative;
+  transition: background 0.15s ease;
+}
+.section-card.has-stuck-header {
+  background: transparent;
 }
 .section-card:last-child {
   margin-bottom: 0;
@@ -333,17 +337,18 @@
   justify-content: space-between;
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
-  border-bottom: 1.5px solid var(--border);
+  border: 1.5px solid transparent;
+  border-bottom-color: var(--border);
   box-sizing: border-box;
   box-shadow: 0 4px 6px -4px rgba(0,0,0,0.05);
-  transition: border-radius 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-              box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-              background 0.2s ease,
-              border-color 0.2s ease;
+  transition: border-radius 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background 0.15s ease,
+              border-color 0.15s ease;
 }
 .section-header.is-stuck {
   border-radius: 18px;
-  border: 1.5px solid var(--border);
+  border-color: var(--border);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 [data-theme=dark] .section-header.is-stuck {
@@ -363,7 +368,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.section-body { overflow: visible; }
+.section-body {
+  background: var(--surface);
+  border-radius: 0 0 18px 18px;
+  overflow: visible;
+  transition: border-radius 0.15s ease;
+}
+.section-card.has-stuck-header .section-body {
+  border-radius: 18px;
+}
 .section-body-inner { padding: 8px 12px; }
 
 /* Resource Items */

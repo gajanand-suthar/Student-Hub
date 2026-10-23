@@ -765,8 +765,9 @@ export function initStickyHeaders() {
       const header = card.querySelector('.section-header');
       if (!header) return;
       const cardRect = card.getBoundingClientRect();
-      const isStuck = cardRect.top < listRect.top - 1 && cardRect.bottom > listRect.top + header.offsetHeight;
+      const isStuck = cardRect.top < listRect.top - 1 && cardRect.bottom > listRect.top;
       header.classList.toggle('is-stuck', isStuck);
+      card.classList.toggle('has-stuck-header', isStuck);
     });
   };
 

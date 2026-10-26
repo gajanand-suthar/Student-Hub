@@ -764,14 +764,47 @@
   flex-shrink: 0;
 }
 
-.tt-badge {
-  font-size: 0.72rem;
+.tt-sec-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+.tt-sec-dropdown .sem-trigger {
+  height: 34px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0 24px 0 10px;
+  box-shadow: none;
+  min-width: 76px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.tt-sec-dropdown .sem-trigger:hover {
+  border-color: var(--accent);
+}
+.tt-sec-dropdown.open .sem-trigger {
+  border-color: var(--accent);
+}
+.tt-sec-dropdown .sem-trigger-label {
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--accent);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  color: var(--text);
+  text-align: left;
+}
+.tt-sec-dropdown .sem-trigger-chevron {
+  right: 7px;
+}
+.tt-sec-dropdown .sem-menu {
+  min-width: 82px;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 10px;
+  padding: 4px;
+}
+.tt-sec-dropdown .sem-option {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  text-align: left;
 }
 
 .tt-action-btn {

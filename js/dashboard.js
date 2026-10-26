@@ -978,8 +978,9 @@ function getStudentTimetableParams() {
     semester = roman[parsedUsn.oddSemRoman] || 5;
   }
 
-  let section = user.section || 'A';
-  if ((!semester || !user.section) && user.program) {
+  const customSec = (typeof localStorage !== 'undefined') ? localStorage.getItem('nie_selected_section') : null;
+  let section = customSec || user.section || 'A';
+  if (!customSec && (!semester || !user.section) && user.program) {
     const semSecMatch = user.program.match(/SEM\s*0*(\d+),?\s*[A-Z]+\s+([A-Z])/i);
     if (semSecMatch) {
       if (!semester) semester = String(parseInt(semSecMatch[1], 10));
@@ -1078,10 +1079,71 @@ export function pickSlotBatch(batchSetIdx, value, event) {
   }
 }
 
+// ── Section Selector Dropdown ──
+export function toggleTtSecDropdown(event) {
+  if (event) event.stopPropagation();
+  const dd = document.getElementById('tt-sec-dropdown');
+  if (dd) dd.classList.toggle('open');
+}
 
+export function closeTtSecDropdown(event) {
+  if (event) event.stopPropagation();
+  const dd = document.getElementById('tt-sec-dropdown');
+  if (dd) dd.classList.remove('open');
+}
 
+export function syncTtSecDropdownUI(sec) {
+  const cleanSec = (sec || 'A').toUpperCase();
+  const label = document.getElementById('tt-sec-trigger-label');
+  if (label) label.textContent = 'Sec ' + cleanSec;
+  document.querySelectorAll('#tt-sec-menu .sem-option').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-sec') === cleanSec);
+  });
+}
 
+export async function pickTtSection(sec) {
+  closeTtSecDropdown();
+  const cleanSec = (sec || 'A').toUpperCase();
+  localStorage.setItem('nie_selected_section', cleanSec);
 
+  const user = loadUser() || {};
+  user.section = cleanSec;
+  try {
+    localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(user));
+  } catch (e) {}
+
+  syncTtSecDropdownUI(cleanSec);
+
+  const params = getStudentTimetableParams();
+  params.section = cleanSec;
+
+  const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
+  const cachedData = getCachedTimetable(cacheKey);
+
+  if (cachedData && cachedData.schedule) {
+    currentTimetableData = cachedData;
+    currentTimetableIsPending = false;
+    renderTodaySchedule(currentTimetableData, currentTtDay);
+    return;
+  }
+
+  // Show loading indicator
+  const container = document.getElementById('tt-schedule-body');
+  if (container) {
+    container.innerHTML = `
+      <div class="tt-loading">
+        <svg class="spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+          <line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line>
+          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+        </svg>
+      </div>
+    `;
+  }
+
+  await fetchAndApplyTimetable(params, { autoOpenUpload: true });
+}
 
 export function resetTtToToday() {
   const days = DAYS_OF_WEEK;
@@ -1094,8 +1156,7 @@ export function resetTtToToday() {
   }
 }
 
-
-const TIMETABLE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+const TIMETABLE_CACHE_TTL = 1 * 24 * 60 * 60 * 1000; // 1 day in ms
 
 function getCachedTimetable(cacheKey) {
   try {
@@ -1121,7 +1182,7 @@ function getCachedTimetable(cacheKey) {
   return null;
 }
 
-async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
+async function fetchAndApplyTimetable(params, { forceRefresh = false, autoOpenUpload = false } = {}) {
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
   try {
     const fetchParams = forceRefresh ? { ...params, forceRefresh } : params;
@@ -1146,10 +1207,16 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       try { localStorage.removeItem(cacheKey); } catch (e) {}
       currentTimetableData = null;
       showEmptyTimetable(params);
+      if (autoOpenUpload) {
+        openTtUploadModal('upload');
+      }
     }
   } catch (err) {
     if (!currentTimetableData) {
       showEmptyTimetable(params);
+      if (autoOpenUpload) {
+        openTtUploadModal('upload');
+      }
     }
   }
 }
@@ -1168,8 +1235,9 @@ export async function initTimetable() {
   getRegisteredCourseCodes();
 
   const params = getStudentTimetableParams();
+  syncTtSecDropdownUI(params.section);
 
-  // 1. Check localstorage cache (7-day TTL)
+  // 1. Check localstorage cache (1-day TTL)
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
   const cachedData = getCachedTimetable(cacheKey);
 
@@ -1177,12 +1245,12 @@ export async function initTimetable() {
     currentTimetableData = cachedData;
     currentTimetableIsPending = false;
     renderTodaySchedule(currentTimetableData, currentTtDay);
-    // Fresh cache exists (< 7 days) — do NOT refetch from server on page visit!
+    // Fresh cache exists (< 1 day) — do NOT refetch from server on page visit!
     return;
   }
 
-  // 2. Only fetch from server when no valid cache or cache expired (> 7 days)
-  await fetchAndApplyTimetable(params);
+  // 2. Only fetch from server when no valid cache or cache expired (> 1 day)
+  await fetchAndApplyTimetable(params, { autoOpenUpload: true });
 }
 
 export async function refreshTimetable(force = true) {
@@ -2015,6 +2083,9 @@ if (typeof window !== 'undefined') {
   window.pickSlotBatch = pickSlotBatch;
   window.toggleSlotBatchDropdown = toggleSlotBatchDropdown;
   window.closeSlotBatchDropdown = closeSlotBatchDropdown;
+  window.toggleTtSecDropdown = toggleTtSecDropdown;
+  window.closeTtSecDropdown = closeTtSecDropdown;
+  window.pickTtSection = pickTtSection;
 
   // Listen for course registrations updated by attendance tab
   window.addEventListener('nie_courses_updated', () => {

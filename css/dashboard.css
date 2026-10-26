@@ -769,15 +769,19 @@
   flex-shrink: 0;
 }
 .tt-sec-dropdown .sem-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 34px;
   background: var(--bg);
   border: 1.5px solid var(--border);
   border-radius: 10px;
-  padding: 0 24px 0 10px;
+  padding: 0 20px 0 12px;
   box-shadow: none;
   min-width: 76px;
   cursor: pointer;
   box-sizing: border-box;
+  position: relative;
 }
 .tt-sec-dropdown .sem-trigger:hover {
   border-color: var(--accent);
@@ -789,10 +793,17 @@
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--text);
-  text-align: left;
+  text-align: center;
+  flex: 1;
 }
 .tt-sec-dropdown .sem-trigger-chevron {
-  right: 7px;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  position: absolute;
+}
+.tt-sec-dropdown.open .sem-trigger-chevron {
+  transform: translateY(-50%) rotate(180deg);
 }
 .tt-sec-dropdown .sem-menu {
   min-width: 82px;
@@ -804,7 +815,8 @@
 .tt-sec-dropdown .sem-option {
   padding: 6px 10px;
   font-size: 0.78rem;
-  text-align: left;
+  text-align: center;
+  justify-content: center;
 }
 
 .tt-action-btn {

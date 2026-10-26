@@ -1142,7 +1142,8 @@ export async function pickTtSection(sec) {
     `;
   }
 
-  await fetchAndApplyTimetable(params, { autoOpenUpload: true });
+  closeTtUploadModal(false);
+  await fetchAndApplyTimetable(params);
 }
 
 export function resetTtToToday() {
@@ -1182,7 +1183,7 @@ function getCachedTimetable(cacheKey) {
   return null;
 }
 
-async function fetchAndApplyTimetable(params, { forceRefresh = false, autoOpenUpload = false } = {}) {
+async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
   try {
     const fetchParams = forceRefresh ? { ...params, forceRefresh } : params;
@@ -1207,16 +1208,10 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false, autoOpenUp
       try { localStorage.removeItem(cacheKey); } catch (e) {}
       currentTimetableData = null;
       showEmptyTimetable(params);
-      if (autoOpenUpload) {
-        openTtUploadModal('upload');
-      }
     }
   } catch (err) {
     if (!currentTimetableData) {
       showEmptyTimetable(params);
-      if (autoOpenUpload) {
-        openTtUploadModal('upload');
-      }
     }
   }
 }
@@ -1250,7 +1245,7 @@ export async function initTimetable() {
   }
 
   // 2. Only fetch from server when no valid cache or cache expired (> 1 day)
-  await fetchAndApplyTimetable(params, { autoOpenUpload: true });
+  await fetchAndApplyTimetable(params);
 }
 
 export async function refreshTimetable(force = true) {

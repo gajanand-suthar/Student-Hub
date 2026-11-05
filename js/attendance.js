@@ -12,16 +12,11 @@ let currentStudentData = null;
 let currentSgpaData = null;
 let currentExplicitSem = null;
 let activeAttendancePromise = null;
-let currentAttGoalMode = 'sem';
-try {
-  const savedMode = localStorage.getItem('att_goal_mode');
-  if (savedMode === 'current' || savedMode === 'sem') currentAttGoalMode = savedMode;
-} catch (e) {}
+let currentAttGoalMode = 'current';
 
 export function setAttGoalMode(mode) {
-  if (mode !== 'current' && mode !== 'sem') return;
+  if (mode !== 'current' && mode !== 'final' && mode !== 'sem') return;
   currentAttGoalMode = mode;
-  try { localStorage.setItem('att_goal_mode', mode); } catch (e) {}
   const container = document.getElementById('att-goals-container');
   if (container) container.dataset.mode = mode;
   document.querySelectorAll('.att-mode-btn').forEach(btn => {
@@ -510,6 +505,7 @@ export async function showAttendanceDetail(code, push = true) {
   const body = document.getElementById('att-modal-body');
   if (!modal || !title || !body) return;
 
+  currentAttGoalMode = 'current';
   title.textContent = subjectName;
 
   const cacheKey = `att_detail_${code}_${courseId}`;
@@ -663,28 +659,32 @@ function renderAttendanceModal(data) {
   }
 
   const showToggle = hasStill && s > 0;
-  const activeMode = showToggle ? (currentAttGoalMode === 'current' ? 'current' : 'sem') : 'current';
+  const activeMode = showToggle ? (currentAttGoalMode === 'final' || currentAttGoalMode === 'sem' ? 'final' : 'current') : 'current';
 
   const toggleHtml = showToggle ? `
     <div class="att-mode-toggle" id="att-mode-toggle">
       <button type="button" class="att-mode-btn ${activeMode === 'current' ? 'active' : ''}" data-mode="current" onclick="setAttGoalMode('current')">
         <span>Current</span>
       </button>
-      <button type="button" class="att-mode-btn ${activeMode === 'sem' ? 'active' : ''}" data-mode="sem" onclick="setAttGoalMode('sem')">
-        <span>Sem End</span>
-        <span class="att-mode-badge">${s}</span>
+      <button type="button" class="att-mode-btn ${activeMode === 'final' ? 'active' : ''}" data-mode="final" onclick="setAttGoalMode('final')">
+        <span>Final</span>
       </button>
     </div>` : '';
 
   const goalsHtml = showToggle ? `
     <div class="att-goals-container" id="att-goals-container" data-mode="${activeMode}">
-      <div class="att-goal-grid att-goal-grid-current">
-        ${currentGoalCard('75% Goal', 75, 'g75')}
-        ${currentGoalCard('85% Goal', 85, 'g85')}
+      <div class="att-goal-view-current">
+        <div class="att-goal-grid att-goal-grid-current">
+          ${currentGoalCard('75% Goal', 75, 'g75')}
+          ${currentGoalCard('85% Goal', 85, 'g85')}
+        </div>
       </div>
-      <div class="att-goal-grid att-goal-grid-sem">
-        ${semGoalCard('75% Goal', 75, 'g75')}
-        ${semGoalCard('85% Goal', 85, 'g85')}
+      <div class="att-goal-view-final">
+        <div class="att-sem-note">Still to go: <strong>${s}</strong> classes</div>
+        <div class="att-goal-grid att-goal-grid-final">
+          ${semGoalCard('75% Goal', 75, 'g75')}
+          ${semGoalCard('85% Goal', 85, 'g85')}
+        </div>
       </div>
     </div>` : `
     <div class="att-goals-container" id="att-goals-container" data-mode="current">
@@ -694,19 +694,29 @@ function renderAttendanceModal(data) {
       </div>
     </div>`;
 
+  const tablesMetaHtml = hasStill && s > 0 ? `
+    <div class="att-tables-meta">Still to go: <strong>${s}</strong> classes &bull; Total: <strong>${total}</strong></div>` : '';
+
   body.innerHTML = `
     ${toggleHtml}
     ${goalsHtml}
     <div class="att-tables-wrap">
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-present">Present</div>
+        <div class="att-tbl-head att-tbl-head-present">
+          <span>Present</span>
+          <span class="att-count-pill present">${p}</span>
+        </div>
         <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(present)}</tbody></table>
       </div>
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-absent">Absent</div>
+        <div class="att-tbl-head att-tbl-head-absent">
+          <span>Absent</span>
+          <span class="att-count-pill absent">${a}</span>
+        </div>
         <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(absent)}</tbody></table>
       </div>
-    </div>`;
+    </div>
+    ${tablesMetaHtml}`;
 }
 
 export function menuSwitchSem(newSem) {

@@ -12,6 +12,8 @@
 [data-theme=dark] .att-mode-toggle{background:#1e293b;border-color:#334155}
 [data-theme=dark] .att-mode-btn.active{background:#000;color:#f8fafc;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 [data-theme=dark] .att-mode-badge{background:rgba(59,130,246,.2);color:#93c5fd}
+[data-theme=dark] .att-count-pill.present{background:#052e16;color:#4ade80}
+[data-theme=dark] .att-count-pill.absent{background:#3b0712;color:#fca5a5}
 [data-theme=dark] .att-goal-denom{color:#94a3b8;opacity:.7}
 [data-theme=dark] .att-modal-card{background:#000}
 [data-theme=dark] .att-modal-header{border-bottom-color:#334155}
@@ -158,8 +160,20 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 .att-mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .att-mode-badge{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;background:rgba(37,99,235,.1);color:var(--accent);padding:1px 6px;border-radius:99px}
 .att-goals-container{display:flex;flex-direction:column}
+.att-goals-container[data-mode="current"] .att-goal-view-final,
+.att-goals-container[data-mode="current"] .att-goal-view-sem{display:none}
+.att-goals-container[data-mode="final"] .att-goal-view-current,
+.att-goals-container[data-mode="sem"] .att-goal-view-current{display:none}
+.att-goals-container[data-mode="current"] .att-goal-grid-final,
 .att-goals-container[data-mode="current"] .att-goal-grid-sem{display:none}
+.att-goals-container[data-mode="final"] .att-goal-grid-current,
 .att-goals-container[data-mode="sem"] .att-goal-grid-current{display:none}
+.att-sem-note{font-size:.74rem;font-weight:600;color:var(--muted);text-align:center;padding:1px 0 6px}
+.att-sem-note strong{font-family:'DM Mono',monospace;font-weight:700;color:var(--text)}
+[data-theme=dark] .att-sem-note strong{color:#f8fafc}
+.att-tables-meta{font-size:.72rem;font-weight:600;color:var(--muted);text-align:center;padding:2px 0 0}
+.att-tables-meta strong{font-family:'DM Mono',monospace;font-weight:700;color:var(--text)}
+[data-theme=dark] .att-tables-meta strong{color:#f8fafc}
 .att-goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .att-goal-card{border-radius:12px;border:1.5px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
 .att-goal-card-head{padding:7px 12px;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:center}

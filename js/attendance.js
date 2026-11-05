@@ -568,29 +568,22 @@ function renderAttendanceModal(data) {
           <div class="att-goal-card">
             <div class="att-goal-card-head danger">${label}</div>
             <div class="att-goal-boxes">
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626;font-size:1.25rem">${maxPct.toFixed(0)}%</div><div class="att-goal-box-lbl">Max Possible</div></div>
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0</div><div class="att-goal-box-lbl">Can Bunk</div></div>
+              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626;font-size:1.15rem">${maxPct.toFixed(0)}%</div><div class="att-goal-box-lbl">Max Possible</div></div>
+              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
             </div>
           </div>`;
       }
 
-      if (achieved) {
-        return `
-          <div class="att-goal-card">
-            <div class="att-goal-card-head done">${label}</div>
-            <div class="att-goal-boxes">
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#16a34a">✓</div><div class="att-goal-box-lbl">Achieved</div></div>
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${canBunk > 0 ? '#16a34a' : 'var(--muted)'}">${canBunk}</div><div class="att-goal-box-lbl">Can Bunk</div></div>
-            </div>
-          </div>`;
-      }
+      const attendColor = mustAttend === 0 ? '#16a34a' : '#dc2626';
+      const bunkColor = canBunk > 0 ? '#16a34a' : 'var(--muted)';
+      const head = `<div class="att-goal-card-head ${achieved ? 'done' : headClass}">${label}</div>`;
 
       return `
         <div class="att-goal-card">
-          <div class="att-goal-card-head ${headClass}">${label}</div>
+          ${head}
           <div class="att-goal-boxes">
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626">${mustAttend}</div><div class="att-goal-box-lbl">Must Attend</div></div>
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${canBunk > 0 ? '#16a34a' : 'var(--muted)'}">${canBunk}</div><div class="att-goal-box-lbl">Can Bunk</div></div>
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${attendColor}">${mustAttend}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Must Attend</div></div>
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${bunkColor}">${canBunk}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
           </div>
         </div>`;
     }
@@ -694,11 +687,11 @@ function renderAttendanceModal(data) {
     </div>
     <div class="att-tables-wrap">
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-present">Present <span class="att-count-pill present">${p}</span></div>
+        <div class="att-tbl-head att-tbl-head-present">Present</div>
         <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(present)}</tbody></table>
       </div>
       <div class="att-tbl-section">
-        <div class="att-tbl-head att-tbl-head-absent">Absent <span class="att-count-pill absent">${a}</span></div>
+        <div class="att-tbl-head att-tbl-head-absent">Absent</div>
         <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(absent)}</tbody></table>
       </div>
     </div>`;

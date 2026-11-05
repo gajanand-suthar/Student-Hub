@@ -171,9 +171,6 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 .att-sem-note{font-size:.74rem;font-weight:600;color:var(--muted);text-align:center;padding:1px 0 6px}
 .att-sem-note strong{font-family:'DM Mono',monospace;font-weight:700;color:var(--text)}
 [data-theme=dark] .att-sem-note strong{color:#f8fafc}
-.att-tables-meta{font-size:.72rem;font-weight:600;color:var(--muted);text-align:center;padding:2px 0 0}
-.att-tables-meta strong{font-family:'DM Mono',monospace;font-weight:700;color:var(--text)}
-[data-theme=dark] .att-tables-meta strong{color:#f8fafc}
 .att-goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .att-goal-card{border-radius:12px;border:1.5px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
 .att-goal-card-head{padding:7px 12px;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:center}

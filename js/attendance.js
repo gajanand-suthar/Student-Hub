@@ -694,9 +694,6 @@ function renderAttendanceModal(data) {
       </div>
     </div>`;
 
-  const tablesMetaHtml = hasStill && s > 0 ? `
-    <div class="att-tables-meta">Still to go: <strong>${s}</strong> classes &bull; Total: <strong>${total}</strong></div>` : '';
-
   body.innerHTML = `
     ${toggleHtml}
     ${goalsHtml}
@@ -715,8 +712,7 @@ function renderAttendanceModal(data) {
         </div>
         <table class="att-tbl"><thead><tr><th>Date</th><th>Time</th></tr></thead><tbody>${rows(absent)}</tbody></table>
       </div>
-    </div>
-    ${tablesMetaHtml}`;
+    </div>`;
 }
 
 export function menuSwitchSem(newSem) {

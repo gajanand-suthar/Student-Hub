@@ -667,24 +667,19 @@ function renderAttendanceModal(data) {
         <span>Current</span>
       </button>
       <button type="button" class="att-mode-btn ${activeMode === 'final' ? 'active' : ''}" data-mode="final" onclick="setAttGoalMode('final')">
-        <span>Final</span>
+        <span>Final <span class="att-mode-sub">(${s} to go)</span></span>
       </button>
     </div>` : '';
 
   const goalsHtml = showToggle ? `
     <div class="att-goals-container" id="att-goals-container" data-mode="${activeMode}">
-      <div class="att-goal-view-current">
-        <div class="att-goal-grid att-goal-grid-current">
-          ${currentGoalCard('75% Goal', 75, 'g75')}
-          ${currentGoalCard('85% Goal', 85, 'g85')}
-        </div>
+      <div class="att-goal-grid att-goal-grid-current">
+        ${currentGoalCard('75% Goal', 75, 'g75')}
+        ${currentGoalCard('85% Goal', 85, 'g85')}
       </div>
-      <div class="att-goal-view-final">
-        <div class="att-sem-note">Still to go: <strong>${s}</strong> classes</div>
-        <div class="att-goal-grid att-goal-grid-final">
-          ${semGoalCard('75% Goal', 75, 'g75')}
-          ${semGoalCard('85% Goal', 85, 'g85')}
-        </div>
+      <div class="att-goal-grid att-goal-grid-final">
+        ${semGoalCard('75% Goal', 75, 'g75')}
+        ${semGoalCard('85% Goal', 85, 'g85')}
       </div>
     </div>` : `
     <div class="att-goals-container" id="att-goals-container" data-mode="current">

@@ -156,21 +156,14 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 .att-modal-header{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .att-modal-body{padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .att-mode-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:4px}
-.att-mode-btn{flex:1;border:none;background:transparent;padding:7px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease}
+.att-mode-btn{flex:1;border:none;background:transparent;padding:7px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .15s ease}
 .att-mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
-.att-mode-badge{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;background:rgba(37,99,235,.1);color:var(--accent);padding:1px 6px;border-radius:99px}
+.att-mode-sub{font-size:.7rem;font-weight:600;opacity:.8;margin-left:1px}
 .att-goals-container{display:flex;flex-direction:column}
-.att-goals-container[data-mode="current"] .att-goal-view-final,
-.att-goals-container[data-mode="current"] .att-goal-view-sem{display:none}
-.att-goals-container[data-mode="final"] .att-goal-view-current,
-.att-goals-container[data-mode="sem"] .att-goal-view-current{display:none}
 .att-goals-container[data-mode="current"] .att-goal-grid-final,
 .att-goals-container[data-mode="current"] .att-goal-grid-sem{display:none}
 .att-goals-container[data-mode="final"] .att-goal-grid-current,
 .att-goals-container[data-mode="sem"] .att-goal-grid-current{display:none}
-.att-sem-note{font-size:.74rem;font-weight:600;color:var(--muted);text-align:center;padding:1px 0 6px}
-.att-sem-note strong{font-family:'DM Mono',monospace;font-weight:700;color:var(--text)}
-[data-theme=dark] .att-sem-note strong{color:#f8fafc}
 .att-goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .att-goal-card{border-radius:12px;border:1.5px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
 .att-goal-card-head{padding:7px 12px;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:center}

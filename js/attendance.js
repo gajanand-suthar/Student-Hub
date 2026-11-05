@@ -12,6 +12,22 @@ let currentStudentData = null;
 let currentSgpaData = null;
 let currentExplicitSem = null;
 let activeAttendancePromise = null;
+let currentAttGoalMode = 'sem';
+try {
+  const savedMode = localStorage.getItem('att_goal_mode');
+  if (savedMode === 'current' || savedMode === 'sem') currentAttGoalMode = savedMode;
+} catch (e) {}
+
+export function setAttGoalMode(mode) {
+  if (mode !== 'current' && mode !== 'sem') return;
+  currentAttGoalMode = mode;
+  try { localStorage.setItem('att_goal_mode', mode); } catch (e) {}
+  const container = document.getElementById('att-goals-container');
+  if (container) container.dataset.mode = mode;
+  document.querySelectorAll('.att-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -552,43 +568,52 @@ function renderAttendanceModal(data) {
   const total = conducted + s;
   const hasStill = counts.stillToGo !== undefined && counts.stillToGo !== null;
 
-  function goalCard(label, goal, headClass) {
-    if (hasStill && total > 0) {
-      // Semester Still to Go calculation
-      const reqTotal = Math.ceil((goal * total) / 100);
-      const mustAttend = Math.max(0, reqTotal - p);
-      const maxAttended = p + s;
-      const maxPct = (100 * maxAttended) / total;
-      const possible = mustAttend <= s;
-      const achieved = p >= reqTotal;
-      const canBunk = possible ? s - mustAttend : 0;
-
-      if (!possible) {
-        return `
-          <div class="att-goal-card">
-            <div class="att-goal-card-head danger">${label}</div>
-            <div class="att-goal-boxes">
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626;font-size:1.15rem">${maxPct.toFixed(0)}%</div><div class="att-goal-box-lbl">Max Possible</div></div>
-              <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
-            </div>
-          </div>`;
-      }
-
-      const attendColor = mustAttend === 0 ? '#16a34a' : '#dc2626';
-      const bunkColor = canBunk > 0 ? '#16a34a' : 'var(--muted)';
-      const head = `<div class="att-goal-card-head ${achieved ? 'done' : headClass}">${label}</div>`;
-
+  function semGoalCard(label, goal, headClass) {
+    if (total <= 0) {
       return `
         <div class="att-goal-card">
-          ${head}
+          <div class="att-goal-card-head ${headClass}">${label}</div>
           <div class="att-goal-boxes">
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${attendColor}">${mustAttend}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Must Attend</div></div>
-            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${bunkColor}">${canBunk}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Must Attend</div></div>
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
           </div>
         </div>`;
     }
 
-    // Fallback to original calculation when still to go is not available
+    const reqTotal = Math.ceil((goal * total) / 100);
+    const mustAttend = Math.max(0, reqTotal - p);
+    const maxAttended = p + s;
+    const maxPct = (100 * maxAttended) / total;
+    const possible = mustAttend <= s;
+    const achieved = p >= reqTotal;
+    const canBunk = possible ? s - mustAttend : 0;
+
+    if (!possible) {
+      return `
+        <div class="att-goal-card">
+          <div class="att-goal-card-head danger">${label}</div>
+          <div class="att-goal-boxes">
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:#dc2626;font-size:1.15rem">${maxPct.toFixed(0)}%</div><div class="att-goal-box-lbl">Max Possible</div></div>
+            <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:var(--muted)">0<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
+          </div>
+        </div>`;
+    }
+
+    const attendColor = mustAttend === 0 ? '#16a34a' : '#dc2626';
+    const bunkColor = canBunk > 0 ? '#16a34a' : 'var(--muted)';
+    const head = `<div class="att-goal-card-head ${achieved ? 'done' : headClass}">${label}</div>`;
+
+    return `
+      <div class="att-goal-card">
+        ${head}
+        <div class="att-goal-boxes">
+          <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${attendColor}">${mustAttend}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Must Attend</div></div>
+          <div class="att-goal-box-cell"><div class="att-goal-box-val" style="color:${bunkColor}">${canBunk}<span class="att-goal-denom">/${s}</span></div><div class="att-goal-box-lbl">Can Bunk</div></div>
+        </div>
+      </div>`;
+  }
+
+  function currentGoalCard(label, goal, headClass) {
     const currentPct = conducted > 0 ? (100 * p) / conducted : 0;
     const achieved = currentPct >= goal;
     const head = `<div class="att-goal-card-head ${achieved ? 'done' : headClass}">${label}</div>`;
@@ -637,54 +662,41 @@ function renderAttendanceModal(data) {
     return list.map(r => `<tr><td class="mono">${escHtml(fmtDate(r.date))}</td><td class="mono">${escHtml(fmtTime(r.time))}</td></tr>`).join('');
   }
 
-  let pPct = 0, aPct = 0, sPct = 0;
-  if (total > 0) {
-    pPct = Math.round((p / total) * 100);
-    aPct = Math.round((a / total) * 100);
-    sPct = Math.max(0, 100 - pPct - aPct);
-  } else if (conducted > 0) {
-    pPct = Math.round((p / conducted) * 100);
-    aPct = Math.max(0, 100 - pPct);
-  }
+  const showToggle = hasStill && s > 0;
+  const activeMode = showToggle ? (currentAttGoalMode === 'current' ? 'current' : 'sem') : 'current';
 
-  const overviewHtml = `
-    <div class="att-overview-card">
-      <div class="att-overview-stats">
-        <div class="att-stat-item">
-          <div class="att-stat-val text-green">${p}</div>
-          <div class="att-stat-lbl">Present</div>
-        </div>
-        <div class="att-stat-item">
-          <div class="att-stat-val text-red">${a}</div>
-          <div class="att-stat-lbl">Absent</div>
-        </div>
-        ${hasStill ? `
-        <div class="att-stat-item">
-          <div class="att-stat-val text-slate">${s}</div>
-          <div class="att-stat-lbl">Still To Go</div>
-        </div>
-        <div class="att-stat-item">
-          <div class="att-stat-val">${total}</div>
-          <div class="att-stat-lbl">Total</div>
-        </div>` : `
-        <div class="att-stat-item">
-          <div class="att-stat-val">${conducted}</div>
-          <div class="att-stat-lbl">Total</div>
-        </div>`}
+  const toggleHtml = showToggle ? `
+    <div class="att-mode-toggle" id="att-mode-toggle">
+      <button type="button" class="att-mode-btn ${activeMode === 'current' ? 'active' : ''}" data-mode="current" onclick="setAttGoalMode('current')">
+        <span>Current</span>
+      </button>
+      <button type="button" class="att-mode-btn ${activeMode === 'sem' ? 'active' : ''}" data-mode="sem" onclick="setAttGoalMode('sem')">
+        <span>Sem End</span>
+        <span class="att-mode-badge">${s}</span>
+      </button>
+    </div>` : '';
+
+  const goalsHtml = showToggle ? `
+    <div class="att-goals-container" id="att-goals-container" data-mode="${activeMode}">
+      <div class="att-goal-grid att-goal-grid-current">
+        ${currentGoalCard('75% Goal', 75, 'g75')}
+        ${currentGoalCard('85% Goal', 85, 'g85')}
       </div>
-      <div class="att-multi-track">
-        <div class="att-multi-fill bg-green" style="width:${pPct}%" title="Present: ${p}"></div>
-        <div class="att-multi-fill bg-red" style="width:${aPct}%" title="Absent: ${a}"></div>
-        ${hasStill && sPct > 0 ? `<div class="att-multi-fill bg-slate" style="width:${sPct}%" title="Still to go: ${s}"></div>` : ''}
+      <div class="att-goal-grid att-goal-grid-sem">
+        ${semGoalCard('75% Goal', 75, 'g75')}
+        ${semGoalCard('85% Goal', 85, 'g85')}
+      </div>
+    </div>` : `
+    <div class="att-goals-container" id="att-goals-container" data-mode="current">
+      <div class="att-goal-grid att-goal-grid-current">
+        ${currentGoalCard('75% Goal', 75, 'g75')}
+        ${currentGoalCard('85% Goal', 85, 'g85')}
       </div>
     </div>`;
 
   body.innerHTML = `
-    ${overviewHtml}
-    <div class="att-goal-grid">
-      ${goalCard('75% Goal', 75, 'g75')}
-      ${goalCard('85% Goal', 85, 'g85')}
-    </div>
+    ${toggleHtml}
+    ${goalsHtml}
     <div class="att-tables-wrap">
       <div class="att-tbl-section">
         <div class="att-tbl-head att-tbl-head-present">Present</div>
@@ -834,4 +846,5 @@ if (typeof window !== 'undefined') {
   window.closeAttModal = closeAttModal;
   window.menuSwitchSem = menuSwitchSem;
   window.refreshData = refreshData;
+  window.setAttGoalMode = setAttGoalMode;
 }

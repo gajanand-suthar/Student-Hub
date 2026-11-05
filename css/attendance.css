@@ -8,6 +8,19 @@
 [data-theme=dark] .att-goal-card-head.g75{background:#2d1f06;color:#fbbf24;border-bottom-color:#78350f}
 [data-theme=dark] .att-goal-card-head.g85{background:#172554;color:#93c5fd;border-bottom-color:#1e40af}
 [data-theme=dark] .att-goal-card-head.done{background:#052e16;color:#4ade80;border-bottom-color:#14532d}
+[data-theme=dark] .att-goal-card-head.danger{background:#3b0712;color:#fca5a5;border-bottom-color:#991b1b}
+[data-theme=dark] .att-goal-card-foot{background:#2a2a2a;border-top-color:#334155}
+[data-theme=dark] .att-goal-card-foot.danger{color:#fca5a5;background:#3b0712}
+[data-theme=dark] .att-goal-card-foot.success{color:#86efac;background:#052e16}
+[data-theme=dark] .att-overview-card{background:#2a2a2a;border-color:#334155}
+[data-theme=dark] .att-multi-track{background:#0f172a}
+[data-theme=dark] .att-multi-fill.bg-slate{background:#475569}
+[data-theme=dark] .att-mode-toggle{background:#2a2a2a;border-color:#334155}
+[data-theme=dark] .att-mode-btn.active{background:#0f172a;color:#f8fafc;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+[data-theme=dark] .att-mode-badge{background:rgba(59,130,246,.2);color:#93c5fd}
+[data-theme=dark] .att-stat-val.text-green{color:#4ade80}
+[data-theme=dark] .att-stat-val.text-red{color:#f87171}
+[data-theme=dark] .att-stat-val.text-slate{color:#94a3b8}
 [data-theme=dark] .att-modal-card{background:#000}
 [data-theme=dark] .att-modal-header{border-bottom-color:#334155}
 [data-theme=dark] .comp-track{background:#334155}
@@ -148,17 +161,47 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 @media(min-width:500px){.att-modal-card{border-radius:16px;max-height:82vh}}
 .att-modal-header{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .att-modal-body{padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.att-overview-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.att-overview-stats{display:flex;align-items:center;justify-content:space-around;text-align:center}
+.att-stat-item{display:flex;flex-direction:column;align-items:center;min-width:54px}
+.att-stat-val{font-family:'DM Mono',monospace;font-size:1.18rem;font-weight:800;line-height:1.1}
+.att-stat-val.text-green{color:#16a34a}
+.att-stat-val.text-red{color:#dc2626}
+.att-stat-val.text-slate{color:#64748b}
+.att-stat-lbl{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:3px}
+.att-multi-track{width:100%;height:6px;border-radius:99px;overflow:hidden;background:rgba(0,0,0,.06);display:flex}
+.att-multi-fill{height:100%;transition:width .25s ease}
+.att-multi-fill.bg-green{background:#22c55e}
+.att-multi-fill.bg-red{background:#ef4444}
+.att-multi-fill.bg-slate{background:#94a3b8}
+.att-overview-sub{display:flex;align-items:center;justify-content:space-between;font-size:.66rem;color:var(--muted);padding:0 2px}
+.att-overview-sub b{color:var(--text);font-weight:700}
+
+.att-mode-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;gap:4px}
+.att-mode-btn{flex:1;border:none;background:transparent;padding:6px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:.73rem;font-weight:700;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease}
+.att-mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.att-mode-badge{font-family:'DM Mono',monospace;font-size:.62rem;font-weight:700;background:rgba(37,99,235,.1);color:var(--accent);padding:1px 6px;border-radius:99px}
+
+.att-goals-container{display:flex;flex-direction:column}
+.att-goals-container[data-mode="live"] .att-goal-grid-sem{display:none}
+.att-goals-container[data-mode="sem"] .att-goal-grid-live{display:none}
 .att-goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .att-goal-card{border-radius:12px;border:1.5px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
-.att-goal-card-head{padding:7px 12px;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:center}
+.att-goal-card-head{padding:7px 10px;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:center;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap}
 .att-goal-card-head.g75{background:#fffbeb;color:#92400e;border-bottom:1.5px solid #fde68a}
 .att-goal-card-head.g85{background:#eff6ff;color:#1d4ed8;border-bottom:1.5px solid #bfdbfe}
 .att-goal-card-head.done{background:#f0fdf4;color:#15803d;border-bottom:1.5px solid #bbf7d0}
+.att-goal-card-head.danger{background:#fff1f2;color:#991b1b;border-bottom:1.5px solid #fecdd3}
+.att-goal-head-sub{font-size:.56rem;font-weight:700;letter-spacing:.02em;text-transform:none;opacity:.85}
 .att-goal-boxes{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;align-items:stretch}
 .att-goal-box-cell{padding:10px 6px;text-align:center;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .att-goal-box-cell:first-child{border-right:1px solid var(--border)}
-.att-goal-box-val{font-family:'DM Mono',monospace;font-size:1.4rem;font-weight:800;line-height:1}
+.att-goal-box-val{font-family:'DM Mono',monospace;font-size:1.35rem;font-weight:800;line-height:1}
 .att-goal-box-lbl{font-size:.58rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.att-goal-card-foot{padding:7px 8px;font-size:.64rem;font-weight:600;text-align:center;border-top:1px solid var(--border);background:var(--bg);color:var(--muted);line-height:1.35;display:flex;align-items:center;justify-content:center;gap:4px}
+.att-goal-card-foot.danger{color:#dc2626;background:#fff1f2}
+.att-goal-card-foot.success{color:#15803d;background:#f0fdf4}
+.att-goal-card-foot b{font-weight:800;color:inherit}
 .att-tables-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .att-tbl-section{background:var(--bg);border-radius:10px;overflow:hidden}
 .att-tbl-head{padding:8px 10px;font-size:.7rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}

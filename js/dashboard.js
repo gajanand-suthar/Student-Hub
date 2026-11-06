@@ -34,8 +34,6 @@ const ACADEMIC_EVENTS = [
   { startDate: '2026-10-12', endDate: '2026-10-14', title: 'Review of Activity Points', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-10-14', endDate: '2026-10-16', title: 'Minor & Major Project – Review 2 – Evaluation 2', sems: ['III', 'V', 'VII'], isExam: false },
   { startDate: '2026-10-16', endDate: '2026-10-16', title: 'Announcement of marks of Test 1 and CIE Review', sems: ['III', 'V', 'VII'], isExam: false },
-  // Working Day Adjustment as per Circular Ref: NIE/PPL/100/2026-27 dated 04.11.2026
-  { startDate: '2026-11-14', endDate: '2026-11-14', title: 'Working Saturday (Monday Timetable followed)', sems: ['I', 'III', 'V', 'VII'], isExam: false },
   // Rescheduled dates as per Circular No: NIE/Dean (AA)-102/2026-27/Odd/26 dated 04.11.2026
   { startDate: '2026-11-30', endDate: '2026-12-02', title: 'Test 2', sems: ['III', 'V', 'VII'], isExam: true },
   { startDate: '2026-12-03', endDate: '2026-12-03', title: 'Withdrawal from a course', sems: ['III', 'V', 'VII'], isExam: false },
@@ -88,8 +86,6 @@ const HOLIDAYS_LIST = [
   { date: '2026-10-25', title: 'Valmiki Jayanthi', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
   { date: '2026-11-01', title: 'Rajyotsava Day', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
   { date: '2026-11-08', title: 'Naraka Chaturdashi', day: 'Sunday', sems: ['I', 'III', 'V', 'VII'] },
-  // Holiday as per Circular Ref: NIE/PPL/100/2026-27 dated 04.11.2026 (Compensated on Sat 14 Nov)
-  { date: '2026-11-09', title: 'Declared Holiday', day: 'Monday', sems: ['I', 'III', 'V', 'VII'] },
   { date: '2026-11-10', title: 'Balipadyami', day: 'Tuesday', sems: ['I', 'III', 'V', 'VII'] },
   { date: '2026-11-27', title: 'Kanakadasa Jayanthi', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
   { date: '2026-12-25', title: 'Christmas', day: 'Friday', sems: ['I', 'III', 'V', 'VII'] },
@@ -1086,20 +1082,11 @@ export function pickSlotBatch(batchSetIdx, value, event) {
 }
 
 
-function getEffectiveTtDay() {
-  const todayISO = getTodayISO();
-  // Saturday 14th Nov 2026 follows Monday timetable per Circular Ref: NIE/PPL/100/2026-27
-  if (todayISO === '2026-11-14') {
-    return 'monday';
-  }
+export function resetTtToToday() {
   const days = DAYS_OF_WEEK;
   const now = new Date();
   const todayIdx = now.getDay();
-  return todayIdx === 0 ? 'monday' : days[todayIdx];
-}
-
-export function resetTtToToday() {
-  currentTtDay = getEffectiveTtDay();
+  currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
   updateTtDayNavUI();
   if (currentTimetableData) {
     renderTodaySchedule(currentTimetableData, currentTtDay);
@@ -1169,7 +1156,10 @@ export async function initTimetable() {
   const heading = document.getElementById('tt-day-heading');
   if (heading) heading.textContent = "Schedule";
 
-  currentTtDay = getEffectiveTtDay();
+  const days = DAYS_OF_WEEK;
+  const now = new Date();
+  const todayIdx = now.getDay();
+  currentTtDay = todayIdx === 0 ? 'monday' : days[todayIdx];
 
   updateTtDayNavUI();
 
@@ -1220,9 +1210,7 @@ export function selectTtDay(dayName) {
 
 function updateTtDayNavUI() {
   const days = DAYS_OF_WEEK;
-  const now = new Date();
-  const todayISO = getTodayISO();
-  const todayDayName = todayISO === '2026-11-14' ? 'monday' : days[now.getDay()];
+  const todayDayName = days[new Date().getDay()];
 
   document.querySelectorAll('.tt-day-chip').forEach(btn => {
     const day = btn.getAttribute('data-day');
@@ -1493,29 +1481,12 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
 
   if (!container) return;
 
-  const now = new Date();
-  const todayISO = getTodayISO();
-  const isViewingToday = (dayName === (todayISO === '2026-11-14' ? 'monday' : DAYS_OF_WEEK[now.getDay()]));
-
   if (heading) {
-    if (isViewingToday && todayISO === '2026-11-14') {
-      heading.textContent = "Schedule (Monday Timetable)";
-    } else {
-      heading.textContent = "Schedule";
-    }
+    heading.textContent = "Schedule";
   }
 
-  // Declared Holiday check for 9th Nov 2026
-  if (isViewingToday && todayISO === '2026-11-09') {
-    container.innerHTML = `
-      <div class="tt-empty">
-        <div style="font-size: 1.6rem; line-height: 1;">🎉</div>
-        <div class="tt-empty-title">Declared Holiday</div>
-        <div class="tt-empty-desc">Monday, 9th Nov is observed as a holiday per Circular Ref: NIE/PPL/100/2026-27 (Compensated on Sat, 14th Nov).</div>
-      </div>
-    `;
-    return;
-  }
+  const now = new Date();
+  const isViewingToday = (dayName === DAYS_OF_WEEK[now.getDay()]);
 
   // Sunday holiday check
   if (dayName === 'sunday') {

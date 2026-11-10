@@ -4,7 +4,22 @@
 
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { loadCreds, loadUser, escHtml, getSessionToken, ensureHumanSession, setIdentityToken, savePortalCookies, saveUserProfile, saveRegisteredCourses } from './shared.js';
+import {
+  loadCreds,
+  loadUser,
+  escHtml,
+  getSessionToken,
+  ensureHumanSession,
+  setIdentityToken,
+  savePortalCookies,
+  saveUserProfile,
+  saveRegisteredCourses,
+  getCachedPhoto,
+  fetchAndCachePhotoFromR2,
+  saveAttendanceCache,
+  loadAttendanceCache,
+  showAppNoticeToast
+} from './shared.js';
 import { navigate } from './router.js';
 
 let sgpaLoaded = false;
@@ -36,13 +51,13 @@ export function initAttendance() {
     return;
   }
 
-  // 1. In-memory check: if already loaded in this session, render instantly
+  // 1. In-memory check: if already loaded in this active session
   if (currentStudentData && currentStudentData.usn === creds.usn && currentStudentData.attendance) {
-    renderStudentView(currentStudentData);
+    renderStudentView(currentStudentData, { isStale: false });
     return;
   }
 
-  // 2. Session cache check (persists only for current tab/PWA browser session)
+  // 2. Session cache check (persists for tab)
   let sessionAtt = null;
   try {
     sessionAtt = JSON.parse(sessionStorage.getItem(CONFIG.ATT_SESSION_KEY));
@@ -50,15 +65,27 @@ export function initAttendance() {
 
   if (sessionAtt && sessionAtt.usn === creds.usn && sessionAtt.attendance) {
     currentStudentData = sessionAtt;
-    renderStudentView(sessionAtt);
+    renderStudentView(sessionAtt, { isStale: false });
     return;
   }
 
-  // 3. First visit in this session: perform login & fetch fresh live data once
-  fetchAttendanceData(true);
+  // 3. Persistent LocalStorage cache check (for SWR / offline / night shutdown support)
+  const cached = loadAttendanceCache(creds.usn);
+  if (cached && cached.student && cached.student.attendance) {
+    // Show the cached semi-grey data immediately
+    currentStudentData = cached.student;
+    renderStudentView(cached.student, { isStale: true });
+
+    // In the background, initiate login and attempt to fetch latest live data without blocking UI
+    fetchAttendanceData();
+    return;
+  }
+
+  // 4. First time visit without any cache: perform login & fetch fresh live data
+  fetchAttendanceData();
 }
 
-export async function fetchAttendanceData(showLoading = true, explicitSem = null) {
+export async function fetchAttendanceData(explicitSem = null) {
   if (activeAttendancePromise) {
     return activeAttendancePromise;
   }
@@ -68,9 +95,6 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
   if (!creds || !creds.usn) return;
 
   if (explicitSem) currentExplicitSem = explicitSem;
-
-  const overlay = document.getElementById('refresh-overlay');
-  if (showLoading && overlay) overlay.classList.add('active');
 
   activeAttendancePromise = (async () => {
     try {
@@ -111,40 +135,50 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
           } catch (e) {}
           saveRegisteredCourses(res.student);
           saveUserProfile(res.student, creds.usn);
+          // Persist to local storage for offline / night-time shutdown support
+          saveAttendanceCache(res.student);
         }
 
-        renderStudentView(res.student);
+        // Render with animations and bring back the vibrant colours!
+        renderStudentView(res.student, { isStale: false });
       }
     } catch (err) {
-      if (showLoading) {
-        const isPortalDown = /522|524|502|503|504|down|unreachable|Cannot reach portal|unexpected_status/i.test(err.message);
-        const errState = document.getElementById('att-error-state');
-        const pageContent = document.getElementById('att-page-content');
+      const isPortalDown = /522|524|502|503|504|down|unreachable|Cannot reach portal|unexpected_status|fetch failed/i.test(err.message);
 
-        if (isPortalDown && (!currentStudentData || !currentStudentData.attendance)) {
-          if (errState) {
-            const errTitle = document.getElementById('att-err-title');
-            const errSub = document.getElementById('att-err-sub');
-            if (errTitle) errTitle.textContent = 'Parents Portal is Down';
-            if (errSub) errSub.textContent = 'The official parents portal (parents.nie.ac.in) is currently unreachable. Please try again later.';
-            errState.style.display = 'flex';
-          }
-          if (pageContent) pageContent.style.display = 'none';
-        } else if ((err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') && (!currentStudentData || !currentStudentData.attendance)) {
-          if (errState) {
-            const errTitle = document.getElementById('att-err-title');
-            const errSub = document.getElementById('att-err-sub');
-            if (errTitle) errTitle.textContent = 'Authentication Failed';
-            if (errSub) errSub.textContent = 'Your login details or session may be expired. Please check your credentials.';
-            errState.style.display = 'flex';
-          }
-          if (pageContent) pageContent.style.display = 'none';
-        } else {
-          alert('Could not fetch attendance data: ' + err.message);
+      // Check if we have cached attendance data (either in memory or in local storage)
+      let cachedFallback = currentStudentData?.attendance ? currentStudentData : null;
+      if (!cachedFallback) {
+        const cachedRecord = loadAttendanceCache(creds.usn);
+        if (cachedRecord && cachedRecord.student) {
+          cachedFallback = cachedRecord.student;
+          currentStudentData = cachedRecord.student;
         }
       }
+
+      if (cachedFallback && cachedFallback.attendance && cachedFallback.attendance.length) {
+        renderStudentView(cachedFallback, { isStale: true });
+      }
+
+      if (isPortalDown) {
+        showAppNoticeToast(
+          'Parents Portal Down',
+          'Portal is offline (11 PM – 7 AM). Showing cached attendance data.',
+          6500
+        );
+      } else if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
+        showAppNoticeToast(
+          'Authentication Failed',
+          'Your login details or session may be expired. Please check your credentials.',
+          6500
+        );
+      } else {
+        showAppNoticeToast(
+          'Network Issue',
+          'Could not fetch latest attendance. ' + (cachedFallback ? 'Showing cached data.' : err.message),
+          5500
+        );
+      }
     } finally {
-      if (overlay) overlay.classList.remove('active');
       activeAttendancePromise = null;
     }
   })();
@@ -152,12 +186,24 @@ export async function fetchAttendanceData(showLoading = true, explicitSem = null
   return activeAttendancePromise;
 }
 
-export function renderStudentView(data) {
+export function renderStudentView(data, options = {}) {
   if (!data) return;
-  const errState = document.getElementById('att-error-state');
+  const isStale = Boolean(options.isStale);
+
   const pageContent = document.getElementById('att-page-content');
-  if (errState) errState.style.display = 'none';
-  if (pageContent) pageContent.style.display = '';
+  if (pageContent) {
+    pageContent.style.display = '';
+    if (isStale) {
+      pageContent.classList.add('att-stale');
+    } else {
+      const wasStale = pageContent.classList.contains('att-stale');
+      pageContent.classList.remove('att-stale');
+      if (wasStale) {
+        pageContent.classList.add('att-just-updated');
+        setTimeout(() => pageContent.classList.remove('att-just-updated'), 1200);
+      }
+    }
+  }
 
   const name = data.name || 'Student';
   const usn = data.usn || '';
@@ -189,18 +235,39 @@ export function renderStudentView(data) {
   // Photo
   const photoSlot = document.getElementById('photo-slot') || document.getElementById('stu-photo-wrap');
   const initials = name.split(' ').slice(0, 2).map(w => w[0] || '').join('');
+  const photoConsent = localStorage.getItem(CONFIG.PHOTO_CONSENT_KEY);
+
   if (photoSlot) {
-    if (data.photoUri) {
-      const fullPhotoUrl = data.photoUri.startsWith('http') || data.photoUri.startsWith('data:')
-        ? data.photoUri
-        : api.getApiUrl(data.photoUri);
-      photoSlot.innerHTML = `
-        <div class="photo-wrap">
-          <div class="photo-skel">${escHtml(initials)}</div>
-          <img src="${fullPhotoUrl}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')" onerror="this.style.display='none'"/>
-        </div>`;
-    } else {
+    if (photoConsent === 'no') {
       photoSlot.innerHTML = `<div class="student-photo-ph">${escHtml(initials)}</div>`;
+    } else {
+      const creds = loadCreds();
+      const studentUsn = (data.usn || creds?.usn || '').toUpperCase();
+      const cachedPhoto = getCachedPhoto(studentUsn);
+
+      if (cachedPhoto) {
+        // STRICTLY use local storage photo! 0 network requests
+        photoSlot.innerHTML = `
+          <div class="photo-wrap">
+            <div class="photo-skel">${escHtml(initials)}</div>
+            <img src="${cachedPhoto}" class="student-photo loaded" alt="${escHtml(name)}" onerror="this.style.display='none'"/>
+          </div>`;
+      } else {
+        // Not in local storage: show placeholder skeleton and fetch ONLY from R2
+        photoSlot.innerHTML = `
+          <div class="photo-wrap">
+            <div class="photo-skel" id="stu-photo-skel-${escHtml(studentUsn)}">${escHtml(initials)}</div>
+            <img id="stu-photo-img-${escHtml(studentUsn)}" class="student-photo" alt="${escHtml(name)}" onload="this.classList.add('loaded')" onerror="this.style.display='none'"/>
+          </div>`;
+
+        const uriToFetch = data.photoUri || loadUser()?.photoUri;
+        fetchAndCachePhotoFromR2(studentUsn, uriToFetch).then(base64Uri => {
+          if (base64Uri) {
+            const imgEl = document.getElementById(`stu-photo-img-${studentUsn}`);
+            if (imgEl) imgEl.src = base64Uri;
+          }
+        });
+      }
     }
   }
 
@@ -820,11 +887,6 @@ if (typeof document !== 'undefined') {
 }
 
 export function refreshData() {
-  const errState = document.getElementById('att-error-state');
-  const pageContent = document.getElementById('att-page-content');
-  if (errState) errState.style.display = 'none';
-  if (pageContent) pageContent.style.display = '';
-
   sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
   sessionStorage.removeItem('student_sgpa_cache');
   Object.keys(sessionStorage).forEach(k => {
@@ -832,9 +894,8 @@ export function refreshData() {
       sessionStorage.removeItem(k);
     }
   });
-  currentStudentData = null;
   currentSgpaData = null;
-  return fetchAttendanceData(true);
+  return fetchAttendanceData();
 }
 
 // Bind window helpers

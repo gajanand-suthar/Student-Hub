@@ -132,6 +132,9 @@ export function saveUserProfile(student, fallbackUsn = '') {
     const usn = (student.usn || fallbackUsn || existing.usn || '').trim().toUpperCase();
     const parsed = parseUsn(usn);
     const semNum = student.semNum || student.semester || existing.semNum || existing.semester || '';
+    if (student.photoUri && student.photoUri.startsWith('data:')) {
+      saveCachedPhoto(usn, student.photoUri);
+    }
     const profile = {
       ...existing,
       name: student.name || existing.name || '',
@@ -151,6 +154,107 @@ export function saveUserProfile(student, fallbackUsn = '') {
   } catch (e) {
     return null;
   }
+}
+
+// ── Student Photo Caching (LocalStorage + R2) ──
+export function getCachedPhoto(usn) {
+  if (!usn) return null;
+  try {
+    const key = `${CONFIG.PHOTO_CACHE_PREFIX || 'nie_photo_'}${usn.trim().toUpperCase()}`;
+    return localStorage.getItem(key) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function saveCachedPhoto(usn, photoData) {
+  if (!usn || !photoData) return;
+  try {
+    const key = `${CONFIG.PHOTO_CACHE_PREFIX || 'nie_photo_'}${usn.trim().toUpperCase()}`;
+    localStorage.setItem(key, photoData);
+  } catch (e) {}
+}
+
+export async function fetchAndCachePhotoFromR2(usn, photoUri) {
+  if (!usn) return null;
+  const cleanUsn = usn.trim().toUpperCase();
+
+  // If photo already available in local storage, strictly use it
+  const existing = getCachedPhoto(cleanUsn);
+  if (existing) return existing;
+
+  // Determine R2 endpoint
+  let uri = photoUri;
+  if (!uri) {
+    const it = getIdentityToken();
+    if (it) {
+      uri = `/api/photo?it=${encodeURIComponent(it)}`;
+    } else {
+      uri = `/api/photo/${cleanUsn}.jpg`;
+    }
+  }
+
+  if (uri.startsWith('data:')) {
+    saveCachedPhoto(cleanUsn, uri);
+    return uri;
+  }
+
+  const fullUrl = uri.startsWith('http') ? uri : api.getApiUrl(uri);
+  try {
+    const res = await fetch(fullUrl);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('image/jpeg') && !contentType.includes('image/png') && !contentType.includes('image/webp')) {
+      return null;
+    }
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result;
+        if (typeof base64data === 'string' && base64data.startsWith('data:image')) {
+          saveCachedPhoto(cleanUsn, base64data);
+          resolve(base64data);
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+// ── Persistent Attendance Caching ──
+export function saveAttendanceCache(studentData) {
+  if (!studentData || !studentData.usn || !studentData.attendance) return;
+  try {
+    const usn = studentData.usn.trim().toUpperCase();
+    const key = `${CONFIG.ATT_CACHE_KEY || 'nie_att_cache_v1'}_${usn}`;
+    const payload = {
+      usn,
+      student: studentData,
+      cachedAt: Date.now()
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+export function loadAttendanceCache(usn) {
+  if (!usn) return null;
+  try {
+    const cleanUsn = usn.trim().toUpperCase();
+    const key = `${CONFIG.ATT_CACHE_KEY || 'nie_att_cache_v1'}_${cleanUsn}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.student && Array.isArray(parsed.student.attendance)) {
+      return parsed;
+    }
+  } catch (e) {}
+  return null;
 }
 
 export function saveRegisteredCourses(student) {
@@ -281,7 +385,7 @@ export function executeLogout() {
   ].forEach(k => localStorage.removeItem(k));
 
   Object.keys(localStorage).forEach(k => {
-    if (k.startsWith('nie_tt_cache_') || k.startsWith('nie_batch_')) {
+    if (k.startsWith('nie_tt_cache_') || k.startsWith('nie_batch_') || k.startsWith('nie_photo_') || k.startsWith('nie_att_cache_')) {
       localStorage.removeItem(k);
     }
   });

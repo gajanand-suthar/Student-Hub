@@ -15,6 +15,8 @@ export const CONFIG = {
   CONSENT_KEY: 'student_hub_consent_v2',
   PHOTO_CONSENT_KEY: 'student_hub_photo_consent',
   ATT_SESSION_KEY: 'nie_att_session',
+  ATT_CACHE_KEY: 'nie_att_cache_v1',
+  PHOTO_CACHE_PREFIX: 'nie_photo_',
   SKIP_AUTOLOGIN_KEY: 'nie_skip_autologin',
   PWA_SNOOZED_KEY: 'nie_hub_pwa_snoozed',
   PWA_IOS_SHOWN_KEY: 'nie_hub_pwa_ios_shown',

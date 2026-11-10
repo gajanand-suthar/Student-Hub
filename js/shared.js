@@ -392,6 +392,7 @@ export function executeLogout() {
 
   [
     CONFIG.ATT_SESSION_KEY,
+    'nie_att_session_autologin',
     'student_sgpa_cache',
     'sug_unread_checked',
     'nie_results_cache'

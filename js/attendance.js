@@ -28,6 +28,8 @@ let currentSgpaData = null;
 let currentExplicitSem = null;
 let activeAttendancePromise = null;
 let currentAttGoalMode = 'current';
+let sessionAutoLoginAttempted = false;
+let isCurrentDataLive = false;
 
 export function setAttGoalMode(mode) {
   if (mode !== 'current' && mode !== 'final' && mode !== 'sem') return;
@@ -53,7 +55,7 @@ export function initAttendance() {
 
   // 1. In-memory check: if already loaded in this active session
   if (currentStudentData && currentStudentData.usn === creds.usn && currentStudentData.attendance) {
-    renderStudentView(currentStudentData, { isStale: false });
+    renderStudentView(currentStudentData, { isStale: !isCurrentDataLive });
     return;
   }
 
@@ -65,23 +67,45 @@ export function initAttendance() {
 
   if (sessionAtt && sessionAtt.usn === creds.usn && sessionAtt.attendance) {
     currentStudentData = sessionAtt;
+    isCurrentDataLive = true;
     renderStudentView(sessionAtt, { isStale: false });
     return;
   }
+
+  // Check if auto-login was already initiated in this session
+  let alreadyAttemptedInSession = sessionAutoLoginAttempted;
+  try {
+    if (sessionStorage.getItem('nie_att_session_autologin') === '1') {
+      alreadyAttemptedInSession = true;
+    }
+  } catch (e) {}
 
   // 3. Persistent LocalStorage cache check (for SWR / offline / night shutdown support)
   const cached = loadAttendanceCache(creds.usn);
   if (cached && cached.student && cached.student.attendance) {
     // Show the cached semi-grey data immediately
     currentStudentData = cached.student;
+    isCurrentDataLive = false;
     renderStudentView(cached.student, { isStale: true });
 
-    // In the background, initiate login and attempt to fetch latest live data without blocking UI
+    // STRICT RULE: Only ONE auto-login per session! Avoid duplicate auto-logins when switching tabs
+    if (alreadyAttemptedInSession) {
+      return;
+    }
+
+    sessionAutoLoginAttempted = true;
+    try { sessionStorage.setItem('nie_att_session_autologin', '1'); } catch (e) {}
     fetchAttendanceData();
     return;
   }
 
-  // 4. First time visit without any cache: perform login & fetch fresh live data
+  // 4. First time visit without any cache: perform login & fetch fresh live data once
+  if (alreadyAttemptedInSession) {
+    return;
+  }
+
+  sessionAutoLoginAttempted = true;
+  try { sessionStorage.setItem('nie_att_session_autologin', '1'); } catch (e) {}
   fetchAttendanceData();
 }
 
@@ -120,6 +144,7 @@ export async function fetchAttendanceData(explicitSem = null) {
 
       if (res && res.student) {
         currentStudentData = res.student;
+        isCurrentDataLive = true;
         const token = res.identityToken || res.student?.identityToken;
         if (token) setIdentityToken(token);
 
@@ -143,6 +168,7 @@ export async function fetchAttendanceData(explicitSem = null) {
         renderStudentView(res.student, { isStale: false });
       }
     } catch (err) {
+      isCurrentDataLive = false;
       const isPortalDown = /522|524|502|503|504|down|unreachable|Cannot reach portal|unexpected_status|fetch failed/i.test(err.message);
 
       // Check if we have cached attendance data (either in memory or in local storage)
@@ -162,8 +188,8 @@ export async function fetchAttendanceData(explicitSem = null) {
       if (isPortalDown) {
         showAppNoticeToast(
           'Parents Portal Down',
-          'Portal is offline (11 PM – 7 AM). Showing cached attendance data.',
-          6500
+          'Portal is offline. Showing cached data.',
+          6000
         );
       } else if (err.message.includes('Invalid USN') || err.message.includes('Authentication failed') || err.message.includes('401') || err.message === 'SESSION_EXPIRED') {
         showAppNoticeToast(
@@ -887,13 +913,18 @@ if (typeof document !== 'undefined') {
 }
 
 export function refreshData() {
-  sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
-  sessionStorage.removeItem('student_sgpa_cache');
-  Object.keys(sessionStorage).forEach(k => {
-    if (k.startsWith('att_detail_') || k.startsWith('cie_detail_')) {
-      sessionStorage.removeItem(k);
-    }
-  });
+  sessionAutoLoginAttempted = false;
+  isCurrentDataLive = false;
+  try {
+    sessionStorage.removeItem('nie_att_session_autologin');
+    sessionStorage.removeItem(CONFIG.ATT_SESSION_KEY);
+    sessionStorage.removeItem('student_sgpa_cache');
+    Object.keys(sessionStorage).forEach(k => {
+      if (k.startsWith('att_detail_') || k.startsWith('cie_detail_')) {
+        sessionStorage.removeItem(k);
+      }
+    });
+  } catch (e) {}
   currentSgpaData = null;
   return fetchAttendanceData();
 }

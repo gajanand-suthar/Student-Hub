@@ -258,13 +258,6 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 }
 
 /* ── Left-to-Right Color Reveal Animation when Stale Attendance Updates to Live ── */
-.att-just-updated .cr-track {
-  background: #cbd5e1;
-}
-[data-theme=dark] .att-just-updated .cr-track {
-  background: #334155;
-}
-
 @keyframes barColorSweep {
   0% {
     clip-path: inset(0 100% 0 0 round 5px);

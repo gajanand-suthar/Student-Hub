@@ -106,7 +106,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .drawer-close-btn,
 .sug-toast-close,
 .nm-icon-btn,
-.att-modal-close,
 .doc-header .lightbox-close,
 .doc-close-btn {
   background: var(--surface);
@@ -127,7 +126,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .drawer-close-btn:hover,
 .sug-toast-close:hover,
 .nm-icon-btn:hover,
-.att-modal-close:hover,
 .doc-header .lightbox-close:hover,
 .doc-close-btn:hover {
   background: var(--bg);
@@ -137,7 +135,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 .drawer-close-btn:active,
 .sug-toast-close:active,
 .nm-icon-btn:active,
-.att-modal-close:active,
 .doc-header .lightbox-close:active,
 .doc-close-btn:active {
   transform: scale(0.92);
@@ -145,7 +142,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 [data-theme=dark] .drawer-close-btn,
 [data-theme=dark] .sug-toast-close,
 [data-theme=dark] .nm-icon-btn,
-[data-theme=dark] .att-modal-close,
 [data-theme=dark] .doc-header .lightbox-close,
 [data-theme=dark] .doc-close-btn {
   background: var(--surface);
@@ -155,7 +151,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
 [data-theme=dark] .drawer-close-btn:hover,
 [data-theme=dark] .sug-toast-close:hover,
 [data-theme=dark] .nm-icon-btn:hover,
-[data-theme=dark] .att-modal-close:hover,
 [data-theme=dark] .doc-header .lightbox-close:hover,
 [data-theme=dark] .doc-close-btn:hover {
   background: rgba(255, 255, 255, 0.08);
@@ -163,7 +158,6 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
   color: #fff;
 }
 .sug-toast-close { width: 28px; height: 28px; border-radius: 10px; }
-.att-modal-close { width: 34px; height: 34px; }
 .doc-header .lightbox-close, .doc-close-btn { position: static; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .drawer-menu-list { padding: 10px 16px 24px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; }
 .drawer-menu-list::-webkit-scrollbar { width: 4px; }
@@ -265,6 +259,10 @@ body.page-scrollable #app-view,body.page-scrollable #view-moodle{overflow:visibl
   color: var(--muted);
   line-height: 1.45;
   word-break: break-word;
+}
+.app-notice-toast .sug-toast-close {
+  align-self: center;
+  margin: auto 0;
 }
 .sug-tab-bar { display: flex; border-bottom: 1.5px solid var(--border); background: var(--bg); border-radius: 20px 20px 0 0; overflow: hidden; }
 .sug-tab-btn { flex: 1; padding: 14px 16px; border: none; background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; }

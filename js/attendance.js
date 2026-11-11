@@ -226,7 +226,7 @@ export function renderStudentView(data, options = {}) {
       pageContent.classList.remove('att-stale');
       if (wasStale) {
         pageContent.classList.add('att-just-updated');
-        setTimeout(() => pageContent.classList.remove('att-just-updated'), 1200);
+        setTimeout(() => pageContent.classList.remove('att-just-updated'), 1400);
       }
     }
   }

@@ -963,8 +963,15 @@ export function openDocLightbox(url, name, ext, push = true) {
     }
   } else if (isPdf) {
     if (pdfC) {
+      pdfC.innerHTML = '';
+      const viewer = document.createElement('embedpdf-viewer');
+      viewer.setAttribute('src', url);
+      viewer.style.width = '100%';
+      viewer.style.height = '100%';
+      pdfC.appendChild(viewer);
       pdfC.style.display = 'block';
-      renderPdf(url);
+      pdfC.classList.add('active');
+      if (loader) loader.style.display = 'none';
     }
   }
 
@@ -1006,7 +1013,7 @@ export function closeDocLightbox(fromUi = true) {
     const videoEl = document.getElementById('plyr-video');
     const audioEl = document.getElementById('plyr-audio');
     if (ifr) ifr.src = '';
-    if (pdfC) pdfC.innerHTML = '';
+    if (pdfC) { pdfC.innerHTML = ''; pdfC.classList.remove('active'); }
     if (videoEl) {
       videoEl.pause?.();
       videoEl.src = '';

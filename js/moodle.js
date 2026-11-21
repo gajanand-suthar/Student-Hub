@@ -893,11 +893,16 @@ export function openDocLightbox(url, name, ext, push = true) {
   const audioEl = document.getElementById('plyr-audio');
   if (!lb || !title) return;
 
-  title.textContent = name;
+  title.textContent = name || 'Document';
+
+  if (!ext && url) {
+    const cleanUrl = url.split('?')[0].split('#')[0];
+    ext = cleanUrl.split('.').pop().toLowerCase();
+  }
 
   const isMsDoc = MS_DOC_EXTS.has(ext);
   const isGoogleDoc = GOOGLE_DOC_EXTS.has(ext);
-  const isPdf = ext === 'pdf';
+  const isPdf = ext === 'pdf' || /\.pdf(\?|#|$)/i.test(url);
   const isVideo = VIDEO_EXTS.has(ext);
   const isAudio = AUDIO_EXTS.has(ext);
   const absoluteUrl = url.startsWith('http') ? url : window.location.origin + url;
@@ -963,9 +968,10 @@ export function openDocLightbox(url, name, ext, push = true) {
     }
   } else if (isPdf) {
     if (pdfC) {
+      lb.classList.add('no-header');
       pdfC.innerHTML = '';
       const viewer = document.createElement('embedpdf-viewer');
-      viewer.setAttribute('src', url);
+      viewer.setAttribute('src', absoluteUrl);
       viewer.style.width = '100%';
       viewer.style.height = '100%';
       pdfC.appendChild(viewer);
@@ -979,8 +985,9 @@ export function openDocLightbox(url, name, ext, push = true) {
   setTimeout(() => {
     lb.classList.add('show');
   }, 12);
-  if (push && history.state?.modal !== 'moodle-lightbox') {
-    history.pushState({ modal: 'moodle-lightbox', route: 'moodle' }, '', window.location.href);
+  if (push && history.state?.modal !== 'moodle-lightbox' && history.state?.modal !== 'doc-lightbox') {
+    const currentRoute = history.state?.route || 'dashboard';
+    history.pushState({ modal: 'doc-lightbox', route: currentRoute }, '', window.location.href);
   }
 }
 
@@ -1007,6 +1014,7 @@ export function closeDocLightbox(fromUi = true) {
 
   setTimeout(() => {
     lb.style.display = 'none';
+    lb.classList.remove('no-header');
     const ifr = document.getElementById('doc-iframe');
     const pdfC = document.getElementById('pdf-container');
     const mediaC = document.getElementById('media-container');
@@ -1032,9 +1040,28 @@ export function closeDocLightbox(fromUi = true) {
     }
   }, 300);
 
-  if (fromUi && history.state?.modal === 'moodle-lightbox') {
+  if (fromUi && (history.state?.modal === 'moodle-lightbox' || history.state?.modal === 'doc-lightbox')) {
     history.back();
   }
+}
+
+// Global escape key handler to close lightboxes
+if (typeof window !== 'undefined' && !window._lightboxKeydownBound) {
+  window._lightboxKeydownBound = true;
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const docLb = document.getElementById('doc-lightbox');
+      if (docLb && (docLb.classList.contains('show') || docLb.style.display === 'flex')) {
+        closeDocLightbox(true);
+        return;
+      }
+      const imgLb = document.getElementById('image-lightbox');
+      if (imgLb && (imgLb.classList.contains('show') || imgLb.style.display === 'flex')) {
+        closeImageLightbox(true);
+        return;
+      }
+    }
+  });
 }
 
 // ── PDF.js Multi-Page Canvas Renderer (Lazy via IntersectionObserver) ──

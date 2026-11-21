@@ -1835,6 +1835,32 @@ function getNoticeIconSvg(link) {
   }
 }
 
+function handleDocumentLinkClick(e, url, title) {
+  if (!url || url === '#' || url.startsWith('javascript:')) return;
+  // If clicked with middle mouse or modifier keys (Ctrl/Cmd/Shift), allow default browser tab behavior
+  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+  const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+  const ext = cleanUrl.split('.').pop();
+
+  if (ext === 'pdf' || /\.pdf(\?|#|$)/i.test(url)) {
+    e.preventDefault();
+    if (typeof window.openDocLightbox === 'function') {
+      window.openDocLightbox(url, title || 'Notice PDF', 'pdf');
+    }
+  } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext)) {
+    e.preventDefault();
+    if (typeof window.openImageLightbox === 'function') {
+      window.openImageLightbox(url, title || 'Notice Image');
+    }
+  } else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+    e.preventDefault();
+    if (typeof window.openDocLightbox === 'function') {
+      window.openDocLightbox(url, title || 'Document', ext);
+    }
+  }
+}
+
 export async function fetchNotices(forceRefresh = false) {
   const list = document.getElementById('nm-list');
   const loader = document.getElementById('nm-loader');
@@ -1862,6 +1888,7 @@ export async function fetchNotices(forceRefresh = false) {
         card.href = n.link;
         card.target = '_blank';
         card.rel = 'noopener noreferrer';
+        card.addEventListener('click', (e) => handleDocumentLinkClick(e, n.link, n.title));
 
         card.innerHTML = `
           <div class="notice-icon">
@@ -1935,6 +1962,7 @@ export async function fetchDepartmentData(forceRefresh = false) {
       card.href = item.file;
       card.target = '_blank';
       card.rel = 'noopener noreferrer';
+      card.addEventListener('click', (e) => handleDocumentLinkClick(e, item.file, item.title));
       const metaText = item.year || item.semester || '';
 
       card.innerHTML = `

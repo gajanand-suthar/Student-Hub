@@ -707,35 +707,6 @@
 }
 #doc-lightbox.active { display: flex; }
 #doc-lightbox.show { opacity: 1; }
-.doc-float-close {
-  display: none;
-  position: absolute;
-  top: max(14px, env(safe-area-inset-top, 14px));
-  right: max(14px, env(safe-area-inset-right, 14px));
-  z-index: 100;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #fff;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  box-sizing: border-box;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: all 0.2s ease;
-}
-.doc-float-close:hover {
-  background: rgba(15, 23, 42, 0.85);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: scale(1.05);
-}
-.doc-float-close:active { transform: scale(0.92); }
-#doc-lightbox.no-header .doc-float-close { display: flex; }
 #doc-lightbox.no-header .doc-header { display: none; }
 .doc-header {
   padding: 16px 20px;

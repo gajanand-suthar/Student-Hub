@@ -971,6 +971,35 @@ export function openDocLightbox(url, name, ext, push = true) {
       lb.classList.add('no-header');
       pdfC.innerHTML = '';
       const viewer = document.createElement('embedpdf-viewer');
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      viewer.setAttribute('theme', isDark ? 'dark' : 'light');
+      viewer.config = {
+        theme: isDark ? 'dark' : 'light',
+        commands: [
+          {
+            id: 'app:close',
+            label: 'Close',
+            icon: 'x',
+            run: () => {
+              if (typeof window.closeDocLightbox === 'function') {
+                window.closeDocLightbox(true);
+              }
+            },
+          },
+        ],
+        layout: (layout) => {
+          try {
+            return layout.add({ command: 'app:close', importance: 10 }, { to: 'main', section: 'end' });
+          } catch (e) {
+            try {
+              return layout.add('app:close', { to: 'main', section: 'end' });
+            } catch (err) {
+              return layout;
+            }
+          }
+        },
+      };
       viewer.setAttribute('src', absoluteUrl);
       viewer.style.width = '100%';
       viewer.style.height = '100%';

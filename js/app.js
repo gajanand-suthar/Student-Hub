@@ -6,12 +6,14 @@ import { initDashboard } from './dashboard.js';
 import { initAttendance } from './attendance.js';
 import { initMoodle } from './moodle.js';
 import { initResults } from './results.js';
+import { initMaterials } from './materials.js';
 
 const VIEW_INIT_FNS = {
   dashboard: initDashboard,
   attendance: initAttendance,
   moodle: initMoodle,
   results: initResults,
+  materials: initMaterials,
 };
 
 // ── Update bottom nav active state ──
@@ -24,6 +26,7 @@ function updateNav(viewName) {
     if (href.includes('moodle')) tabRoute = 'moodle';
     else if (href.includes('attendance')) tabRoute = 'attendance';
     else if (href.includes('results')) tabRoute = 'results';
+    else if (href.includes('materials')) tabRoute = 'materials';
     
     tab.classList.toggle('active', tabRoute === viewName);
   });

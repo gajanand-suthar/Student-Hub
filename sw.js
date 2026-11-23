@@ -1,4 +1,4 @@
-const CACHE_NAME = 'student-hub-spa-v27';
+const CACHE_NAME = 'student-hub-spa-v28';
 const PRECACHE = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const PRECACHE = [
   './css/attendance.css',
   './css/moodle.css',
   './css/results.css',
+  './css/materials.css',
   './js/config.js',
   './js/api.js',
   './js/shared.js',
@@ -20,11 +21,12 @@ const PRECACHE = [
   './js/dashboard.js',
   './js/attendance.js',
   './js/moodle.js',
-  './js/results.js'
+  './js/results.js',
+  './js/materials.js'
 ];
 
 // Known SPA routes — all resolve to index.html
-const SPA_ROUTES = ['/', '/index.html', '/moodle/', '/moodle', '/attendance/', '/attendance', '/results/', '/results'];
+const SPA_ROUTES = ['/', '/index.html', '/moodle/', '/moodle', '/attendance/', '/attendance', '/results/', '/results', '/materials/', '/materials'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();

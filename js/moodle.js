@@ -881,6 +881,38 @@ function loadPlyr() {
   return plyrPromise;
 }
 
+function ensureEmbedPdfCloseRightmost(viewer) {
+  if (!viewer) return;
+  const inject = () => {
+    try {
+      const root = viewer.shadowRoot;
+      if (!root) return false;
+      if (!root.getElementById('epdf-close-rightmost-style')) {
+        const style = document.createElement('style');
+        style.id = 'epdf-close-rightmost-style';
+        style.textContent = `
+          button[aria-label="Close"],
+          button[title="Close"],
+          :has(> button[aria-label="Close"]),
+          :has(> button[title="Close"]) {
+            order: 99999 !important;
+          }
+        `;
+        root.appendChild(style);
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Immediate check, microtask (after DOM attachment), and on epdf:ready
+  if (!inject()) {
+    queueMicrotask(inject);
+    viewer.addEventListener('epdf:ready', inject, { once: true });
+  }
+}
+
 // ── Document Lightbox Handlers ───────────────────────────────
 export function openDocLightbox(url, name, ext, push = true) {
   const lb = document.getElementById('doc-lightbox');
@@ -999,11 +1031,15 @@ export function openDocLightbox(url, name, ext, push = true) {
             }
           }
         },
+        onReady: () => {
+          ensureEmbedPdfCloseRightmost(viewer);
+        },
       };
       viewer.setAttribute('src', absoluteUrl);
       viewer.style.width = '100%';
       viewer.style.height = '100%';
       pdfC.appendChild(viewer);
+      ensureEmbedPdfCloseRightmost(viewer);
       pdfC.style.display = 'block';
       pdfC.classList.add('active');
       if (loader) loader.style.display = 'none';

@@ -1093,9 +1093,9 @@ export function resetTtToToday() {
   }
 }
 
-const TIMETABLE_CACHE_TTL = 1 * 24 * 60 * 60 * 1000; // 1 day in ms
+const TIMETABLE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
-function getCachedTimetable(cacheKey) {
+function getCachedTimetable(cacheKey, { allowStale = false } = {}) {
   try {
     const raw = localStorage.getItem(cacheKey);
     if (!raw) return null;
@@ -1105,7 +1105,7 @@ function getCachedTimetable(cacheKey) {
     // Envelope format with cachedAt timestamp
     if (parsed.data && parsed.cachedAt) {
       const isFresh = (Date.now() - parsed.cachedAt) < TIMETABLE_CACHE_TTL;
-      return isFresh ? parsed.data : null;
+      return (isFresh || allowStale) ? parsed.data : null;
     }
 
     // Legacy format: raw timetable object stored directly
@@ -1146,7 +1146,14 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       showEmptyTimetable(params);
     }
   } catch (err) {
-    if (!currentTimetableData) {
+    // On auth errors (expired token), fall back to any cached data (even stale)
+    const isAuthError = /40[13]/.test(err.message);
+    const staleData = isAuthError ? getCachedTimetable(cacheKey, { allowStale: true }) : null;
+    if (staleData && staleData.schedule) {
+      currentTimetableData = staleData;
+      currentTimetableIsPending = false;
+      renderTodaySchedule(currentTimetableData, currentTtDay);
+    } else if (!currentTimetableData) {
       showEmptyTimetable(params);
     }
   }
@@ -1167,7 +1174,7 @@ export async function initTimetable() {
 
   const params = getStudentTimetableParams();
 
-  // 1. Check localstorage cache (1-day TTL)
+  // 1. Check localstorage cache (7-day TTL)
   const cacheKey = `nie_tt_cache_${params.branch}_${params.semester}_${params.section}`;
   const cachedData = getCachedTimetable(cacheKey);
 
@@ -1175,11 +1182,11 @@ export async function initTimetable() {
     currentTimetableData = cachedData;
     currentTimetableIsPending = false;
     renderTodaySchedule(currentTimetableData, currentTtDay);
-    // Fresh cache exists (< 1 day) — do NOT refetch from server on page visit!
+    // Fresh cache exists (< 7 days) — do NOT refetch from server on page visit!
     return;
   }
 
-  // 2. Only fetch from server when no valid cache or cache expired (> 1 day)
+  // 2. Only fetch from server when no valid cache or cache expired (> 7 days)
   await fetchAndApplyTimetable(params);
 }
 

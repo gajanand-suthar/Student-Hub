@@ -1002,6 +1002,14 @@ export function openDocLightbox(url, name, ext, push = true) {
     if (pdfC) {
       lb.classList.add('no-header');
       pdfC.innerHTML = '';
+
+      // Route external PDFs through our backend proxy to supply CORS headers.
+      // Proxy URL embeds auth tokens as query params — no fetch hook needed.
+      let pdfSrc = absoluteUrl;
+      if (!pdfSrc.includes(CONFIG.API_BASE)) {
+        pdfSrc = api.getFileProxyUrl(absoluteUrl, { name });
+      }
+
       const viewer = document.createElement('embedpdf-viewer');
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
         (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -1035,7 +1043,7 @@ export function openDocLightbox(url, name, ext, push = true) {
           ensureEmbedPdfCloseRightmost(viewer);
         },
       };
-      viewer.setAttribute('src', absoluteUrl);
+      viewer.setAttribute('src', pdfSrc);
       viewer.style.width = '100%';
       viewer.style.height = '100%';
       pdfC.appendChild(viewer);

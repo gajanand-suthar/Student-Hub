@@ -241,18 +241,21 @@ export const api = {
     }
   },
 
-  getMoodleFileProxyUrl(fileurl, token, name, download = false) {
-    const params = new URLSearchParams({
-      url: fileurl,
-      token: token,
-      name: name || 'Anonymous'
-    });
+  getFileProxyUrl(fileurl, { name = '', download = false, token = '' } = {}) {
+    if (!fileurl) return '';
+    const params = new URLSearchParams({ url: fileurl });
+    if (token) params.set('token', token);
+    if (name) params.set('name', name);
     const it = getIdentityToken();
     if (it) params.set('it', it);
     const st = getSessionToken();
     if (st) params.set('st', st);
     if (download) params.set('download', '1');
     return this.getApiUrl('/api/moodle/file?' + params.toString());
+  },
+
+  getMoodleFileProxyUrl(fileurl, token, name, download = false) {
+    return this.getFileProxyUrl(fileurl, { name: name || 'Anonymous', download, token: token || '' });
   },
 
   // ── Notices & Department ──

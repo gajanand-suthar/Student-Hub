@@ -57,14 +57,8 @@ function renderLeaderboard(data) {
   if (statAvg) statAvg.textContent = fmtVal(data.branchAvgSgpa);
 
   // Find current user
-  let me = null;
   const leaderboard = data.leaderboard || [];
-  for (let i = 0; i < leaderboard.length; i++) {
-    if (leaderboard[i].isCurrentUser) {
-      me = leaderboard[i];
-      break;
-    }
-  }
+  const me = leaderboard.find(student => student.isCurrentUser);
 
   if (me) {
     if (statRank) statRank.textContent = '#' + me.rank;

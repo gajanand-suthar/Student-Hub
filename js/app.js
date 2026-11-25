@@ -1,6 +1,6 @@
 // Student Hub — SPA App Shell
 
-import { initRouter, getCurrentRoute } from './router.js';
+import { initRouter, getCurrentRoute, resolveRoute } from './router.js';
 import { initTheme, initPwa, checkSugUnread, ensureHumanSession } from './shared.js';
 import { initDashboard } from './dashboard.js';
 import { initAttendance } from './attendance.js';
@@ -20,12 +20,7 @@ function updateNav(viewName) {
   
   navTabs.forEach(tab => {
     const href = tab.getAttribute('href') || '';
-    let tabRoute = 'dashboard';
-    if (href.includes('moodle')) tabRoute = 'moodle';
-    else if (href.includes('attendance')) tabRoute = 'attendance';
-    else if (href.includes('results')) tabRoute = 'results';
-    
-    tab.classList.toggle('active', tabRoute === viewName);
+    tab.classList.toggle('active', resolveRoute(href) === viewName);
   });
 }
 
@@ -94,12 +89,10 @@ function boot() {
   ensureHumanSession();
   
   // Check for unread suggestion replies
-  setTimeout(() => checkSugUnread(), 1500);
+  setTimeout(checkSugUnread, 1500);
   
   // Initialize router
-  initRouter((newRoute, oldRoute) => {
-    loadView(newRoute, oldRoute);
-  });
+  initRouter(loadView);
   
   // Load the initial view
   const initialRoute = getCurrentRoute();

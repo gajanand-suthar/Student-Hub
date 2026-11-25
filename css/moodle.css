@@ -56,7 +56,6 @@
   border-radius: 14px;
 }
 #view-moodle .sem-trigger:active { transform: scale(0.97); }
-#view-moodle .sem-divider { height: 1px; background: var(--border); margin: 3px 8px; }
 
 .search-row {
   display: flex;
@@ -185,21 +184,6 @@
 }
 .course-card:active { transform: scale(0.98); }
 
-.cc-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-weight: 800;
-  font-size: 0.92rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-  font-family: 'DM Sans', sans-serif;
-  letter-spacing: -0.3px;
-}
 .cc-info {
   flex: 1;
   min-width: 0;
@@ -763,12 +747,6 @@
 }
 [data-theme=dark] #pdf-container { background: #0f172a; }
 #pdf-container.active { display: block; }
-#pdf-container canvas {
-  margin: 0 auto 20px;
-  display: block;
-  max-width: 100%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
 .media-container {
   position: absolute;
   inset: 0;

@@ -16,8 +16,6 @@
 .stat-label{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .stat-value{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:800;color:var(--accent)}
 .stat-value.gold{color:#ca8a04}
-.stat-value.small{font-size:.9rem}
-
 /* My Rank Card */
 .my-rank-card{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-radius:16px;padding:18px 20px;color:#fff;display:flex;align-items:center;gap:16px;box-shadow:0 8px 24px rgba(37,99,235,.25)}
 .my-rank-num{font-family:'DM Mono',monospace;font-size:2rem;font-weight:800;line-height:1;opacity:.95}

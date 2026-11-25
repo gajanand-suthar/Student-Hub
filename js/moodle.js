@@ -11,11 +11,9 @@ let token = '';
 let currentUserId = null;
 let currentSem = 0;
 let allCourses = [];       // all enrolled courses across all semesters
-let allSemesters = [];     // sorted list of unique semester numbers found
 let cachedCourses = [];    // courses for the currently selected semester
 let displayedCourses = []; // currently rendered courses (filtered or searched)
 let userName = 'Anonymous';
-let pdfObserver = null;
 
 // ── File Extension Classification Sets & Badge Map ────────────
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'avif', 'heic']);
@@ -160,17 +158,11 @@ export async function initMoodle() {
 
   if (cache && cache.allCourses && cache.allCourses.length > 0) {
     allCourses = cache.allCourses;
-    assignSemesters(allCourses);
-    const semSet = {};
-    allCourses.forEach(crs => {
-      if (crs._sem > 0) semSet[crs._sem] = true;
-    });
-    allSemesters = Object.keys(semSet).map(Number).sort((a, b) => b - a);
-    currentSem = cache.sem || (allSemesters.length ? allSemesters[0] : 0);
-    const hasOtherCached = allCourses.some(crs => crs._sem === 0);
+    const semesters = assignSemesters(allCourses);
+    currentSem = cache.sem || semesters[0] || 0;
     const active = currentSem > 0 ? allCourses.filter(crs => crs._sem === currentSem) : allCourses;
     cachedCourses = active;
-    buildSemDropdown(allSemesters, currentSem, hasOtherCached);
+    buildSemDropdown(semesters, currentSem);
     renderCourseList(cachedCourses);
     showView('courses');
   } else if (cache && cache.courses && cache.courses.length > 0) {
@@ -344,33 +336,17 @@ export async function fetchCoursesFromApi(forceRefresh = false) {
 
     // Store all courses and detect all available semesters with clustering
     allCourses = all;
-    assignSemesters(allCourses);
-
-    const semSet = {};
-    let maxSem = 0;
-    let hasOther = false;
-    allCourses.forEach(c => {
-      const n = c._sem || 0;
-      if (n > 0) {
-        semSet[n] = true;
-        if (n > maxSem) maxSem = n;
-      } else {
-        hasOther = true;
-      }
-    });
-
-    // Build sorted semester list (descending — latest first)
-    allSemesters = Object.keys(semSet).map(Number).sort((a, b) => b - a);
-    currentSem = maxSem || (allSemesters.length ? allSemesters[0] : 1);
+    const semesters = assignSemesters(allCourses);
+    currentSem = semesters[0] || 1;
 
     // Cache all courses for semester switching
     localStorage.setItem(
       CONFIG.COURSES_KEY,
-      JSON.stringify({ allCourses: all, semesters: allSemesters, sem: currentSem, hasOther: hasOther })
+      JSON.stringify({ allCourses, sem: currentSem })
     );
 
     // Build dropdown and show courses for current sem
-    buildSemDropdown(allSemesters, currentSem, hasOther);
+    buildSemDropdown(semesters, currentSem);
     switchSem(currentSem);
   } catch (e) {
     if (e.message === 'invalidtoken') {
@@ -387,15 +363,15 @@ export async function fetchCoursesFromApi(forceRefresh = false) {
 
 // ── Semester Categorization Algorithm (Category ID & Timestamp) ──
 export function assignSemesters(courses) {
-  if (!Array.isArray(courses) || !courses.length) return;
+  if (!Array.isArray(courses) || !courses.length) return [];
 
   // Step 1: Group courses by category ID and compute average timestamp per category
-  const catMap = {}; // categoryId -> { id, courses: [], totalTimestamp: 0, count: 0 }
+  const catMap = {};
 
   courses.forEach(c => {
     const catId = c.category || 0;
     if (!catMap[catId]) {
-      catMap[catId] = { id: catId, courses: [], totalTimestamp: 0, count: 0 };
+      catMap[catId] = { courses: [], totalTimestamp: 0, count: 0 };
     }
     catMap[catId].courses.push(c);
     const ts = c.startdate || c.lastaccess || 0;
@@ -420,62 +396,21 @@ export function assignSemesters(courses) {
   const clusters = [];
 
   categories.forEach(cat => {
-    let matchedCluster = null;
-    for (let i = 0; i < clusters.length; i++) {
-      const cl = clusters[i];
-      if (cat.avgTimestamp > 0 && cl.avgTimestamp > 0 && Math.abs(cat.avgTimestamp - cl.avgTimestamp) <= CLUSTER_WINDOW) {
-        matchedCluster = cl;
-        break;
-      }
-    }
-    if (matchedCluster) {
-      matchedCluster.categories.push(cat);
+    // Newest categories come first, so only the last cluster can be in range.
+    const lastCluster = clusters[clusters.length - 1];
+    if (lastCluster && cat.avgTimestamp > 0 && lastCluster.avgTimestamp - cat.avgTimestamp <= CLUSTER_WINDOW) {
+      lastCluster.categories.push(cat);
     } else {
-      clusters.push({
-        categories: [cat],
-        avgTimestamp: cat.avgTimestamp
-      });
+      clusters.push({ categories: [cat], avgTimestamp: cat.avgTimestamp });
     }
   });
 
-  // Sort clusters descending by avgTimestamp (newest cluster = highest sem number)
-  clusters.sort((a, b) => b.avgTimestamp - a.avgTimestamp);
-
-  // Assign semester numbers: cluster 0 -> N, cluster 1 -> N-1, ..., down to 1
-  const totalSems = clusters.length;
-  const knownSemTimestamps = [];
-
-  clusters.forEach((cluster, index) => {
-    const semNumber = totalSems - index;
-    cluster.semNum = semNumber;
-    knownSemTimestamps.push({ sem: semNumber, timestamp: cluster.avgTimestamp });
-
-    cluster.categories.forEach(cat => {
-      cat.courses.forEach(c => {
-        c._sem = semNumber;
-      });
-    });
-  });
-
-  // Step 3: Fallback for any individual course missing category or failing assignment
-  courses.forEach(c => {
-    if (!c._sem || c._sem === 0) {
-      const courseTs = c.startdate || c.lastaccess || 0;
-      if (courseTs > 0 && knownSemTimestamps.length > 0) {
-        let minDiff = Infinity;
-        let bestSem = 1;
-        knownSemTimestamps.forEach(ks => {
-          const diff = Math.abs(courseTs - ks.timestamp);
-          if (diff < minDiff) {
-            minDiff = diff;
-            bestSem = ks.sem;
-          }
-        });
-        c._sem = bestSem;
-      } else {
-        c._sem = 1;
-      }
+  return clusters.map((cluster, index) => {
+    const semester = clusters.length - index;
+    for (const category of cluster.categories) {
+      for (const course of category.courses) course._sem = semester;
     }
+    return semester;
   });
 }
 
@@ -484,14 +419,13 @@ export function semNum(course) {
 }
 
 // ── Semester Dropdown Logic ─────────────────────────────────
-export function buildSemDropdown(semesters, activeSem, hasOther) {
+function buildSemDropdown(semesters, activeSem) {
   const dropdown = document.getElementById('sem-dropdown');
   const menu = document.getElementById('sem-menu');
   const label = document.getElementById('sem-trigger-label');
   if (!dropdown || !menu || !label) return;
 
-  const totalOptions = (semesters ? semesters.length : 0) + (hasOther ? 1 : 0);
-  if (totalOptions <= 1) {
+  if (semesters.length <= 1) {
     dropdown.classList.remove('visible');
     return;
   }
@@ -504,10 +438,6 @@ export function buildSemDropdown(semesters, activeSem, hasOther) {
     const isActive = sem === activeSem;
     html += `<button class="sem-option${isActive ? ' active' : ''}" data-sem="${sem}" onclick="selectSem(${sem})">Sem ${sem}</button>`;
   });
-  if (hasOther) {
-    html += '<div class="sem-divider"></div>';
-    html += `<button class="sem-option${activeSem === 0 ? ' active' : ''}" data-sem="0" onclick="selectSem(0)">Other Courses</button>`;
-  }
   menu.innerHTML = html;
 }
 
@@ -822,32 +752,7 @@ export function closeImageLightbox(fromUi = true) {
   }
 }
 
-// ── Lazy-Load PDF.js & Plyr on Demand ────────────────────────
-let pdfjsPromise = null;
-function loadPdfJs() {
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (pdfjsPromise) return pdfjsPromise;
-
-  pdfjsPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = () => {
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        resolve(window.pdfjsLib);
-      } else {
-        reject(new Error('PDF.js failed to initialize'));
-      }
-    };
-    s.onerror = () => {
-      pdfjsPromise = null;
-      reject(new Error('Failed to load PDF viewer script'));
-    };
-    document.head.appendChild(s);
-  });
-  return pdfjsPromise;
-}
-
+// Load the media player when a video or audio file is opened.
 let plyrPromise = null;
 function loadPlyr() {
   if (window.Plyr) return Promise.resolve(window.Plyr);
@@ -1074,11 +979,6 @@ export function closeDocLightbox(fromUi = true) {
   if (!lb) return;
   lb.classList.remove('show');
 
-  if (pdfObserver) {
-    pdfObserver.disconnect();
-    pdfObserver = null;
-  }
-
   if (window.currentPlyr) {
     try {
       window.currentPlyr.stop();
@@ -1134,90 +1034,6 @@ if (typeof window !== 'undefined' && !window._lightboxKeydownBound) {
         return;
       }
     }
-  });
-}
-
-// ── PDF.js Multi-Page Canvas Renderer (Lazy via IntersectionObserver) ──
-export async function renderPdf(url) {
-  const container = document.getElementById('pdf-container');
-  if (!container) return;
-  if (pdfObserver) {
-    pdfObserver.disconnect();
-    pdfObserver = null;
-  }
-  container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:300px;color:#64748b;font-weight:600;font-family:sans-serif;gap:16px;"><div class="spinner"></div>Loading PDF...</div>';
-
-  try {
-    const pdfjs = await loadPdfJs();
-    const pdf = await pdfjs.getDocument(url).promise;
-    const firstPage = await pdf.getPage(1);
-    const baseVp = firstPage.getViewport({ scale: 1 });
-    const aspectRatio = baseVp.width && baseVp.height ? `${baseVp.width} / ${baseVp.height}` : '1 / 1.414';
-
-    container.innerHTML = '';
-    const frag = document.createDocumentFragment();
-    const wrappers = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const canvasWrapper = document.createElement('div');
-      canvasWrapper.dataset.page = String(i);
-      canvasWrapper.style.marginBottom = '12px';
-      canvasWrapper.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-      canvasWrapper.style.borderRadius = '8px';
-      canvasWrapper.style.overflow = 'hidden';
-      canvasWrapper.style.background = '#fff';
-      canvasWrapper.style.display = 'flex';
-      canvasWrapper.style.justifyContent = 'center';
-      canvasWrapper.style.aspectRatio = aspectRatio;
-
-      const canvas = document.createElement('canvas');
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-      canvas.style.display = 'block';
-
-      canvasWrapper.appendChild(canvas);
-      frag.appendChild(canvasWrapper);
-      wrappers.push({ wrapper: canvasWrapper, canvas, num: i });
-    }
-
-    container.appendChild(frag);
-
-    if (typeof IntersectionObserver !== 'undefined') {
-      pdfObserver = new IntersectionObserver((entries, obs) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
-          const wrapper = entry.target;
-          obs.unobserve(wrapper);
-          if (wrapper.dataset.rendered === '1') return;
-          wrapper.dataset.rendered = '1';
-          const pageNum = Number(wrapper.dataset.page);
-          const canvas = wrapper.querySelector('canvas');
-          if (canvas && pageNum) {
-            renderPdfPage(pdf, pageNum, canvas, wrapper, pageNum === 1 ? firstPage : null);
-          }
-        });
-      }, { root: container, rootMargin: '600px 0px' });
-
-      wrappers.forEach(({ wrapper }) => pdfObserver.observe(wrapper));
-    } else {
-      wrappers.forEach(({ wrapper, canvas, num }) => {
-        renderPdfPage(pdf, num, canvas, wrapper, num === 1 ? firstPage : null);
-      });
-    }
-  } catch (err) {
-    container.innerHTML = '<div style="padding:40px; text-align:center; color:#ef4444; font-weight:600;">Failed to load PDF: ' + escHtml(err.message) + '<div style="margin-top:16px;"><a href="' + url + '" target="_blank" class="res-btn btn-view">Open PDF in New Tab</a></div></div>';
-  }
-}
-
-export function renderPdfPage(pdf, num, canvas, wrapper, preloadedPage = null) {
-  const pagePromise = preloadedPage ? Promise.resolve(preloadedPage) : pdf.getPage(num);
-  pagePromise.then(page => {
-    const viewport = page.getViewport({ scale: window.devicePixelRatio > 1 ? 2 : 1.5 });
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    wrapper.style.aspectRatio = 'auto';
-    const ctx = canvas.getContext('2d');
-    page.render({ canvasContext: ctx, viewport: viewport });
   });
 }
 

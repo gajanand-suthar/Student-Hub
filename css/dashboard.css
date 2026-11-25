@@ -750,28 +750,11 @@
   line-height: 1.2;
 }
 
-.tt-subheading {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
 .tt-topbar-right {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-}
-
-.tt-badge {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--accent);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 4px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 .tt-action-btn {
@@ -806,13 +789,6 @@
   height: 34px;
   padding: 0;
   justify-content: center;
-}
-
-.tt-action-btn.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
 }
 
 /* Slot Actions container (holds the batch dropdown on lab slots) */
@@ -1093,15 +1069,6 @@
   white-space: nowrap;
 }
 
-.tt-slot-tag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 6px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .tt-slot.is-empty {
   flex: 1;
   min-height: 48px;
@@ -1116,28 +1083,6 @@
   font-weight: 600;
   color: var(--muted);
   font-style: italic;
-}
-
-.tt-tag-elective {
-  background: rgba(147, 51, 234, 0.12);
-  color: #9333ea;
-  border: 1px solid rgba(147, 51, 234, 0.25);
-}
-
-[data-theme=dark] .tt-tag-elective {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
-}
-
-.tt-tag-lab {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-[data-theme=dark] .tt-tag-lab {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
 }
 
 .tt-slot-meta {
@@ -1156,12 +1101,6 @@
   font-size: 0.72rem;
   color: var(--text);
   opacity: 0.85;
-}
-
-.tt-fac, .tt-room {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
 }
 
 /* Visible Break Divider Across Full Width */

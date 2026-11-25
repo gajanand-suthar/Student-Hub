@@ -230,14 +230,9 @@ export const api = {
     } catch (err) {
       if (err.message === 'invalidtoken') throw err;
       // Fallback: try direct fetch to Moodle
-      try {
-        const directUrl = 'https://moodlegurukul.nie.ac.in/webservice/rest/server.php?' + query.toString();
-        const directRes = await fetch(directUrl);
-        const data = await directRes.json();
-        return this._checkMoodleResponse(data);
-      } catch (fallbackErr) {
-        throw fallbackErr;
-      }
+      const directUrl = 'https://moodlegurukul.nie.ac.in/webservice/rest/server.php?' + query.toString();
+      const directRes = await fetch(directUrl);
+      return this._checkMoodleResponse(await directRes.json());
     }
   },
 

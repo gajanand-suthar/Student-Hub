@@ -61,7 +61,7 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 
 ### 4. Course and Document Portal
 - Search and browse enrolled courses across semesters.
-- Built-in PDF reader using PDF.js for in-app document viewing without downloading.
+- Built-in PDF reader using EmbedPDF for in-app document viewing without downloading.
 - Built-in audio and video media playback using Plyr.
 - Categorized resource badges for documents, presentations, spreadsheets, quizzes, and links.
 
@@ -75,7 +75,7 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 
 ### 7. Progressive Web App (PWA)
 - Installable on Android, Desktop, and iOS devices (via Safari "Add to Home Screen" system install).
-- Offline navigation fallback and automatic cache updates via Service Worker (v11).
+- Offline navigation fallback and automatic cache updates via Service Worker.
 - Client-side History API router for instant tab transitions without full page reloads.
 - Built-in Dark and Light mode theme toggle.
 
@@ -90,7 +90,7 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 - **AI Processing**: Google Gemini API (multi-model fallback chain for timetable parsing)
 - **Router**: Browser History API (pushState / popstate)
 - **External Libraries (CDN)**:
-  - PDF.js (v3.11) for document preview
+  - EmbedPDF (v3) for document preview
   - Plyr (v3.7) for media playback
 - **Offline / Storage**: Service Worker API, CacheStorage, localStorage, sessionStorage
 

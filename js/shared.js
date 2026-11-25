@@ -661,10 +661,6 @@ export function initPwa() {
   const ua = (navigator.userAgent || '').toLowerCase();
   const isIos = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  function ensureModal() {
-    return document.getElementById('pwa-modal');
-  }
-
   function isSnoozed() {
     const t = parseInt(localStorage.getItem(PWA_SNOOZED_KEY) || '0', 10);
     return t > 0 && (Date.now() - t < SNOOZE_MS);
@@ -683,7 +679,7 @@ export function initPwa() {
   }
 
   function showModal() {
-    const modal = ensureModal();
+    const modal = document.getElementById('pwa-modal');
     if (!modal) return;
     setTimeout(() => {
       modal.classList.add('active');
@@ -698,7 +694,6 @@ export function initPwa() {
       return; // Never show again on iOS
     }
 
-    const modal = ensureModal();
     const titleEl = document.getElementById('pwa-title');
     const subEl = document.getElementById('pwa-sub-text');
     const iosGuide = document.getElementById('pwa-ios-guide');
@@ -729,45 +724,35 @@ export function initPwa() {
 
   // --- Desktop & Android Handling ---
   // Show prompt with 24-hour snooze support when clicked "Maybe later"
-  function setupDesktopAndroid() {
-    const modal = ensureModal();
-    const installBtn = document.getElementById('pwa-install-btn');
-    const laterBtn = document.getElementById('pwa-later-btn');
+  const installBtn = document.getElementById('pwa-install-btn');
+  const laterBtn = document.getElementById('pwa-later-btn');
 
-    if (installBtn) {
-      installBtn.onclick = () => {
-        if (!deferredPrompt) {
-          hideModal();
-          return;
-        }
+  if (installBtn) {
+    installBtn.onclick = () => {
+      if (!deferredPrompt) {
         hideModal();
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(result => {
-          if (result && result.outcome !== 'accepted') {
-            snooze();
-          }
-          deferredPrompt = null;
-        }).catch(() => {});
-      };
-    }
+        return;
+      }
+      hideModal();
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(result => {
+        if (result && result.outcome !== 'accepted') {
+          snooze();
+        }
+        deferredPrompt = null;
+      }).catch(() => {});
+    };
+  }
 
-    if (laterBtn) {
-      laterBtn.onclick = snooze;
-    }
-
-    if (!isSnoozed() && deferredPrompt) {
-      showModal();
-    }
+  if (laterBtn) {
+    laterBtn.onclick = snooze;
   }
 
   window._triggerPwaPrompt = function() {
-    if (!isIos && !isStandalone && !isSnoozed()) {
-      setupDesktopAndroid();
-      showModal();
-    }
+    if (deferredPrompt && !isSnoozed()) showModal();
   };
 
-  setupDesktopAndroid();
+  window._triggerPwaPrompt();
 }
 
 // ── Helpers ──

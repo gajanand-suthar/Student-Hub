@@ -11,7 +11,6 @@
 [data-theme=dark] .att-goal-card-head.danger{background:#3b0712;color:#fca5a5;border-bottom-color:#991b1b}
 [data-theme=dark] .att-mode-toggle{background:#1e293b;border-color:#334155}
 [data-theme=dark] .att-mode-btn.active{background:#000;color:#f8fafc;box-shadow:0 1px 4px rgba(0,0,0,.4)}
-[data-theme=dark] .att-mode-badge{background:rgba(59,130,246,.2);color:#93c5fd}
 [data-theme=dark] .att-count-pill.present{background:#052e16;color:#4ade80}
 [data-theme=dark] .att-count-pill.absent{background:#3b0712;color:#fca5a5}
 [data-theme=dark] .att-goal-denom{color:#94a3b8;opacity:.7}
@@ -153,8 +152,7 @@ details.bd-item[open] .bd-chevron{transform:rotate(90deg)}
 .att-mode-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .att-mode-sub{font-size:.7rem;font-weight:600;opacity:.8;margin-left:1px}
 .att-goals-container{display:flex;flex-direction:column}
-.att-goals-container[data-mode="current"] .att-goal-grid-final,
-.att-goals-container[data-mode="current"] .att-goal-grid-sem{display:none}
+.att-goals-container[data-mode="current"] .att-goal-grid-final{display:none}
 .att-goals-container[data-mode="final"] .att-goal-grid-current,
 .att-goals-container[data-mode="sem"] .att-goal-grid-current{display:none}
 .att-goal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}

@@ -858,11 +858,6 @@ export function toggleHomeSection(section, push = true) {
   }
 }
 
-// Guarantee immediate availability of toggleHomeSection for inline onclick
-if (typeof window !== 'undefined') {
-  window.toggleHomeSection = toggleHomeSection;
-}
-
 export function getRegisteredCourseCodes() {
   try {
     const cached = JSON.parse(localStorage.getItem('nie_registered_courses') || '[]');
@@ -886,15 +881,21 @@ export function getRegisteredCourseCodes() {
 }
 
 // Standard NIE period slots with fixed Break timings
-const FIXED_DAY_SLOTS = [
-  { id: 'p1', type: 'period', num: 1, startMin: 540, endMin: 600, labelStart: '09:00', labelEnd: '10:00' },
-  { id: 'p2', type: 'period', num: 2, startMin: 600, endMin: 660, labelStart: '10:00', labelEnd: '11:00' },
-  { id: 'b1', type: 'break', name: 'Break', startMin: 660, endMin: 690, labelStart: '11:00', labelEnd: '11:30' },
-  { id: 'p3', type: 'period', num: 3, startMin: 690, endMin: 750, labelStart: '11:30', labelEnd: '12:30' },
-  { id: 'p4', type: 'period', num: 4, startMin: 750, endMin: 810, labelStart: '12:30', labelEnd: '01:30' },
-  { id: 'b2', type: 'break', name: 'Break', startMin: 810, endMin: 870, labelStart: '01:30', labelEnd: '02:30' },
-  { id: 'p5', type: 'period', num: 5, startMin: 870, endMin: 930, labelStart: '02:30', labelEnd: '03:30' },
-  { id: 'p6', type: 'period', num: 6, startMin: 930, endMin: 990, labelStart: '03:30', labelEnd: '04:30' }
+const SCHEDULE_PAIRS = [
+  {
+    pA: { startMin: 540, endMin: 600, labelStart: '09:00', labelEnd: '10:00' },
+    pB: { startMin: 600, endMin: 660, labelStart: '10:00', labelEnd: '11:00' }
+  },
+  { break: true },
+  {
+    pA: { startMin: 690, endMin: 750, labelStart: '11:30', labelEnd: '12:30' },
+    pB: { startMin: 750, endMin: 810, labelStart: '12:30', labelEnd: '01:30' }
+  },
+  { break: true },
+  {
+    pA: { startMin: 870, endMin: 930, labelStart: '02:30', labelEnd: '03:30' },
+    pB: { startMin: 930, endMin: 990, labelStart: '03:30', labelEnd: '04:30' }
+  }
 ];
 
 function parseTimeToMinutes(t) {
@@ -1138,12 +1139,12 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       currentTimetableIsPending = true;
       currentTimetableData = null;
       try { localStorage.removeItem(cacheKey); } catch (e) {}
-      showPendingTimetable(params);
+      showPendingTimetable();
     } else {
       currentTimetableIsPending = false;
       try { localStorage.removeItem(cacheKey); } catch (e) {}
       currentTimetableData = null;
-      showEmptyTimetable(params);
+      showEmptyTimetable();
     }
   } catch (err) {
     // On auth errors (expired token), fall back to any cached data (even stale)
@@ -1154,7 +1155,7 @@ async function fetchAndApplyTimetable(params, { forceRefresh = false } = {}) {
       currentTimetableIsPending = false;
       renderTodaySchedule(currentTimetableData, currentTtDay);
     } else if (!currentTimetableData) {
-      showEmptyTimetable(params);
+      showEmptyTimetable();
     }
   }
 }
@@ -1362,18 +1363,7 @@ function resolveClassForPeriod(slotDef, rawDaySchedule, regCodes, batchSelection
         }
       }
 
-      if (regCodes.length > 0) {
-        if (matchesRegisteredCourse(s.code, regCodes)) {
-          matchedClass = {
-            code: s.code,
-            batch: s.batch || '',
-            isLab: s.type === 'lab' || (s.code || '').toLowerCase().includes('lab'),
-            name: s.name || '',
-            rawSlot: s
-          };
-          break;
-        }
-      } else {
+      if (regCodes.length === 0 || matchesRegisteredCourse(s.code, regCodes)) {
         matchedClass = {
           code: s.code,
           batch: s.batch || '',
@@ -1514,15 +1504,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
 
   let html = '';
 
-  const schedulePairs = [
-    { pA: FIXED_DAY_SLOTS[0], pB: FIXED_DAY_SLOTS[1] },
-    { break: FIXED_DAY_SLOTS[2] },
-    { pA: FIXED_DAY_SLOTS[3], pB: FIXED_DAY_SLOTS[4] },
-    { break: FIXED_DAY_SLOTS[5] },
-    { pA: FIXED_DAY_SLOTS[6], pB: FIXED_DAY_SLOTS[7] }
-  ];
-
-  schedulePairs.forEach(item => {
+  SCHEDULE_PAIRS.forEach(item => {
     if (item.break) {
       html += `
         <div class="tt-break-divider" role="separator" aria-label="Break">
@@ -1568,7 +1550,7 @@ export function renderTodaySchedule(timetable, dayName = currentTtDay) {
   container.innerHTML = html;
 }
 
-function showPendingTimetable(params) {
+function showPendingTimetable() {
   const container = document.getElementById('tt-schedule-body');
   const editBtn = document.getElementById('btn-tt-edit');
   const heading = document.getElementById('tt-day-heading');
@@ -1596,7 +1578,7 @@ function showPendingTimetable(params) {
   `;
 }
 
-function showEmptyTimetable(params) {
+function showEmptyTimetable() {
   const container = document.getElementById('tt-schedule-body');
   const editBtn = document.getElementById('btn-tt-edit');
   const heading = document.getElementById('tt-day-heading');

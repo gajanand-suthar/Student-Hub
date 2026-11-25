@@ -1,4 +1,5 @@
-const CACHE_NAME = 'student-hub-spa-v27';
+const CACHE_PREFIX = 'student-hub-spa-';
+const CACHE_NAME = CACHE_PREFIX + 'v28';
 const PRECACHE = [
   './',
   './index.html',
@@ -36,7 +37,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });

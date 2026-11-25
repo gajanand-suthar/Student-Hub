@@ -79,6 +79,11 @@ Whether it is refining CSS styles, fixing layout issues on specific mobile devic
 - Client-side History API router for instant tab transitions without full page reloads.
 - Built-in Dark and Light mode theme toggle.
 
+### 8. Same-semester study materials
+- Students share an external Google Drive, GitHub, or other HTTP(S) link with a title and directions; Student Hub never receives the file itself.
+- Links are listed only for the authenticated student's semester, with the sharer's name shown as text.
+- Supported Google Drive, GitHub raw/blob, and direct document/image links open in an in-app preview; every resource also has a safe external-open fallback.
+
 
 ---
 

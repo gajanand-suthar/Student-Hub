@@ -10,7 +10,7 @@ export function getCurrentRoute() {
 // Automatically detect base path (e.g., '/Student-Hub/' on GitHub Pages, or '/' on custom domains / localhost)
 export function getBasePath() {
   const pathname = window.location.pathname;
-  const knownSegments = ['moodle', 'attendance', 'results', 'index.html', '404.html'];
+  const knownSegments = ['moodle', 'attendance', 'results', 'materials', 'index.html', '404.html'];
   const parts = pathname.split('/').filter(Boolean);
 
   // If first segment is not a known view or page, it's the GitHub repository name / subfolder
@@ -27,6 +27,7 @@ export function getRoutePath(routeName) {
     case 'moodle': return base + 'moodle/';
     case 'attendance': return base + 'attendance/';
     case 'results': return base + 'results/';
+    case 'materials': return base + 'materials/';
     default: return base;
   }
 }
@@ -45,6 +46,7 @@ export function resolveRoute(pathname) {
   if (path.includes('/moodle') || path === 'moodle' || path === './moodle/' || path === 'moodle/') return 'moodle';
   if (path.includes('/attendance') || path === 'attendance' || path === './attendance/' || path === 'attendance/') return 'attendance';
   if (path.includes('/results') || path === 'results' || path === './results/' || path === 'results/') return 'results';
+  if (path.includes('/materials') || path === 'materials' || path === './materials/' || path === 'materials/') return 'materials';
 
   return 'dashboard';
 }
@@ -102,7 +104,19 @@ export function initRouter(callback) {
       return;
     }
 
-    // 4. Timetable upload / edit modal (close modal)
+    // 4. Study material dialogs (stay on the materials view)
+    const materialPreview = document.getElementById('material-preview-modal');
+    if (materialPreview && materialPreview.classList.contains('active')) {
+      if (typeof window.closeMaterialPreview === 'function') window.closeMaterialPreview();
+      return;
+    }
+    const materialShare = document.getElementById('material-share-modal');
+    if (materialShare && materialShare.classList.contains('active')) {
+      if (typeof window.closeMaterialShareModal === 'function') window.closeMaterialShareModal();
+      return;
+    }
+
+    // 5. Timetable upload / edit modal (close modal)
     const ttUploadModal = document.getElementById('tt-upload-modal');
     if (ttUploadModal && ttUploadModal.classList.contains('active')) {
       if (typeof window.closeTtUploadModal === 'function') window.closeTtUploadModal(false);

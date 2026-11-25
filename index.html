@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="./css/attendance.css">
   <link rel="stylesheet" href="./css/moodle.css">
   <link rel="stylesheet" href="./css/results.css">
+  <link rel="stylesheet" href="./css/materials.css">
 
 
   <script>
@@ -736,6 +737,24 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SAME-SEMESTER STUDY MATERIALS                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="view-materials" class="spa-view">
+    <div class="materials-page">
+      <div class="materials-header">
+        <div>
+          <h1>Study Materials</h1>
+          <p id="materials-semester-label">For your semester</p>
+        </div>
+        <button type="button" class="materials-add-btn" onclick="openMaterialShareModal()" aria-label="Share a study material">Share</button>
+      </div>
+      <p class="materials-note">Links only — files are never uploaded to Student Hub. Shared by students in your semester.</p>
+      <div id="materials-state" class="materials-state">Loading shared materials…</div>
+      <div id="materials-list" class="materials-list" aria-live="polite"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Global Image Lightbox Overlay -->
@@ -782,6 +801,32 @@
   <a class="nav-tab" href="./results/">
     <svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="448" height="448" rx="100"/><line x1="180" y1="332" x2="332" y2="180"/><circle cx="180" cy="180" r="38"/><circle cx="332" cy="332" r="38"/></svg>Results
   </a>
+  <a class="nav-tab" href="./materials/">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Materials
+  </a>
+</div>
+
+<!-- Study-material sharing and preview overlays -->
+<div id="material-share-modal" class="modal-overlay" onclick="if(event.target===this)closeMaterialShareModal()" aria-hidden="true">
+  <form class="modal-card material-modal-card" id="material-share-form">
+    <h2 class="modal-title">Share study material</h2>
+    <label class="material-field-label" for="material-title">Title</label>
+    <input class="s-input" id="material-title" name="title" maxlength="120" required placeholder="e.g. Unit 3 operating systems notes">
+    <label class="material-field-label" for="material-description">Description / directions</label>
+    <textarea class="material-textarea" id="material-description" name="description" maxlength="1000" required placeholder="What it covers, and anything classmates should know"></textarea>
+    <label class="material-field-label" for="material-url">Link</label>
+    <input class="s-input" id="material-url" name="url" type="url" maxlength="2048" required placeholder="Google Drive, GitHub, or another https:// link" autocapitalize="none">
+    <div id="material-form-error" class="material-form-error" role="alert"></div>
+    <div class="modal-actions"><button type="button" class="modal-btn modal-btn-cancel" onclick="closeMaterialShareModal()">Cancel</button><button class="modal-btn modal-btn-save" id="material-submit-btn" type="submit">Share link</button></div>
+  </form>
+</div>
+
+<div id="material-preview-modal" class="modal-overlay material-preview-overlay" onclick="if(event.target===this)closeMaterialPreview()" aria-hidden="true">
+  <div class="modal-card material-preview-card">
+    <div class="material-preview-header"><h2 id="material-preview-title" class="material-preview-title">Preview</h2><button type="button" class="material-close-btn" onclick="closeMaterialPreview()" aria-label="Close preview">×</button></div>
+    <div id="material-preview-content"></div>
+    <a id="material-open-external" class="material-open-external" target="_blank" rel="noopener noreferrer">Open original link ↗</a>
+  </div>
 </div>
 
 

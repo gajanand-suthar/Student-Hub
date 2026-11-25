@@ -381,5 +381,22 @@ export const api = {
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
+  },
+
+  // ── Same-semester study materials ──
+  // The Worker derives author and semester from the identity token; neither is
+  // accepted from the browser as an authority field.
+  async getStudyMaterials() {
+    await ensureSession();
+    const res = await fetch(this.getApiUrl('/api/study-materials'), { headers: getAuthHeaders() });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async shareStudyMaterial({ title, description, url }) {
+    return this.post('/api/study-materials', { title, description, url });
   }
 };
